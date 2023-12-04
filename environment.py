@@ -76,14 +76,25 @@ class RoadSegment():
             np.arange(self.number_of_states), p=self.observation_tables[action][self.state]
         )
 
-        return cost
+        #TODO: Believe state computation
 
+        return cost
+    
+    def compute_travel_time(self, action):
+        return 0 # travel_time
 
 class RoadEdge():
     def __init__(self, number_of_segments):
         self.number_of_segments = number_of_segments
         self.inspection_campain_cost = 1
+        self.edge_travel_time = 200
         self.segments = [RoadSegment() for _ in range(number_of_segments)]
+
+    def get_edge_travel_time(self):
+        return self.edge_travel_time
+
+    def update_edge_travel_time(self, actions):
+        pass # TODO
 
     def step(self, actions):
         # states:
@@ -94,6 +105,8 @@ class RoadEdge():
 
         if 1 in actions:
             cost += self.inspection_campain_cost
+
+        self.update_edge_travel_time(actions)
 
         return cost
 
