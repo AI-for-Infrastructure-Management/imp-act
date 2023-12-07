@@ -62,7 +62,7 @@ class RoadSegment():
         ])
         
         # Costs (negative rewards)
-        self.state_action_cost = np.array([
+        self.state_action_reward = np.array([
             [0, -1, -20, -150],
             [0, -1, -25, -150],
             [0, -1, -30, -150],
@@ -76,12 +76,12 @@ class RoadSegment():
         self.observation = self.initial_observation
 
     def step(self, action):
-        # actions: [do_nothing, inspect, repair] = [0, 1, 2]
+        # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
         next_deterioration_state = np.random.choice(
             np.arange(self.number_of_states), p=self.transition_tables[action][self.state]
         )
 
-        cost = self.state_action_cost[self.state][action]
+        reward = self.state_action_reward[self.state][action]
         self.state = next_deterioration_state
 
         self.observation = np.random.choice(
@@ -90,7 +90,7 @@ class RoadSegment():
 
         #TODO: Believe state computation
 
-        return cost
+        return reward
     
     def compute_travel_time(self, action):
         return 0 # travel_time
@@ -98,7 +98,7 @@ class RoadSegment():
 class RoadEdge():
     def __init__(self, number_of_segments):
         self.number_of_segments = number_of_segments
-        self.inspection_campain_cost = 1
+        self.inspection_campain_cost = -5
         self.edge_travel_time = 200
         self.segments = [RoadSegment() for _ in range(number_of_segments)]
 
