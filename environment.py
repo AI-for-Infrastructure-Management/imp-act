@@ -161,6 +161,17 @@ class RoadEnvironment():
         for edge in self.graph.es:
             edge["road_segments"] = RoadEdge(number_of_segments=2)
 
+        self.trips = [(0, 1, 200), (1, 3, 200), (2, 0, 200), (3, 2, 200)]
+        self.traffic_assignment_max_iterations = 15
+        self.traffic_assignment_convergence_threshold = 0.01
+        self.traffic_assignment_update_weight = 0.5
+
+        self.travel_time_cost = 0.01
+
+        self.reset()
+        
+        self.base_total_travel_time = self._get_total_travel_time()
+
     def reset(self):
         self.timestep = 0
         for edge in self.graph.es:
@@ -183,25 +194,64 @@ class RoadEnvironment():
 
         return edge_states
         
-    def _get_travel_time_cost(self):
-        # compute travel time
-        # compute cost of travel time 
-        return 0 # TODO
+    def _get_total_travel_time(self):        
+        # Initialize volumes
+        self.graph.es['volume'] = 0
+        
+        # Initialize with all-or-nothing assignment
+        self.graph.es['travel_time'] = [
+                edge['road_segments'].get_edge_travel_time(edge['volume'])
+                for edge in self.graph.es
+            ]
+
+        for source, target, num_cars in self.trips:
+            path = self.graph.get_shortest_paths(source, target, weights='travel_time', output='epath')[0]
+            for edge_id in path:
+                self.graph.es[edge_id]['volume'] += num_cars
+
+        for iteration in range(self.traffic_assignment_max_iterations):
+            # Recalculate travel times with current volumes
+            self.graph.es['travel_time'] = [
+                edge['road_segments'].get_edge_travel_time(edge['volume'])
+                for edge in self.graph.es
+            ]
+
+            # Find the shortest paths using updated travel times
+            new_volumes = np.zeros(len(self.graph.es))
+            for source, target, num_cars in self.trips:
+                path = self.graph.get_shortest_paths(source, target, weights='travel_time', output='epath')[0]
+                for edge_id in path:
+                    new_volumes[edge_id] += num_cars
+
+            # Check for convergence by comparing volume changes
+            volume_changes = np.abs(self.graph.es['volume'] - new_volumes)
+            max_change = np.max(volume_changes)
+
+            if max_change <= self.traffic_assignment_convergence_threshold:
+                break
+
+            # Update volumes by averaging
+            self.graph.es['volume'] = (
+                np.array(self.graph.es['volume']) * (1 - self.traffic_assignment_update_weight) +
+                new_volumes * self.traffic_assignment_update_weight
+                )
+
+        return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
         total_cost = 0
         for i, edge in enumerate(self.graph.es):
             total_cost += edge["road_segments"].step(actions[i])
 
-        travel_time_cost = self._get_travel_time_cost()
+        total_travel_time = self._get_total_travel_time()
 
-        cost = total_cost + self.travel_time_factor * travel_time_cost
+        cost = total_cost + self.travel_time_cost * (total_travel_time - self.base_total_travel_time)
 
         observation = self._get_observation()
 
         self.timestep += 1
 
-        info = {"states": self._get_states()}
+        info = {"states": self._get_states(), "travel_time": total_travel_time, "volume": self.graph.es['volume']}
 
         return observation, cost, self.timestep >= self.max_timesteps, info
         
