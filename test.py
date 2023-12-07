@@ -7,7 +7,8 @@ def main():
     done = False
     while not done:
         observation, cost, done, info = env.step(actions)
-        print(observation, cost, done, info)
+        # print(observation, cost, done, info)
+        print(observation["edge_observations"], cost, done, info["all_beliefs"])
 
 
 if __name__ == "__main__":

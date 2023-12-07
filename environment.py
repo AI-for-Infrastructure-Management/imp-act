@@ -74,6 +74,7 @@ class RoadSegment():
     def reset(self):
         self.state = 0
         self.observation = self.initial_observation
+        self.belief = np.array([1, 0, 0, 0])
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
@@ -93,16 +94,23 @@ class RoadSegment():
         )
 
         #TODO: Belief state computation
+        self.belief = self.transition_tables[action].T @ self.belief
 
-        return reward
-    
+        state_probs = self.observation_tables[action][:, self.observation] # likelihood of observation
+
+        # Bayes' rule
+        self.belief = state_probs * self.belief # likelihood * prior
+        self.belief /= np.sum(self.belief) # normalize
+
+        return reward, self.belief
+
     def compute_travel_time(self, action):
         return 0 # travel_time
 
 class RoadEdge():
     def __init__(self, number_of_segments):
         self.number_of_segments = number_of_segments
-        self.inspection_campain_cost = -5
+        self.inspection_campaign_cost = -5
         self.edge_travel_time = 200
         self.segments = [RoadSegment() for _ in range(number_of_segments)]
 
@@ -115,16 +123,18 @@ class RoadEdge():
     def step(self, actions):
         # states:
         cost = 0
+        segment_beliefs = []
         for segment, action in zip(self.segments, actions):
-            segment_cost = segment.step(action)
+            segment_cost, belief = segment.step(action)
             cost += segment_cost
+            segment_beliefs.append(belief)
 
         if 1 in actions:
-            cost += self.inspection_campain_cost
+            cost += self.inspection_campaign_cost
 
         self.update_edge_travel_time(actions)
 
-        return cost
+        return cost, segment_beliefs
 
     def reset(self):
         for segment in self.segments:
@@ -160,7 +170,7 @@ class RoadEnvironment():
         observations = {"adjacency_matrix": adjacency_matrix, "edge_observations": edge_observations}
 
         return observations
-    
+
     def _get_states(self):
         edge_states = []
         for edge in self.graph.es:
@@ -175,8 +185,11 @@ class RoadEnvironment():
 
     def step(self, actions):
         total_cost = 0
+        all_beliefs = []
         for i, edge in enumerate(self.graph.es):
-            total_cost += edge["road_segments"].step(actions[i])
+            cost, beliefs = edge["road_segments"].step(actions[i])
+            total_cost += cost
+            all_beliefs.append(beliefs)
 
         travel_time_cost = self._get_travel_time_cost()
 
@@ -186,7 +199,8 @@ class RoadEnvironment():
 
         self.timestep += 1
 
-        info = {"states": self._get_states()}
+        info = {"states": self._get_states(),
+                "all_beliefs": all_beliefs}
 
         return observation, cost, self.timestep >= self.max_timesteps, info
         
