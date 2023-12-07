@@ -6,7 +6,7 @@ class RoadSegment():
     def __init__(self):
         # state [0-3]
         self.capacity = 500 # maybe cars per minute
-        self.base_travel_time = 50 # maybe minutes it takes to travel trough a segment
+        self.base_travel_time = 5 # maybe minutes it takes to travel trough a segment
         self.initial_observation = 0 # 
         self.number_of_states = 4
         self.transition_tables = np.array([
