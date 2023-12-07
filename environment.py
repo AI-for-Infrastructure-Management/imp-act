@@ -6,7 +6,7 @@ class RoadSegment():
     def __init__(self):
         # state [0-3]
         self.capacity = 500 # maybe cars per minute
-        self.base_travel_time = 5 # maybe minutes it takes to travel trough a segment
+        self.base_travel_time = 50 # maybe minutes it takes to travel trough a segment
         self.initial_observation = 0 # 
         self.number_of_states = 4
         self.transition_tables = np.array([
@@ -108,9 +108,6 @@ class RoadEdge():
         self.edge_travel_time = 200
         self.segments = [RoadSegment() for _ in range(number_of_segments)]
         self.reset()
-
-    def get_edge_travel_time(self):
-        return self.edge_travel_time
     
     # Define a function for calculating BPR travel times based on volume and capacity
     def calculate_bpr_travel_time(volume, capacity, base_time, alpha=0.15, beta=4):
@@ -126,7 +123,7 @@ class RoadEdge():
         self.capacity_factor = np.sum(self.calculate_bpr_capacity_factor(base_time_vec=btt_vec, capacity_vec=cap_vec, alpha=0.15, beta=4))
         return
     
-    def edge_travel_time(self, volume: float) -> float:
+    def compute_edge_travel_time(self, volume: float) -> float:
         return self.base_time_factor + self.capacity_factor*(volume**4)
 
     def step(self, actions):
