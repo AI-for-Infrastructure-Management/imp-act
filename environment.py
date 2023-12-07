@@ -77,6 +77,10 @@ class RoadSegment():
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
+        
+        if self.state == 3:
+            action = 3 # force replacement (This must be corrected: obs)
+        
         next_deterioration_state = np.random.choice(
             np.arange(self.number_of_states), p=self.transition_tables[action][self.state]
         )
