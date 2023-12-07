@@ -36,27 +36,27 @@ class RoadSegment():
 
         self.observation_tables = np.array([
             [# Action 0: do-nothing
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ],
             [# Action 1: inspect
                 [0.8, 0.2, 0.0, 0.0],
                 [0.1, 0.8, 0.1, 0.0],
-                [0.0, 0.1, 0.8, 0.1],
+                [0.0, 0.1, 0.9, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ],
             [# Action 2: minor repair
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ],
             [# Action 3: major repair (replacement)
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ]
         ])
@@ -78,8 +78,8 @@ class RoadSegment():
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
         
-        if self.state == 3:
-            action = 3 # force replacement (This must be corrected: obs)
+        if self.observation == 3:
+            action = 3 # force replacement 
         
         next_deterioration_state = np.random.choice(
             np.arange(self.number_of_states), p=self.transition_tables[action][self.state]
@@ -92,7 +92,7 @@ class RoadSegment():
             np.arange(self.number_of_states), p=self.observation_tables[action][self.state]
         )
 
-        #TODO: Believe state computation
+        #TODO: Belief state computation
 
         return reward
     
