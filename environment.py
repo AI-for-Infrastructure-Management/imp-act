@@ -200,7 +200,7 @@ class RoadEnvironment():
         
         # Initialize with all-or-nothing assignment
         self.graph.es['travel_time'] = [
-                edge['road_segments'].get_edge_travel_time(edge['volume'])
+                edge['road_segments'].compute_edge_travel_time(edge['volume'])
                 for edge in self.graph.es
             ]
 
@@ -212,7 +212,7 @@ class RoadEnvironment():
         for iteration in range(self.traffic_assignment_max_iterations):
             # Recalculate travel times with current volumes
             self.graph.es['travel_time'] = [
-                edge['road_segments'].get_edge_travel_time(edge['volume'])
+                edge['road_segments'].compute_edge_travel_time(edge['volume'])
                 for edge in self.graph.es
             ]
 
