@@ -8,7 +8,7 @@ class RoadSegment():
         self.initial_observation = 0
         self.number_of_states = 4
         self.transition_tables = np.array([
-             [# Action 0: Do nothing
+             [# Action 0: do-nothing
                 [0.9, 0.1, 0.0, 0.0],
                 [0.0, 0.9, 0.1, 0.0],
                 [0.0, 0.0, 0.9, 0.1],
@@ -20,41 +20,53 @@ class RoadSegment():
                 [0.0, 0.0, 0.9, 0.1],
                 [0.0, 0.0, 0.0, 1.0]
             ],
-            [# Action 2: repair
+            [# Action 2: minor repair
                 [1.0, 0.0, 0.0, 0.0],
+                [0.9, 0.1, 0.0, 0.0],
                 [0.8, 0.2, 0.0, 0.0],
-                [0.0, 0.8, 0.2, 0.0],
-                [0.0, 0.0, 0.8, 0.2]
+                [0.7, 0.2, 0.1, 0.0]
+            ],
+            [# Action 3: major repair (replacement)
+                [1.0, 0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.0]
             ]
         ])
 
         self.observation_tables = np.array([
-            [# Action 0: Do nothing
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
+            [# Action 0: do-nothing
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
             ],
-            [# Action 1: Inspect
+            [# Action 1: inspect
                 [0.8, 0.2, 0.0, 0.0],
                 [0.1, 0.8, 0.1, 0.0],
-                [0.0, 0.1, 0.8, 0.1],
-                [0.0, 0.0, 0.2, 0.8],
+                [0.0, 0.1, 0.9, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
             ],
-            [# Action 2: Repair
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
-                [0.25, 0.25, 0.25, 0.25],
+            [# Action 2: minor repair
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
             ],
+            [# Action 3: major repair (replacement)
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
+                [1/3, 1/3, 1/3, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
         ])
         
-        # inspection cost = 1, repair cost = 5
-        self.state_action_cost = np.array([
-            [0, 1, 5],
-            [0, 1, 5],
-            [0, 1, 5],
-            [0, 1, 5],
+        # Costs (negative rewards)
+        self.state_action_reward = np.array([
+            [0, -1, -20, -150],
+            [0, -1, -25, -150],
+            [0, -1, -30, -150],
+            [0, -1, -40, -150],
         ])
 
         self.reset()
@@ -62,31 +74,43 @@ class RoadSegment():
     def reset(self):
         self.state = 0
         self.observation = self.initial_observation
+        self.belief = np.array([1, 0, 0, 0])
 
     def step(self, action):
-        # actions: [do_nothing, inspect, repair] = [0, 1, 2]
+        # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
+        
+        if self.observation == 3:
+            action = 3 # force replacement 
+        
         next_deterioration_state = np.random.choice(
             np.arange(self.number_of_states), p=self.transition_tables[action][self.state]
         )
 
-        cost = self.state_action_cost[self.state][action]
+        reward = self.state_action_reward[self.state][action]
         self.state = next_deterioration_state
 
         self.observation = np.random.choice(
             np.arange(self.number_of_states), p=self.observation_tables[action][self.state]
         )
 
-        #TODO: Believe state computation
+        #TODO: Belief state computation
+        self.belief = self.transition_tables[action].T @ self.belief
 
-        return cost
-    
+        state_probs = self.observation_tables[action][:, self.observation] # likelihood of observation
+
+        # Bayes' rule
+        self.belief = state_probs * self.belief # likelihood * prior
+        self.belief /= np.sum(self.belief) # normalize
+
+        return reward, self.belief
+
     def compute_travel_time(self, action):
         return 0 # travel_time
 
 class RoadEdge():
     def __init__(self, number_of_segments):
         self.number_of_segments = number_of_segments
-        self.inspection_campain_cost = 1
+        self.inspection_campaign_cost = -5
         self.edge_travel_time = 200
         self.segments = [RoadSegment() for _ in range(number_of_segments)]
 
@@ -99,16 +123,18 @@ class RoadEdge():
     def step(self, actions):
         # states:
         cost = 0
+        segment_beliefs = []
         for segment, action in zip(self.segments, actions):
-            segment_cost = segment.step(action)
+            segment_cost, belief = segment.step(action)
             cost += segment_cost
+            segment_beliefs.append(belief)
 
         if 1 in actions:
-            cost += self.inspection_campain_cost
+            cost += self.inspection_campaign_cost
 
         self.update_edge_travel_time(actions)
 
-        return cost
+        return cost, segment_beliefs
 
     def reset(self):
         for segment in self.segments:
@@ -144,7 +170,7 @@ class RoadEnvironment():
         observations = {"adjacency_matrix": adjacency_matrix, "edge_observations": edge_observations}
 
         return observations
-    
+
     def _get_states(self):
         edge_states = []
         for edge in self.graph.es:
@@ -159,8 +185,11 @@ class RoadEnvironment():
 
     def step(self, actions):
         total_cost = 0
+        all_beliefs = []
         for i, edge in enumerate(self.graph.es):
-            total_cost += edge["road_segments"].step(actions[i])
+            cost, beliefs = edge["road_segments"].step(actions[i])
+            total_cost += cost
+            all_beliefs.append(beliefs)
 
         travel_time_cost = self._get_travel_time_cost()
 
@@ -170,7 +199,8 @@ class RoadEnvironment():
 
         self.timestep += 1
 
-        info = {"states": self._get_states()}
+        info = {"states": self._get_states(),
+                "all_beliefs": all_beliefs}
 
         return observation, cost, self.timestep >= self.max_timesteps, info
         
