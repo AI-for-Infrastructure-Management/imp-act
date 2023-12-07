@@ -5,7 +5,9 @@ import numpy as np
 class RoadSegment():
     def __init__(self):
         # state [0-3]
-        self.initial_observation = 0
+        self.capacity = 500 # maybe cars per minute
+        self.base_travel_time = 5 # maybe minutes it takes to travel trough a segment
+        self.initial_observation = 0 # 
         self.number_of_states = 4
         self.transition_tables = np.array([
              [# Action 0: do-nothing
@@ -79,7 +81,7 @@ class RoadSegment():
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
         
         if self.observation == 3:
-            action = 3 # force replacement 
+            action = 3 # force replacement
         
         next_deterioration_state = np.random.choice(
             np.arange(self.number_of_states), p=self.transition_tables[action][self.state]
@@ -105,12 +107,27 @@ class RoadEdge():
         self.inspection_campain_cost = -5
         self.edge_travel_time = 200
         self.segments = [RoadSegment() for _ in range(number_of_segments)]
+        self.reset()
 
     def get_edge_travel_time(self):
         return self.edge_travel_time
+    
+    # Define a function for calculating BPR travel times based on volume and capacity
+    def calculate_bpr_travel_time(volume, capacity, base_time, alpha=0.15, beta=4):
+        return base_time * (1 + alpha * (volume / capacity)**beta)
+    
+    def calculate_bpr_capacity_factor(self, base_time_vec: np.array, capacity_vec: np.array, alpha: float=0.15, beta: float=4) -> np.array:
+        return base_time_vec*alpha / (capacity_vec**beta)
 
-    def update_edge_travel_time(self, actions):
-        pass # TODO
+    def update_edge_travel_time_factors(self) -> None:
+        # extracts the vector of base travel times and capacities from each edge and precomputes the 
+        btt_vec, cap_vec = np.hsplit(np.array([[seg.base_travel_time, seg.capacity] for seg in self.segments]), 2)
+        self.base_time_factor = np.sum(btt_vec)
+        self.capacity_factor = np.sum(self.calculate_bpr_capacity_factor(base_time_vec=btt_vec, capacity_vec=cap_vec, alpha=0.15, beta=4))
+        return
+    
+    def edge_travel_time(self, volume: float) -> float:
+        return self.base_time_factor + self.capacity_factor*(volume**4)
 
     def step(self, actions):
         # states:
@@ -122,13 +139,14 @@ class RoadEdge():
         if 1 in actions:
             cost += self.inspection_campain_cost
 
-        self.update_edge_travel_time(actions)
+        self.update_edge_travel_time_factors()
 
         return cost
 
     def reset(self):
         for segment in self.segments:
             segment.reset()
+        self.update_edge_travel_time_factors()
 
     def get_observation(self):
         return [segment.observation for segment in self.segments]
