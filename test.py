@@ -15,6 +15,7 @@ def main():
         print(f"timestep: {timestep}")
         print(f"cost: {cost}")
         print(f"done: {done}")
+        print(f"total travel time: {info['total_travel_time']}")
 
         for i, observations, beliefs, states in zip(
                 range(len(observation["edge_observations"])),
@@ -26,7 +27,6 @@ def main():
             print(f"states:       {states}")
             print(f"observations: {observations}")
             print(f"beliefs:      {[list(np.round(belief,2)) for belief in beliefs]}")
-            print(f"total travel time: {info['total_travel_time']}")
 
 
 if __name__ == "__main__":
