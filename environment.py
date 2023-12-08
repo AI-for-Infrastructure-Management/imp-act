@@ -190,10 +190,17 @@ class RoadEnvironment():
     def _get_observation(self):
         adjacency_matrix = np.array(self.graph.get_adjacency().data)
         edge_observations = []
+        edge_nodes = []
         for edge in self.graph.es:
-            edge_observations.append(edge["road_segments"].get_observation()) # add edge from and to
+            edge_observations.append(edge["road_segments"].get_observation())
+            edge_nodes.append([edge.source, edge.target])
 
-        observations = {"adjacency_matrix": adjacency_matrix, "edge_observations": edge_observations}
+        observations = {
+            "adjacency_matrix": adjacency_matrix, 
+            "edge_observations": edge_observations,
+            "edge_beliefs": self.beliefs,
+            "edge_nodes": edge_nodes
+            }
 
         return observations
 
@@ -256,6 +263,8 @@ class RoadEnvironment():
             total_cost += cost
             all_beliefs.append(beliefs)
 
+        self.beliefs = all_beliefs
+
         total_travel_time = self._get_total_travel_time()
 
         cost = total_cost + self.travel_time_cost * (total_travel_time - self.base_total_travel_time)
@@ -264,7 +273,12 @@ class RoadEnvironment():
 
         self.timestep += 1
 
-        info = {"states": self._get_states(), "all_beliefs": all_beliefs, "travel_time": total_travel_time, "volumes": self.graph.es['volume']}
+        info = {
+            "states": self._get_states(), 
+            "total_travel_time": total_travel_time, 
+            "travel_times": self.graph.es['travel_time'],
+            "volumes": self.graph.es['volume']
+        }
 
         return observation, cost, self.timestep >= self.max_timesteps, info
         
