@@ -165,13 +165,13 @@ class RoadEdge():
         return [segment.state for segment in self.segments]
 
 class RoadEnvironment():
-    def __init__(self, num_vertecies, edges, edge_segments_numbers, trips, max_timesteps=50):
-        self.max_timesteps = 50
+    def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50):
+        self.max_timesteps = max_timesteps
         self.travel_time_factor = 1
         self.graph = Graph()
-        self.num_vertecies = num_vertecies
+        self.num_vertices = num_vertices
         self.edges = edges
-        self.graph.add_vertices(num_vertecies)
+        self.graph.add_vertices(num_vertices)
         self.graph.add_edges(edges)
         for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
             edge["road_segments"] = RoadEdge(number_of_segments=number_of_segments)
