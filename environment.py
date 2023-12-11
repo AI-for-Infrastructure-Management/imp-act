@@ -110,29 +110,31 @@ class RoadSegment():
         return 0 # travel_time
 
 class RoadEdge():
-    def __init__(self, number_of_segments):
+    def __init__(self, number_of_segments, bpr_alpha=0.15, bpr_beta=4):
         self.number_of_segments = number_of_segments
         self.inspection_campaign_cost = -5
         self.edge_travel_time = 200
         self.segments = [RoadSegment() for _ in range(number_of_segments)]
+        self.bpr_alpha = bpr_alpha
+        self.bpr_beta = bpr_beta
         self.reset()
     
     # Define a function for calculating BPR travel times based on volume and capacity
-    def calculate_bpr_travel_time(volume, capacity, base_time, alpha=0.15, beta=4):
+    def calculate_bpr_travel_time(volume, capacity, base_time, alpha, beta):
         return base_time * (1 + alpha * (volume / capacity)**beta)
     
-    def calculate_bpr_capacity_factor(self, base_time_vec: np.array, capacity_vec: np.array, alpha: float=0.15, beta: float=4) -> np.array:
-        return base_time_vec*alpha / (capacity_vec**beta)
+    def calculate_bpr_capacity_factor(self, base_time_vec: np.array, capacity_vec: np.array) -> np.array:
+        return base_time_vec*self.bpr_alpha / (capacity_vec**self.bpr_beta)
 
     def update_edge_travel_time_factors(self) -> None:
         # extracts the vector of base travel times and capacities from each edge and precomputes the 
         btt_vec, cap_vec = np.hsplit(np.array([[seg.base_travel_time, seg.capacity] for seg in self.segments]), 2)
         self.base_time_factor = np.sum(btt_vec)
-        self.capacity_factor = np.sum(self.calculate_bpr_capacity_factor(base_time_vec=btt_vec, capacity_vec=cap_vec, alpha=0.15, beta=4))
+        self.capacity_factor = np.sum(self.calculate_bpr_capacity_factor(base_time_vec=btt_vec, capacity_vec=cap_vec))
         return
     
     def compute_edge_travel_time(self, volume: float) -> float:
-        return self.base_time_factor + self.capacity_factor*(volume**4)
+        return self.base_time_factor + self.capacity_factor*(volume**self.bpr_beta)
 
     def step(self, actions):
         # states:
