@@ -1,8 +1,10 @@
-from environment import RoadEnvironment
 import numpy as np
 
+from environment import RoadEnvironment
+from environment_presets import small_environment_dict
+
 def main():
-    env = RoadEnvironment()
+    env = RoadEnvironment(**small_environment_dict)
     env.reset()
     actions = [[1,1] for _ in range(4)]
     done = False

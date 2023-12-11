@@ -1,2 +1,3 @@
 igraph==0.11.3
 numpy==1.26.2
+pytest==7.4.3

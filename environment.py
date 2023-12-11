@@ -104,7 +104,7 @@ class RoadSegment():
         self.belief = state_probs * self.belief # likelihood * prior
         self.belief /= np.sum(self.belief) # normalize
 
-        return reward, self.belief
+        return reward
 
     def compute_travel_time(self, action):
         return 0 # travel_time
@@ -139,18 +139,16 @@ class RoadEdge():
     def step(self, actions):
         # states:
         cost = 0
-        segment_beliefs = []
         for segment, action in zip(self.segments, actions):
-            segment_cost, belief = segment.step(action)
+            segment_cost= segment.step(action)
             cost += segment_cost
-            segment_beliefs.append(belief)
 
         if 1 in actions:
             cost += self.inspection_campaign_cost
 
         self.update_edge_travel_time_factors()
 
-        return cost, segment_beliefs
+        return cost
 
     def reset(self):
         for segment in self.segments:
@@ -159,21 +157,26 @@ class RoadEdge():
 
     def get_observation(self):
         return [segment.observation for segment in self.segments]
+    
+    def get_beliefs(self):
+        return [segment.belief for segment in self.segments]
 
     def get_states(self):
         return [segment.state for segment in self.segments]
 
 class RoadEnvironment():
-    def __init__(self):
-        self.max_timesteps = 50
+    def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50):
+        self.max_timesteps = max_timesteps
         self.travel_time_factor = 1
         self.graph = Graph()
-        self.graph.add_vertices(4)
-        self.graph.add_edges([(0,1), (1,2), (2,3), (3,0)])
-        for edge in self.graph.es:
-            edge["road_segments"] = RoadEdge(number_of_segments=2)
+        self.num_vertices = num_vertices
+        self.edges = edges
+        self.graph.add_vertices(num_vertices)
+        self.graph.add_edges(edges)
+        for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
+            edge["road_segments"] = RoadEdge(number_of_segments=number_of_segments)
 
-        self.trips = [(0, 1, 200), (1, 3, 200), (2, 0, 200), (3, 2, 200)]
+        self.trips = trips
         self.traffic_assignment_max_iterations = 15
         self.traffic_assignment_convergence_threshold = 0.01
         self.traffic_assignment_update_weight = 0.5
@@ -188,19 +191,22 @@ class RoadEnvironment():
         self.timestep = 0
         for edge in self.graph.es:
             edge["road_segments"].reset()
+        return self._get_observation()
 
     def _get_observation(self):
         adjacency_matrix = np.array(self.graph.get_adjacency().data)
         edge_observations = []
         edge_nodes = []
+        edge_beliefs = []
         for edge in self.graph.es:
             edge_observations.append(edge["road_segments"].get_observation())
+            edge_beliefs.append(edge["road_segments"].get_beliefs())
             edge_nodes.append([edge.source, edge.target])
 
         observations = {
             "adjacency_matrix": adjacency_matrix, 
             "edge_observations": edge_observations,
-            "edge_beliefs": self.beliefs,
+            "edge_beliefs": edge_beliefs,
             "edge_nodes": edge_nodes
             }
 
@@ -259,13 +265,9 @@ class RoadEnvironment():
 
     def step(self, actions):
         total_cost = 0
-        all_beliefs = []
         for i, edge in enumerate(self.graph.es):
-            cost, beliefs = edge["road_segments"].step(actions[i])
+            cost = edge["road_segments"].step(actions[i])
             total_cost += cost
-            all_beliefs.append(beliefs)
-
-        self.beliefs = all_beliefs
 
         total_travel_time = self._get_total_travel_time()
 
