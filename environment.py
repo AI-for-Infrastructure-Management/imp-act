@@ -118,7 +118,7 @@ class RoadEdge():
 
     def update_edge_travel_time_factors(self) -> None:
         # extracts the vector of base travel times and capacities from each edge and precomputes the 
-        btt_vec, cap_vec = np.hsplit(np.array([[seg.base_travel_time, seg.capacity] for seg in self.segments]), 2)
+        btt_vec, cap_vec = np.hsplit(np.array([[seg.base_travel_time, seg.capacity] for seg in self.segments], dtype=np.float64), 2)
         self.base_time_factor = np.sum(btt_vec)
         self.capacity_factor = np.sum(self.calculate_bpr_capacity_factor(base_time_vec=btt_vec, capacity_vec=cap_vec, alpha=0.15, beta=4))
         return
