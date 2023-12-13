@@ -207,7 +207,8 @@ class RoadEnvironment():
             "adjacency_matrix": adjacency_matrix, 
             "edge_observations": edge_observations,
             "edge_beliefs": edge_beliefs,
-            "edge_nodes": edge_nodes
+            "edge_nodes": edge_nodes,
+            "time_step": self.timestep,
             }
 
         return observations
