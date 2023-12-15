@@ -76,6 +76,7 @@ class RoadSegment():
     def reset(self):
         self.state = 0
         self.observation = self.initial_observation
+        self.belief = np.array([1, 0, 0, 0])
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
@@ -95,46 +96,55 @@ class RoadSegment():
         )
 
         #TODO: Belief state computation
+        self.belief = self.transition_tables[action].T @ self.belief
+
+        state_probs = self.observation_tables[action][:, self.observation] # likelihood of observation
+
+        # Bayes' rule
+        self.belief = state_probs * self.belief # likelihood * prior
+        self.belief /= np.sum(self.belief) # normalize
 
         return reward
-    
+
     def compute_travel_time(self, action):
         return 0 # travel_time
 
 class RoadEdge():
-    def __init__(self, number_of_segments):
+    def __init__(self, number_of_segments, bpr_alpha=0.15, bpr_beta=4):
         self.number_of_segments = number_of_segments
-        self.inspection_campain_cost = -5
+        self.inspection_campaign_cost = -5
         self.edge_travel_time = 200
         self.segments = [RoadSegment() for _ in range(number_of_segments)]
+        self.bpr_alpha = bpr_alpha
+        self.bpr_beta = bpr_beta
         self.reset()
     
     # Define a function for calculating BPR travel times based on volume and capacity
-    def calculate_bpr_travel_time(volume, capacity, base_time, alpha=0.15, beta=4):
+    def calculate_bpr_travel_time(volume, capacity, base_time, alpha, beta):
         return base_time * (1 + alpha * (volume / capacity)**beta)
     
-    def calculate_bpr_capacity_factor(self, base_time_vec: np.array, capacity_vec: np.array, alpha: float=0.15, beta: float=4) -> np.array:
-        return base_time_vec*alpha / (capacity_vec**beta)
+    def calculate_bpr_capacity_factor(self, base_time_vec: np.array, capacity_vec: np.array) -> np.array:
+        return base_time_vec*self.bpr_alpha / (capacity_vec**self.bpr_beta)
 
     def update_edge_travel_time_factors(self) -> None:
         # extracts the vector of base travel times and capacities from each edge and precomputes the 
         btt_vec, cap_vec = np.hsplit(np.array([[seg.base_travel_time, seg.capacity] for seg in self.segments]), 2)
         self.base_time_factor = np.sum(btt_vec)
-        self.capacity_factor = np.sum(self.calculate_bpr_capacity_factor(base_time_vec=btt_vec, capacity_vec=cap_vec, alpha=0.15, beta=4))
+        self.capacity_factor = np.sum(self.calculate_bpr_capacity_factor(base_time_vec=btt_vec, capacity_vec=cap_vec))
         return
     
     def compute_edge_travel_time(self, volume: float) -> float:
-        return self.base_time_factor + self.capacity_factor*(volume**4)
+        return self.base_time_factor + self.capacity_factor*(volume**self.bpr_beta)
 
     def step(self, actions):
         # states:
         cost = 0
         for segment, action in zip(self.segments, actions):
-            segment_cost = segment.step(action)
+            segment_cost= segment.step(action)
             cost += segment_cost
 
         if 1 in actions:
-            cost += self.inspection_campain_cost
+            cost += self.inspection_campaign_cost
 
         self.update_edge_travel_time_factors()
 
@@ -147,35 +157,61 @@ class RoadEdge():
 
     def get_observation(self):
         return [segment.observation for segment in self.segments]
+    
+    def get_beliefs(self):
+        return [segment.belief for segment in self.segments]
 
     def get_states(self):
         return [segment.state for segment in self.segments]
 
 class RoadEnvironment():
-    def __init__(self):
-        self.max_timesteps = 50
+    def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50):
+        self.max_timesteps = max_timesteps
         self.travel_time_factor = 1
         self.graph = Graph()
-        self.graph.add_vertices(4)
-        self.graph.add_edges([(0,1), (1,2), (2,3), (3,0)])
-        for edge in self.graph.es:
-            edge["road_segments"] = RoadEdge(number_of_segments=2)
+        self.num_vertices = num_vertices
+        self.edges = edges
+        self.graph.add_vertices(num_vertices)
+        self.graph.add_edges(edges)
+        for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
+            edge["road_segments"] = RoadEdge(number_of_segments=number_of_segments)
+
+        self.trips = trips
+        self.traffic_assignment_max_iterations = 15
+        self.traffic_assignment_convergence_threshold = 0.01
+        self.traffic_assignment_update_weight = 0.5
+
+        self.travel_time_cost = 0.01
+
+        self.reset()
+        
+        self.base_total_travel_time = self._get_total_travel_time()
 
     def reset(self):
         self.timestep = 0
         for edge in self.graph.es:
             edge["road_segments"].reset()
+        return self._get_observation()
 
     def _get_observation(self):
         adjacency_matrix = np.array(self.graph.get_adjacency().data)
         edge_observations = []
+        edge_nodes = []
+        edge_beliefs = []
         for edge in self.graph.es:
-            edge_observations.append(edge["road_segments"].get_observation()) # add edge from and to
+            edge_observations.append(edge["road_segments"].get_observation())
+            edge_beliefs.append(edge["road_segments"].get_beliefs())
+            edge_nodes.append([edge.source, edge.target])
 
-        observations = {"adjacency_matrix": adjacency_matrix, "edge_observations": edge_observations}
+        observations = {
+            "adjacency_matrix": adjacency_matrix, 
+            "edge_observations": edge_observations,
+            "edge_beliefs": edge_beliefs,
+            "edge_nodes": edge_nodes
+            }
 
         return observations
-    
+
     def _get_states(self):
         edge_states = []
         for edge in self.graph.es:
@@ -183,25 +219,70 @@ class RoadEnvironment():
 
         return edge_states
         
-    def _get_travel_time_cost(self):
-        # compute travel time
-        # compute cost of travel time 
-        return 0 # TODO
+    def _get_total_travel_time(self):        
+        # Initialize volumes
+        self.graph.es['volume'] = 0
+        
+        # Initialize with all-or-nothing assignment
+        self.graph.es['travel_time'] = [
+                edge['road_segments'].compute_edge_travel_time(edge['volume'])
+                for edge in self.graph.es
+            ]
+
+        for source, target, num_cars in self.trips:
+            path = self.graph.get_shortest_paths(source, target, weights='travel_time', output='epath')[0]
+            for edge_id in path:
+                self.graph.es[edge_id]['volume'] += num_cars
+
+        for iteration in range(self.traffic_assignment_max_iterations):
+            # Recalculate travel times with current volumes
+            self.graph.es['travel_time'] = [
+                edge['road_segments'].compute_edge_travel_time(edge['volume'])
+                for edge in self.graph.es
+            ]
+
+            # Find the shortest paths using updated travel times
+            new_volumes = np.zeros(len(self.graph.es))
+            for source, target, num_cars in self.trips:
+                path = self.graph.get_shortest_paths(source, target, weights='travel_time', output='epath')[0]
+                for edge_id in path:
+                    new_volumes[edge_id] += num_cars
+
+            # Check for convergence by comparing volume changes
+            volume_changes = np.abs(self.graph.es['volume'] - new_volumes)
+            max_change = np.max(volume_changes)
+
+            if max_change <= self.traffic_assignment_convergence_threshold:
+                break
+
+            # Update volumes by averaging
+            self.graph.es['volume'] = (
+                np.array(self.graph.es['volume']) * (1 - self.traffic_assignment_update_weight) +
+                new_volumes * self.traffic_assignment_update_weight
+                )
+
+        return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
         total_cost = 0
         for i, edge in enumerate(self.graph.es):
-            total_cost += edge["road_segments"].step(actions[i])
+            cost = edge["road_segments"].step(actions[i])
+            total_cost += cost
 
-        travel_time_cost = self._get_travel_time_cost()
+        total_travel_time = self._get_total_travel_time()
 
-        cost = total_cost + self.travel_time_factor * travel_time_cost
+        cost = total_cost + self.travel_time_cost * (total_travel_time - self.base_total_travel_time)
 
         observation = self._get_observation()
 
         self.timestep += 1
 
-        info = {"states": self._get_states()}
+        info = {
+            "states": self._get_states(), 
+            "total_travel_time": total_travel_time, 
+            "travel_times": self.graph.es['travel_time'],
+            "volumes": self.graph.es['volume']
+        }
 
         return observation, cost, self.timestep >= self.max_timesteps, info
         
