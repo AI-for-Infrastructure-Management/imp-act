@@ -95,7 +95,7 @@ class RoadSegment():
             np.arange(self.number_of_states), p=self.observation_tables[action][self.state]
         )
 
-        #TODO: Belief state computation
+        # Belief state computation
         self.belief = self.transition_tables[action].T @ self.belief
 
         state_probs = self.observation_tables[action][:, self.observation] # likelihood of observation
