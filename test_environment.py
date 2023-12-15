@@ -24,7 +24,7 @@ def test_observation_keys(small_environment):
     for key in keys:
         assert key in obs.keys()
 
-    actions = [[1,1] for _ in range(4)]
+    actions = [[1,1] for _ in range(len(env.edge_segments_numbers))]
     obs, cost, done, info = env.step(actions)
 
     for key in keys:
