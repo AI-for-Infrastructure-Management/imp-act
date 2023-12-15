@@ -10,6 +10,17 @@ def small_environment():
     env = RoadEnvironment(**small_environment_dict)
     return env
 
+@pytest.fixture
+def large_environment():
+    """Create a large environment for testing."""
+    graph = ig.Graph.Read_GraphML("germany.graphml")
+    
+    edge_segments_numbers = [2 for _ in range(len(graph.es))]
+    trips = [(a,b, 200) for a,b in graph.get_edgelist()]
+    env = RoadEnvironment(None, None, edge_segments_numbers, trips, max_timesteps=50, graph=graph)
+
+    return env
+
 def test_observation_keys(small_environment):
     """Test if the observation dictionary has the correct keys in reset and step functions."""
 
@@ -35,6 +46,21 @@ def test_one_episode(small_environment):
     env = small_environment
 
     _ = env.reset()
+    actions = [[1,1] for _ in range(len(env.edge_segments_numbers))]
+    timestep = 0
+    done = False
+
+    while not done:
+        timestep += 1
+        obs, cost, done, info = env.step(actions)
+
+    assert timestep == env.max_timesteps
+
+def test_large_environment(large_environment):
+    """Test if the large environment can run one episode."""
+    env = large_environment
+
+    obs = env.reset()
     actions = [[1,1] for _ in range(len(env.edge_segments_numbers))]
     timestep = 0
     done = False
