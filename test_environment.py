@@ -23,7 +23,7 @@ def test_observation_keys(small_environment):
         assert key in obs.keys()
 
     actions = [[1,1] for _ in range(4)]
-    obs, cost, done, info = env.step(actions)
+    obs, reward, done, info = env.step(actions)
 
     for key in keys:
         assert key in obs.keys()
@@ -39,7 +39,7 @@ def test_one_episode(small_environment):
     max_timesteps = 1000
     while timestep < max_timesteps:
         timestep += 1
-        obs, cost, done, info = env.step(actions)
+        obs, reward, done, info = env.step(actions)
         if done:
             break
 

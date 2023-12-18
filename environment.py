@@ -112,7 +112,7 @@ class RoadSegment():
 class RoadEdge():
     def __init__(self, number_of_segments, bpr_alpha=0.15, bpr_beta=4):
         self.number_of_segments = number_of_segments
-        self.inspection_campaign_cost = -5
+        self.inspection_campaign_reward = -5
         self.edge_travel_time = 200
         self.segments = [RoadSegment() for _ in range(number_of_segments)]
         self.bpr_alpha = bpr_alpha
@@ -138,17 +138,17 @@ class RoadEdge():
 
     def step(self, actions):
         # states:
-        cost = 0
+        reward = 0
         for segment, action in zip(self.segments, actions):
-            segment_cost= segment.step(action)
-            cost += segment_cost
+            segment_reward = segment.step(action)
+            reward += segment_reward
 
         if 1 in actions:
-            cost += self.inspection_campaign_cost
+            reward += self.inspection_campaign_reward
 
         self.update_edge_travel_time_factors()
 
-        return cost
+        return reward
 
     def reset(self):
         for segment in self.segments:
@@ -181,7 +181,7 @@ class RoadEnvironment():
         self.traffic_assignment_convergence_threshold = 0.01
         self.traffic_assignment_update_weight = 0.5
 
-        self.travel_time_cost = 0.01
+        self.travel_time_reward = 0.01
 
         self.reset()
         
@@ -264,14 +264,13 @@ class RoadEnvironment():
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
-        total_cost = 0
+        total_reward = 0
         for i, edge in enumerate(self.graph.es):
-            cost = edge["road_segments"].step(actions[i])
-            total_cost += cost
+            total_reward += edge["road_segments"].step(actions[i])
 
         total_travel_time = self._get_total_travel_time()
 
-        cost = total_cost + self.travel_time_cost * (total_travel_time - self.base_total_travel_time)
+        reward = total_reward + self.travel_time_reward * (total_travel_time - self.base_total_travel_time)
 
         observation = self._get_observation()
 
@@ -284,6 +283,6 @@ class RoadEnvironment():
             "volumes": self.graph.es['volume']
         }
 
-        return observation, cost, self.timestep >= self.max_timesteps, info
+        return observation, reward, self.timestep >= self.max_timesteps, info
         
     
