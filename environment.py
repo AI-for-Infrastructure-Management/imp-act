@@ -296,5 +296,12 @@ class RoadEnvironment():
         }
 
         return observation, reward, self.timestep >= self.max_timesteps, info
+    
+    def seed(self, seed):
+        self.random_generator = np.random.default_rng(seed)
+        for edge in self.graph.es:
+            edge["road_segments"].random_generator = self.random_generator
+            for segment in edge["road_segments"].segments:
+                segment.random_generator = self.random_generator
         
     
