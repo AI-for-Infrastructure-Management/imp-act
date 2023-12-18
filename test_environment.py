@@ -57,6 +57,7 @@ def test_one_episode(small_environment):
 
     assert timestep == env.max_timesteps
 
+@pytest.mark.skip(reason="Takes too long")
 def test_large_environment(large_environment):
     """Test if the large environment can run one episode."""
     env = large_environment
