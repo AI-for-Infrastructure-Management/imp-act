@@ -11,11 +11,11 @@ def main():
     timestep = 0
     while not done:
         timestep += 1
-        observation, cost, done, info = env.step(actions)
-        # print(observation, cost, done, info)
+        observation, reward, done, info = env.step(actions)
+        # print(observation, reward, done, info)
         print("="*50)
         print(f"timestep: {timestep}")
-        print(f"cost: {cost}")
+        print(f"reward: {reward}")
         print(f"done: {done}")
         print(f"total travel time: {info['total_travel_time']}")
 
