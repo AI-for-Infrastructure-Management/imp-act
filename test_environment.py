@@ -1,4 +1,5 @@
 import pytest
+import time
 
 from environment import RoadEnvironment
 from environment_presets import *
@@ -44,3 +45,27 @@ def test_one_episode(small_environment):
             break
 
     assert timestep == small_environment_dict["max_timesteps"]
+
+
+def test_timing(small_environment):
+    env = small_environment
+    
+    obs = env.reset()
+    actions = [[k,k] for k in range(4)]
+    timestep = 0
+
+    max_time_per_trajectory = 2
+    timesteps_per_traj = small_environment_dict['max_timesteps']
+    time_vec = list()
+    repeats = 100
+
+    # check if the average time over 100 trajectories is below the treshold
+    for _ in range(repeats):
+        t = time.time()
+        while timestep < timesteps_per_traj:
+            timestep += 1
+            obs, cost, done, info = env.step(actions)
+        time_vec.append(time.time() - t)
+
+    #print(f'Average time taken per timestep: {sum(time_vec)/timesteps_per_traj/len(time_vec):.10f}')
+    assert sum(time_vec)/len(time_vec) < max_time_per_trajectory
