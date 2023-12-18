@@ -1,5 +1,6 @@
 import pytest
 import time
+import numpy as np
 
 from environment import RoadEnvironment
 from environment_presets import *
@@ -48,24 +49,27 @@ def test_one_episode(small_environment):
 
 
 def test_timing(small_environment):
+    "Test if the average time per trajectory is below the threshold"
     env = small_environment
     
-    obs = env.reset()
+    _ = env.reset()
     actions = [[k,k] for k in range(4)]
-    timestep = 0
 
-    max_time_per_trajectory = 2
+    MAX_TIME_PER_TRAJECTORY = 2 # seconds
     timesteps_per_traj = small_environment_dict['max_timesteps']
-    time_vec = list()
     repeats = 100
+    store_timings = np.empty(repeats)
 
-    # check if the average time over 100 trajectories is below the treshold
-    for _ in range(repeats):
-        t = time.time()
-        while timestep < timesteps_per_traj:
-            timestep += 1
-            obs, cost, done, info = env.step(actions)
-        time_vec.append(time.time() - t)
+    # Run the environment for a number of repeats
+    for k in range(repeats):
+        state_time = time.time()
+        done = False
+        while not done:
+            _, _, done, _ = env.step(actions)
+        store_timings[k] = time.time() - state_time
 
-    #print(f'Average time taken per timestep: {sum(time_vec)/timesteps_per_traj/len(time_vec):.10f}')
-    assert sum(time_vec)/len(time_vec) < max_time_per_trajectory
+    # print(f'Total time taken: {store_timings.sum():.2e} seconds')
+    # print(f'Average time per rollout: {store_timings.mean():.2e} seconds')
+    # print(f'Average time taken per timestep: {store_timings.mean()/timesteps_per_traj:.2e} seconds')
+
+    assert store_timings.mean() < MAX_TIME_PER_TRAJECTORY
