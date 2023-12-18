@@ -3,8 +3,9 @@ from igraph import Graph
 import numpy as np
 
 class RoadSegment():
-    def __init__(self):
+    def __init__(self, random_generator):
         # state [0-3]
+        self.random_generator = random_generator
         self.capacity = 500.0 # maybe cars per minute
         self.base_travel_time = 50.0 # maybe minutes it takes to travel trough a segment
         self.initial_observation = 0 # 
@@ -84,14 +85,14 @@ class RoadSegment():
         if self.observation == 3:
             action = 3 # force replacement
         
-        next_deterioration_state = np.random.choice(
+        next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states), p=self.transition_tables[action][self.state]
         )
 
         reward = self.state_action_reward[self.state][action]
         self.state = next_deterioration_state
 
-        self.observation = np.random.choice(
+        self.observation = self.random_generator.choice(
             np.arange(self.number_of_states), p=self.observation_tables[action][self.state]
         )
 
@@ -110,11 +111,12 @@ class RoadSegment():
         return 0 # travel_time
 
 class RoadEdge():
-    def __init__(self, number_of_segments, bpr_alpha=0.15, bpr_beta=4):
+    def __init__(self, number_of_segments, random_generator, bpr_alpha=0.15, bpr_beta=4):
         self.number_of_segments = number_of_segments
         self.inspection_campaign_reward = -5
         self.edge_travel_time = 200
-        self.segments = [RoadSegment() for _ in range(number_of_segments)]
+        self.random_generator = random_generator
+        self.segments = [RoadSegment(random_generator = random_generator) for _ in range(number_of_segments)]
         self.bpr_alpha = bpr_alpha
         self.bpr_beta = bpr_beta
         self.reset()
@@ -166,7 +168,7 @@ class RoadEdge():
 
 class RoadEnvironment():
     def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50, graph=None, seed=42):
-        np.random.seed(seed)
+        self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = max_timesteps
         self.travel_time_factor = 1
         self.edge_segments_numbers = edge_segments_numbers
@@ -177,7 +179,7 @@ class RoadEnvironment():
             self.graph = graph
 
         for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
-            edge["road_segments"] = RoadEdge(number_of_segments=number_of_segments)
+            edge["road_segments"] = RoadEdge(number_of_segments=number_of_segments, random_generator=self.random_generator)
 
         self.trips = trips
         self.traffic_assignment_max_iterations = 15
