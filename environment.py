@@ -95,7 +95,7 @@ class RoadSegment():
             np.arange(self.number_of_states), p=self.observation_tables[action][self.state]
         )
 
-        #TODO: Belief state computation
+        # Belief state computation
         self.belief = self.transition_tables[action].T @ self.belief
 
         state_probs = self.observation_tables[action][:, self.observation] # likelihood of observation
@@ -165,14 +165,16 @@ class RoadEdge():
         return [segment.state for segment in self.segments]
 
 class RoadEnvironment():
-    def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50):
+    def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50, graph=None):
         self.max_timesteps = max_timesteps
         self.travel_time_factor = 1
-        self.graph = Graph()
-        self.num_vertices = num_vertices
-        self.edges = edges
-        self.graph.add_vertices(num_vertices)
-        self.graph.add_edges(edges)
+        self.edge_segments_numbers = edge_segments_numbers
+    
+        if graph is None:
+            self.create_graph(num_vertices, edges)
+        else:
+            self.graph = graph
+
         for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
             edge["road_segments"] = RoadEdge(number_of_segments=number_of_segments)
 
@@ -192,6 +194,13 @@ class RoadEnvironment():
         for edge in self.graph.es:
             edge["road_segments"].reset()
         return self._get_observation()
+
+    def create_graph(self, num_vertices, edges):
+        self.graph = Graph()
+        self.num_vertices = num_vertices
+        self.edges = edges
+        self.graph.add_vertices(num_vertices)
+        self.graph.add_edges(edges)
 
     def _get_observation(self):
         adjacency_matrix = np.array(self.graph.get_adjacency().data)
