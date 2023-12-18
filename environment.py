@@ -165,7 +165,8 @@ class RoadEdge():
         return [segment.state for segment in self.segments]
 
 class RoadEnvironment():
-    def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50):
+    def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50, seed=42):
+        np.random.seed(seed)
         self.max_timesteps = max_timesteps
         self.travel_time_factor = 1
         self.graph = Graph()
