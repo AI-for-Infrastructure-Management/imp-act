@@ -182,7 +182,7 @@ class RoadEnvironment():
         self.traffic_assignment_convergence_threshold = 0.01
         self.traffic_assignment_update_weight = 0.5
 
-        self.travel_time_reward = 0.01
+        self.travel_time_reward = -0.01
 
         self.reset()
         
