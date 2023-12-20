@@ -1,9 +1,10 @@
-import pytest
+import igraph as ig
 import numpy as np
+import pytest
 
 from environment import RoadEnvironment
-from environment_presets import *
-import igraph as ig
+from environment_presets import small_environment_dict
+
 
 @pytest.fixture
 def small_environment():
@@ -11,16 +12,20 @@ def small_environment():
     env = RoadEnvironment(**small_environment_dict)
     return env
 
+
 @pytest.fixture
 def large_environment():
     """Create a large environment for testing."""
     graph = ig.Graph.Read_GraphML("germany.graphml")
-    
+
     edge_segments_numbers = [2 for _ in range(len(graph.es))]
-    trips = [(a,b, 200) for a,b in graph.get_edgelist()]
-    env = RoadEnvironment(None, None, edge_segments_numbers, trips, max_timesteps=50, graph=graph)
+    trips = [(a, b, 200) for a, b in graph.get_edgelist()]
+    env = RoadEnvironment(
+        None, None, edge_segments_numbers, trips, max_timesteps=50, graph=graph
+    )
 
     return env
+
 
 def test_observation_keys(small_environment):
     """Test if the observation dictionary has the correct keys in reset and step functions."""
@@ -28,26 +33,29 @@ def test_observation_keys(small_environment):
     env = small_environment
     obs = env.reset()
 
-    keys =  ["adjacency_matrix", 
-            "edge_observations",
-            "edge_beliefs",
-            "edge_nodes",]
-    
+    keys = [
+        "adjacency_matrix",
+        "edge_observations",
+        "edge_beliefs",
+        "edge_nodes",
+    ]
+
     for key in keys:
         assert key in obs.keys()
 
-    actions = [[1,1] for _ in range(len(env.edge_segments_numbers))]
+    actions = [[1, 1] for _ in range(len(env.edge_segments_numbers))]
     obs, cost, done, info = env.step(actions)
 
     for key in keys:
         assert key in obs.keys()
+
 
 def test_one_episode(small_environment):
     """Test if the environment can run one episode."""
     env = small_environment
 
     _ = env.reset()
-    actions = [[1,1] for _ in range(len(env.edge_segments_numbers))]
+    actions = [[1, 1] for _ in range(len(env.edge_segments_numbers))]
     timestep = 0
     done = False
 
@@ -56,6 +64,7 @@ def test_one_episode(small_environment):
         obs, cost, done, info = env.step(actions)
 
     assert timestep == env.max_timesteps
+
 
 @pytest.mark.skip(reason="Takes too long")
 def test_large_environment(large_environment):
@@ -63,7 +72,7 @@ def test_large_environment(large_environment):
     env = large_environment
 
     obs = env.reset()
-    actions = [[1,1] for _ in range(len(env.edge_segments_numbers))]
+    actions = [[1, 1] for _ in range(len(env.edge_segments_numbers))]
     timestep = 0
     done = False
 
@@ -72,11 +81,12 @@ def test_large_environment(large_environment):
         obs, cost, done, info = env.step(actions)
 
     assert timestep == env.max_timesteps
-    
+
+
 def test_seed(small_environment):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
-    actions = [[1,1] for _ in range(4)]
+    actions = [[1, 1] for _ in range(4)]
     n_episodes = 2
 
     # Collect episodes
@@ -131,7 +141,7 @@ def test_seed(small_environment):
 def test_seed_interfering_sampler(small_environment):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
-    actions = [[1,1] for _ in range(4)]
+    actions = [[1, 1] for _ in range(4)]
     n_episodes = 2
 
     # Collect episodes
@@ -187,11 +197,10 @@ def test_seed_interfering_sampler(small_environment):
     assert not np.array_equal(reward_all, reward_different_all)
 
 
-
 def test_seed_np_random_seed(small_environment):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
-    actions = [[1,1] for _ in range(4)]
+    actions = [[1, 1] for _ in range(4)]
     n_episodes = 2
 
     # Collect episodes
@@ -250,7 +259,7 @@ def test_seed_np_random_seed(small_environment):
 def test_seeding_function(small_environment):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
-    actions = [[1,1] for _ in range(4)]
+    actions = [[1, 1] for _ in range(4)]
     n_episodes = 2
 
     same_seed = small_environment_dict["seed"]
@@ -271,11 +280,11 @@ def test_seeding_function(small_environment):
 
     # Create env with same random seed and collect episodes
     small_environment_dict_same = small_environment_dict.copy()
-    small_environment_dict_same["seed"] = different_seed # different seed during init
+    small_environment_dict_same["seed"] = different_seed  # different seed during init
     env_same = RoadEnvironment(**small_environment_dict_same)
     reward_same_all = []
     for episode in range(n_episodes):
-        env_same.seed(same_seed + episode) # same seed before episode
+        env_same.seed(same_seed + episode)  # same seed before episode
         obs_same = env_same.reset()
         done = False
         reward_same_episode = []
@@ -286,11 +295,11 @@ def test_seeding_function(small_environment):
 
     # Create env with different random seed and collect episodes
     small_environment_dict_different = small_environment_dict.copy()
-    small_environment_dict_different["seed"] = same_seed # same seed during init
+    small_environment_dict_different["seed"] = same_seed  # same seed during init
     env_different = RoadEnvironment(**small_environment_dict_different)
     reward_different_all = []
     for episode in range(n_episodes):
-        env_different.seed(different_seed + episode) # different seed before episode
+        env_different.seed(different_seed + episode)  # different seed before episode
         obs_different = env_different.reset()
         done = False
         reward_different_episode = []

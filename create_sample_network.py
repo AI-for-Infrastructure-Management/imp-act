@@ -1,16 +1,61 @@
-from geopy.geocoders import Photon
-from geopy.distance import geodesic
 import igraph as ig
 import matplotlib.pyplot as plt
+from geopy.distance import geodesic
+from geopy.geocoders import Photon
 
 # List of 50 cities in Germany
 cities = [
-    "Berlin", "Hamburg", "Munich", "Cologne", "Frankfurt", "Stuttgart", "Dusseldorf", "Dortmund", "Bremen",
-    "Leipzig", "Hanover", "Nuremberg", "Duisburg", "Bonn", "Karlsruhe", "Augsburg", "Wiesbaden", "Kiel",
-    "Halle", "Freiburg", "Erfurt", "Mainz", "Rostock", "Saarbrucken", "Potsdam", "Heidelberg", "Darmstadt",
-    "Magdeburg", "Bielefeld", "Lubeck", "Oberhausen", "Oldenburg", "Mannheim", "Gelsenkirchen", "Essen",
-    "Leverkusen", "Hagen", "Hamm", "Krefeld", "Wuppertal", "Braunschweig", "Kassel", "Halle", "Lubeck",
-    "Monchengladbach", "Wurzburg", "Regensburg", "Ingolstadt", "Ulm", "Paderborn", "Recklinghausen"
+    "Berlin",
+    "Hamburg",
+    "Munich",
+    "Cologne",
+    "Frankfurt",
+    "Stuttgart",
+    "Dusseldorf",
+    "Dortmund",
+    "Bremen",
+    "Leipzig",
+    "Hanover",
+    "Nuremberg",
+    "Duisburg",
+    "Bonn",
+    "Karlsruhe",
+    "Augsburg",
+    "Wiesbaden",
+    "Kiel",
+    "Halle",
+    "Freiburg",
+    "Erfurt",
+    "Mainz",
+    "Rostock",
+    "Saarbrucken",
+    "Potsdam",
+    "Heidelberg",
+    "Darmstadt",
+    "Magdeburg",
+    "Bielefeld",
+    "Lubeck",
+    "Oberhausen",
+    "Oldenburg",
+    "Mannheim",
+    "Gelsenkirchen",
+    "Essen",
+    "Leverkusen",
+    "Hagen",
+    "Hamm",
+    "Krefeld",
+    "Wuppertal",
+    "Braunschweig",
+    "Kassel",
+    "Halle",
+    "Lubeck",
+    "Monchengladbach",
+    "Wurzburg",
+    "Regensburg",
+    "Ingolstadt",
+    "Ulm",
+    "Paderborn",
+    "Recklinghausen",
 ]
 
 # Initialize Photon geolocator
@@ -31,8 +76,12 @@ G = ig.Graph()
 for city, coords in city_coordinates.items():
     G.add_vertex(city, pos=coords)  # Coordinates stored as a vertex attribute
 
-# Calculate proximity (considering adjacency) based on distances between city coordinates
-threshold_distance = 250  # Threshold distance in kilometers for adjacency (adjust as needed to control edge sparsity)
+# Calculate proximity (considering adjacency)
+# based on distances between city coordinates
+
+# Threshold distance in kilometers for adjacency
+# (adjust as needed to control edge sparsity)
+threshold_distance = 250
 
 for city1, coord1 in city_coordinates.items():
     for city2, coord2 in city_coordinates.items():
@@ -42,7 +91,8 @@ for city1, coord1 in city_coordinates.items():
             if distance < threshold_distance:
                 G.add_edge(city1, city2)
 
-# Draw the graph with custom layout based on latitude (North on top, South on bottom)
+# Draw the graph with custom layout based
+# on latitude (North on top, South on bottom)
 # Extract node positions (city coordinates)
 node_positions = {v.index: v["pos"] for v in G.vs}
 
