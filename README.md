@@ -7,3 +7,6 @@ $ pip install -r requirements.txt
 ```bash
 $ pytest
 ```
+
+## Checkout contribution guidelines
+Guidelines are avaiable in [CONTRIBUTING README](CONTIBUTING.md).
