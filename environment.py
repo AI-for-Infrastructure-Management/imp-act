@@ -6,11 +6,30 @@ class RoadSegment():
     def __init__(self, random_generator):
         # state [0-3]
         self.random_generator = random_generator
-        self.capacity = 500.0 # maybe cars per minute
-        self.base_travel_time = 50.0 # maybe minutes it takes to travel trough a segment
-        self.initial_observation = 0 # 
+        self.initial_observation = 0 
         self.number_of_states = 4
-        self.transition_tables = np.array([
+
+        self.reset()
+
+        # base travel time table
+        # shape: S x A
+        self.base_travel_time_table = np.array([
+            [1.00, 1.00, 1.00, 1.50],
+            [1.10, 1.10, 1.05, 1.50],
+            [1.40, 1.40, 1.15, 1.50],
+            [1.60, 1.60, 1.45, 1.50]]) * self.base_travel_time
+        
+        # capacity table
+        # shape: S x A
+        self.capacity_table = np.array([
+            [1.00, 1.00, 0.80, 0.50],
+            [1.00, 1.00, 0.80, 0.50],
+            [1.00, 1.00, 0.80, 0.50],
+            [1.00, 1.00, 0.80, 0.50]]) * self.capacity
+
+        # deterioration tables
+        # shape: A x S x S
+        self.deterioration_table = np.array([
              [# Action 0: do-nothing
                 [0.9, 0.1, 0.0, 0.0],
                 [0.0, 0.9, 0.1, 0.0],
@@ -72,12 +91,12 @@ class RoadSegment():
             [0, -1, -40, -150],
         ])
 
-        self.reset()
-
     def reset(self):
         self.state = 0
         self.observation = self.initial_observation
         self.belief = np.array([1, 0, 0, 0])
+        self.capacity = 500.0 # maybe cars per minute
+        self.base_travel_time = 50.0 # maybe minutes it takes to travel trough a segment
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
@@ -86,8 +105,11 @@ class RoadSegment():
             action = 3 # force replacement
         
         next_deterioration_state = self.random_generator.choice(
-            np.arange(self.number_of_states), p=self.transition_tables[action][self.state]
+            np.arange(self.number_of_states), p=self.deterioration_table[action][self.state]
         )
+
+        self.base_travel_time = self.base_travel_time_table[self.state][action]
+        self.capacity = self.capacity_table[self.state][action]
 
         reward = self.state_action_reward[self.state][action]
         self.state = next_deterioration_state
@@ -97,7 +119,7 @@ class RoadSegment():
         )
 
         # Belief state computation
-        self.belief = self.transition_tables[action].T @ self.belief
+        self.belief = self.deterioration_table[action].T @ self.belief
 
         state_probs = self.observation_tables[action][:, self.observation] # likelihood of observation
 
@@ -186,7 +208,7 @@ class RoadEnvironment():
         self.traffic_assignment_convergence_threshold = 0.01
         self.traffic_assignment_update_weight = 0.5
 
-        self.travel_time_reward = -0.01
+        self.travel_time_reward = -0.1
 
         self.reset()
         
@@ -304,5 +326,3 @@ class RoadEnvironment():
             edge["road_segments"].random_generator = self.random_generator
             for segment in edge["road_segments"].segments:
                 segment.random_generator = self.random_generator
-        
-    
