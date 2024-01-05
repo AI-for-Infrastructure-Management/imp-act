@@ -160,7 +160,10 @@ class RoadEdge():
         return self.base_time_factor + self.capacity_factor*(volume**self.bpr_beta)
 
     def step(self, actions):
-        # states:
+        
+        if len(self.segments) != len(actions):
+            raise ValueError("self.segments and actions must have the same length")
+    
         reward = 0
         for segment, action in zip(self.segments, actions):
             segment_reward = segment.step(action)
