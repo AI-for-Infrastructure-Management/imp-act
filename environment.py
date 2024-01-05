@@ -136,7 +136,6 @@ class RoadEdge():
     def __init__(self, number_of_segments, random_generator, bpr_alpha=0.15, bpr_beta=4):
         self.number_of_segments = number_of_segments
         self.inspection_campaign_reward = -5
-        self.edge_travel_time = 200
         self.random_generator = random_generator
         self.segments = [RoadSegment(random_generator = random_generator) for _ in range(number_of_segments)]
         self.bpr_alpha = bpr_alpha
@@ -208,7 +207,7 @@ class RoadEnvironment():
         self.traffic_assignment_convergence_threshold = 0.01
         self.traffic_assignment_update_weight = 0.5
 
-        self.travel_time_reward = -0.1
+        self.travel_time_reward_factor = -0.01
 
         self.reset()
         
@@ -299,13 +298,15 @@ class RoadEnvironment():
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
-        total_reward = 0
+        maintenance_reward = 0
         for i, edge in enumerate(self.graph.es):
-            total_reward += edge["road_segments"].step(actions[i])
+            maintenance_reward += edge["road_segments"].step(actions[i])
 
         total_travel_time = self._get_total_travel_time()
 
-        reward = total_reward + self.travel_time_reward * (total_travel_time - self.base_total_travel_time)
+        travel_time_reward = self.travel_time_reward_factor * (total_travel_time - self.base_total_travel_time)
+
+        reward = maintenance_reward + travel_time_reward
 
         observation = self._get_observation()
 
@@ -315,7 +316,8 @@ class RoadEnvironment():
             "states": self._get_states(), 
             "total_travel_time": total_travel_time, 
             "travel_times": self.graph.es['travel_time'],
-            "volumes": self.graph.es['volume']
+            "volumes": self.graph.es['volume'],
+            "reward_elements": [travel_time_reward, maintenance_reward]
         }
 
         return observation, reward, self.timestep >= self.max_timesteps, info
