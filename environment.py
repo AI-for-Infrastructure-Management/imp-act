@@ -12,20 +12,20 @@ class RoadSegment():
         self.reset()
 
         # base travel time table
-        # shape: S x A
+        # shape: A x S
         self.base_travel_time_table = np.array([
-            [1.00, 1.00, 1.00, 1.50],
-            [1.10, 1.10, 1.05, 1.50],
-            [1.40, 1.40, 1.15, 1.50],
-            [1.60, 1.60, 1.45, 1.50]]) * self.base_travel_time
+                    [1.00, 1.10, 1.40, 1.60],
+                    [1.00, 1.10, 1.40, 1.60],
+                    [1.00, 1.05, 1.15, 1.45],
+                    [1.50, 1.50, 1.50, 1.50]]) * self.base_travel_time
         
         # capacity table
-        # shape: S x A
+        # shape: A x S
         self.capacity_table = np.array([
-            [1.00, 1.00, 0.80, 0.50],
-            [1.00, 1.00, 0.80, 0.50],
-            [1.00, 1.00, 0.80, 0.50],
-            [1.00, 1.00, 0.80, 0.50]]) * self.capacity
+            [1.00, 1.00, 1.00, 1.00],
+            [1.00, 1.00, 1.00, 1.00],
+            [0.80, 0.80, 0.80, 0.80],
+            [0.50, 0.50, 0.50, 0.50]]) * self.capacity
 
         # deterioration tables
         # shape: A x S x S
@@ -108,8 +108,8 @@ class RoadSegment():
             np.arange(self.number_of_states), p=self.deterioration_table[action][self.state]
         )
 
-        self.base_travel_time = self.base_travel_time_table[self.state][action]
-        self.capacity = self.capacity_table[self.state][action]
+        self.base_travel_time = self.base_travel_time_table[action][self.state]
+        self.capacity = self.capacity_table[action][self.state]
 
         reward = self.state_action_reward[self.state][action]
         self.state = next_deterioration_state
