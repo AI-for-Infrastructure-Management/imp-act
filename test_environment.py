@@ -80,7 +80,7 @@ def test_timing(small_environment):
     env = small_environment
     
     _ = env.reset()
-    actions = [[k,k] for k in range(4)]
+    actions = [[k,k] for k in range(len(env.edge_segments_numbers))]
 
     MAX_TIME_PER_TRAJECTORY = 2 # seconds
     timesteps_per_traj = small_environment_dict['max_timesteps']
