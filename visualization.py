@@ -50,7 +50,7 @@ def update_multiple_dicts(g: nx.Graph, str_list: list, dict_list: list) -> list:
             return_list.append(update_dict(d=edge_labels_dict, my_dict=my_dict))
     return return_list
 
-def plot_prepare(g: nx.Graph, layout):
+def plot_prepare(g: nx.Graph, layout: str):
     if isinstance(g, ig.Graph):
         g = mu.convert_graph_to_nx(g=g)
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -109,7 +109,7 @@ def only_edge_labels(g: nx.Graph, my_edge_label_dict: dict={}) -> dict:
             el[s] += 1
         label_string = ''
         for k in range(num_states):
-            label_string = label_string + f'S{k}:{el[k]} ' if el[k] > 0 else label_string
+            label_string = label_string + rf'$S_{k}$:{el[k]} ' if el[k] > 0 else label_string
         edge_labels[e] = label_string[:-1]
     new_edge_label_dict = update_dict(d=update_dict(d=edge_labels_dict, my_dict={'edge_labels': edge_labels}), my_dict=my_edge_label_dict)
     return new_edge_label_dict
