@@ -6,11 +6,30 @@ class RoadSegment():
     def __init__(self, random_generator):
         # state [0-3]
         self.random_generator = random_generator
-        self.capacity = 500.0 # maybe cars per minute
-        self.base_travel_time = 50.0 # maybe minutes it takes to travel trough a segment
-        self.initial_observation = 0 # 
+        self.initial_observation = 0 
         self.number_of_states = 4
-        self.transition_tables = np.array([
+
+        self.reset()
+
+        # base travel time table
+        # shape: A x S
+        self.base_travel_time_table = np.array([
+                    [1.00, 1.10, 1.40, 1.60],
+                    [1.00, 1.10, 1.40, 1.60],
+                    [1.00, 1.05, 1.15, 1.45],
+                    [1.50, 1.50, 1.50, 1.50]]) * self.base_travel_time
+        
+        # capacity table
+        # shape: A x S
+        self.capacity_table = np.array([
+            [1.00, 1.00, 1.00, 1.00],
+            [1.00, 1.00, 1.00, 1.00],
+            [0.80, 0.80, 0.80, 0.80],
+            [0.50, 0.50, 0.50, 0.50]]) * self.capacity
+
+        # deterioration tables
+        # shape: A x S x S
+        self.deterioration_table = np.array([
              [# Action 0: do-nothing
                 [0.9, 0.1, 0.0, 0.0],
                 [0.0, 0.9, 0.1, 0.0],
@@ -72,22 +91,22 @@ class RoadSegment():
             [0, -1, -40, -150],
         ])
 
-        self.reset()
-
     def reset(self):
         self.state = 0
         self.observation = self.initial_observation
         self.belief = np.array([1, 0, 0, 0])
+        self.capacity = 500.0 # maybe cars per minute
+        self.base_travel_time = 50.0 # maybe minutes it takes to travel trough a segment
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
         
-        if self.observation == 3:
-            action = 3 # force replacement
-        
         next_deterioration_state = self.random_generator.choice(
-            np.arange(self.number_of_states), p=self.transition_tables[action][self.state]
+            np.arange(self.number_of_states), p=self.deterioration_table[action][self.state]
         )
+
+        self.base_travel_time = self.base_travel_time_table[action][self.state]
+        self.capacity = self.capacity_table[action][self.state]
 
         reward = self.state_action_reward[self.state][action]
         self.state = next_deterioration_state
@@ -97,7 +116,7 @@ class RoadSegment():
         )
 
         # Belief state computation
-        self.belief = self.transition_tables[action].T @ self.belief
+        self.belief = self.deterioration_table[action].T @ self.belief
 
         state_probs = self.observation_tables[action][:, self.observation] # likelihood of observation
 
@@ -114,7 +133,6 @@ class RoadEdge():
     def __init__(self, number_of_segments, random_generator, bpr_alpha=0.15, bpr_beta=4):
         self.number_of_segments = number_of_segments
         self.inspection_campaign_reward = -5
-        self.edge_travel_time = 200
         self.random_generator = random_generator
         self.segments = [RoadSegment(random_generator = random_generator) for _ in range(number_of_segments)]
         self.bpr_alpha = bpr_alpha
@@ -139,7 +157,10 @@ class RoadEdge():
         return self.base_time_factor + self.capacity_factor*(volume**self.bpr_beta)
 
     def step(self, actions):
-        # states:
+        
+        if len(self.segments) != len(actions):
+            raise ValueError("self.segments and actions must have the same length")
+    
         reward = 0
         for segment, action in zip(self.segments, actions):
             segment_reward = segment.step(action)
@@ -186,7 +207,7 @@ class RoadEnvironment():
         self.traffic_assignment_convergence_threshold = 0.01
         self.traffic_assignment_update_weight = 0.5
 
-        self.travel_time_reward = -0.01
+        self.travel_time_reward_factor = -0.01
 
         self.reset()
         
@@ -277,13 +298,15 @@ class RoadEnvironment():
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
-        total_reward = 0
+        maintenance_reward = 0
         for i, edge in enumerate(self.graph.es):
-            total_reward += edge["road_segments"].step(actions[i])
+            maintenance_reward += edge["road_segments"].step(actions[i])
 
         total_travel_time = self._get_total_travel_time()
 
-        reward = total_reward + self.travel_time_reward * (total_travel_time - self.base_total_travel_time)
+        travel_time_reward = self.travel_time_reward_factor * (total_travel_time - self.base_total_travel_time)
+
+        reward = maintenance_reward + travel_time_reward
 
         observation = self._get_observation()
 
@@ -293,7 +316,8 @@ class RoadEnvironment():
             "states": self._get_states(), 
             "total_travel_time": total_travel_time, 
             "travel_times": self.graph.es['travel_time'],
-            "volumes": self.graph.es['volume']
+            "volumes": self.graph.es['volume'],
+            "reward_elements": [travel_time_reward, maintenance_reward]
         }
 
         return observation, reward, self.timestep >= self.max_timesteps, info
@@ -304,5 +328,3 @@ class RoadEnvironment():
             edge["road_segments"].random_generator = self.random_generator
             for segment in edge["road_segments"].segments:
                 segment.random_generator = self.random_generator
-        
-    
