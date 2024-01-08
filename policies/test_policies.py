@@ -1,5 +1,7 @@
 import pytest
 
+from test_environment import small_environment  # noqa: F401;
+
 from .heuristics import SimpleHeuristicAgent, TCBMHeuristicAgent
 
 
@@ -14,7 +16,7 @@ def tcbm_heuristic_agent():
 
 
 def test_simple_heuristic_agents_shape(
-    simple_heuristic_agent, tcbm_heuristic_agent, small_environment
+    simple_heuristic_agent, tcbm_heuristic_agent, small_environment  # noqa: F811;
 ):
     """Test if the simple heuristic agent returns the correct shape of actions."""
     agent = simple_heuristic_agent
@@ -40,7 +42,9 @@ def test_simple_heuristic_agents_shape(
             assert type(segment_action) == int
 
 
-def test_simple_heuristic_agent_one_episode(simple_heuristic_agent, small_environment):
+def test_simple_heuristic_agent_one_episode(
+    simple_heuristic_agent, small_environment  # noqa: F811;
+):
     """Test if the simple heuristic agent can run one episode."""
     agent = simple_heuristic_agent
     env = small_environment
@@ -127,7 +131,9 @@ def test_simple_heuristic_agent_all_action(
     assert actions == agent_actions
 
 
-def test_tcbm_heuristic_agent_one_episode(tcbm_heuristic_agent, small_environment):
+def test_tcbm_heuristic_agent_one_episode(
+    tcbm_heuristic_agent, small_environment  # noqa: F811;
+):
     """Test if the simple heuristic agent can run one episode."""
     agent = tcbm_heuristic_agent
     env = small_environment
