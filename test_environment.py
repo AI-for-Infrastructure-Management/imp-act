@@ -8,6 +8,7 @@ import igraph as ig
 @pytest.fixture
 def small_environment():
     """Create a small environment for testing."""
+    small_environment_dict["seed"] = 42
     env = RoadEnvironment(**small_environment_dict)
     return env
 

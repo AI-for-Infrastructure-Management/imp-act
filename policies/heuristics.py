@@ -24,6 +24,11 @@ class SimpleHeuristicAgent(Agent):
 class TCBMHeuristicAgent(Agent):
     """Time condition based maintenance heuristic agent."""
     def __init__(self, threshold=0.15, inspection_interval=10):
+        if threshold < 0 or threshold > 1:
+            raise ValueError("threshold must be between 0 and 1.")
+        if inspection_interval < 1:
+            raise ValueError("inspection_interval must be greater than 0.")
+
         self.threshold = threshold
         self.inspection_interval = inspection_interval
         self.time_step = 0
