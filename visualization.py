@@ -150,7 +150,15 @@ def general_plot(g: nx.Graph, layout='planar', with_color: bool=False, use_cmap:
     return [fig, ax, pos, g, new_node_dict, new_edge_dict, new_node_label_dict, new_edge_label_dict] if return_stuff else None
 
 
-def vis_one_episode(frame_folder: str='./', frame_type: str='.png', delete=True):
+def vis_one_episode(frame_folder: str='./tmp_pic_folder', frame_type: str='.png', delete=True):
+    if os.path.exists(frame_folder):
+        delete_folder = False
+    else:
+        os.mkdir(frame_folder)
+        delete_folder = True
+
+    path_list = list()
+
     frame_type = '.' + frame_type if '.' not in frame_type else frame_type
     # find highest power of 10 in max_timesteps (for storing digits):
     digits = 1
@@ -163,21 +171,26 @@ def vis_one_episode(frame_folder: str='./', frame_type: str='.png', delete=True)
     obs = env.reset()
     actions = [[1,1] for _ in range(4)]
     time = 0
-    pic_name = os.path.join(frame_folder, f'./pic{time:0{digits}d}' + frame_type)
+    pic_name = os.path.join(frame_folder, f'pic{time:0{digits}d}' + frame_type)
+    path_list.append(pic_name)
     general_plot(g=env.graph, with_color=True, with_edge_labels=True, with_volumes=True, 
                  title='t: 0', show_plot=False, save_plot=True, filename=pic_name)
 
     while time < small_environment_dict["max_timesteps"]:
         time += 1
         obs, cost, done, info = env.step(actions)
-        pic_name = os.path.join(frame_folder, f'./pic{time:0{digits}d}' + frame_type)
+        pic_name = os.path.join(frame_folder, f'pic{time:0{digits}d}' + frame_type)
+        path_list.append(pic_name)
         general_plot(g=env.graph, with_color=True, with_edge_labels=True, with_volumes=True, 
                      title=f't: {time}', show_plot=False, save_plot=True, filename=pic_name)
         if done:
             break
     
     save_frames_as_gif(frame_folder=frame_folder)
-    delete_frames(frame_folder=frame_folder, frame_type=frame_type) if delete else None
+    if delete:
+        [os.remove(path) for path in path_list]
+    if delete_folder:
+        os.rmdir(frame_folder)
     return
 
 def save_frames_as_gif(frame_folder: str) -> None:
@@ -185,11 +198,6 @@ def save_frames_as_gif(frame_folder: str) -> None:
     frame_one = frames[0]
     frame_one.save("one_traj.gif", format="GIF", append_images=frames, save_all=True, duration=1000, loop=0)
     return
-
-def delete_frames(frame_folder: str, frame_type: str) -> None:
-    [os.remove(image) for image in glob.glob(os.path.join(frame_folder, '*' + frame_type))]
-    return
-
 
 
 
