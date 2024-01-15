@@ -1,4 +1,6 @@
 import igraph as ig
+import pytest
+import time
 import numpy as np
 import pytest
 
@@ -80,10 +82,36 @@ def test_large_environment(large_environment):
     while not done:
         timestep += 1
         obs, cost, done, info = env.step(actions)
+        
+    assert timestep == small_environment_dict["max_timesteps"]
 
-    assert timestep == env.max_timesteps
 
+def test_timing(small_environment):
+    "Test if the average time per trajectory is below the threshold"
+    env = small_environment
+    
+    _ = env.reset()
+    actions = [[k,k] for k in range(len(env.edge_segments_numbers))]
 
+    MAX_TIME_PER_TRAJECTORY = 2 # seconds
+    timesteps_per_traj = small_environment_dict['max_timesteps']
+    repeats = 100
+    store_timings = np.empty(repeats)
+
+    # Run the environment for a number of repeats
+    for k in range(repeats):
+        state_time = time.time()
+        done = False
+        while not done:
+            _, _, done, _ = env.step(actions)
+        store_timings[k] = time.time() - state_time
+
+    # print(f'Total time taken: {store_timings.sum():.2e} seconds')
+    # print(f'Average time per rollout: {store_timings.mean():.2e} seconds')
+    # print(f'Average time taken per timestep: {store_timings.mean()/timesteps_per_traj:.2e} seconds')
+
+    assert store_timings.mean() < MAX_TIME_PER_TRAJECTORY
+    
 def test_seed(small_environment):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
