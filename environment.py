@@ -1,6 +1,7 @@
 import igraph as ig
 from igraph import Graph
 import numpy as np
+from shock import Shock
 
 class RoadSegment():
     def __init__(self, random_generator):
@@ -188,7 +189,8 @@ class RoadEdge():
         return [segment.state for segment in self.segments]
 
 class RoadEnvironment():
-    def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50, graph=None, seed=42):
+    def __init__(self, num_vertices, edges, edge_segments_numbers, trips, max_timesteps=50, 
+                 graph=None, lambda_t=1/10, lambda_m=np.log(5)/5, seed=42):
         self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = max_timesteps
         self.travel_time_factor = 1
@@ -209,12 +211,15 @@ class RoadEnvironment():
 
         self.travel_time_reward_factor = -0.01
 
+        self.shocks = Shock(lambda_t=lambda_t, lambda_m=lambda_m, max_timesteps=self.max_timesteps, random_state=self.random_generator)
+
         self.reset()
         
         self.base_total_travel_time = self._get_total_travel_time()
 
     def reset(self):
         self.timestep = 0
+        self.shocks.reset()
         for edge in self.graph.es:
             edge["road_segments"].reset()
         return self._get_observation()
@@ -298,6 +303,22 @@ class RoadEnvironment():
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
+        """newly added shock"""
+        if self.timestep in self.shocks.times:
+            #print('In shock', self.shocks.times, self.timestep, self.shocks.magnits)
+            when = np.where(self.timestep==self.shocks.times)[0][0]
+            """the shock changes the deterioration tables fo the segments to increase the 
+            probability of transitioning to the next state. This is currently horribly solved
+            by saving and then restoring the original deterioration tables. This will be adjusted
+            when we are doing vectorization"""
+            self.shocks.save_det_tables(graph=self.graph)
+            for i, edge in enumerate(self.graph.es["road_segments"]):
+                for j, s in enumerate(edge.segments):
+                    s.deterioration_table[actions[i][j]] = self.shocks.add_equal_shock_to_deterioration_table(magn=self.shocks.magnits[when], 
+                                                                                                              det_table=s.deterioration_table[actions[i][j]])
+            #print(self.shocks.copied_graph)
+
+
         maintenance_reward = 0
         for i, edge in enumerate(self.graph.es):
             maintenance_reward += edge["road_segments"].step(actions[i])
@@ -309,6 +330,10 @@ class RoadEnvironment():
         reward = maintenance_reward + travel_time_reward
 
         observation = self._get_observation()
+
+        if self.timestep in self.shocks.times:
+            """ restoring of deterioration tables """
+            self.graph = self.shocks.restore_det_tables(graph=self.graph)
 
         self.timestep += 1
 
@@ -324,6 +349,7 @@ class RoadEnvironment():
     
     def seed(self, seed):
         self.random_generator = np.random.default_rng(seed)
+        self.shocks.random_state = self.random_generator
         for edge in self.graph.es:
             edge["road_segments"].random_generator = self.random_generator
             for segment in edge["road_segments"].segments:
