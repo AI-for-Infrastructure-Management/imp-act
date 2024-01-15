@@ -13,3 +13,4 @@ smallest_environment_dict = {
     "trips": [(0, 1, 200), (0, 2, 200)],
     "max_timesteps": 20,
 }
+
