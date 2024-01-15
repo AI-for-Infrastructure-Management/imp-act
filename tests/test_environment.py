@@ -1,9 +1,9 @@
 import igraph as ig
 import numpy as np
 import pytest
+from environments.config.environment_presets import small_environment_dict
 
-from environment import RoadEnvironment
-from environment_presets import small_environment_dict
+from environments.road_env import RoadEnvironment
 
 
 @pytest.fixture
