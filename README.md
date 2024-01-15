@@ -9,4 +9,4 @@ $ pytest
 ```
 
 ## Checkout contribution guidelines
-Guidelines are avaiable in [CONTRIBUTING README](CONTIBUTING.md).
+Guidelines are available in [CONTRIBUTING README](CONTRIBUTING.md).
