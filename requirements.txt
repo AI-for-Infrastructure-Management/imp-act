@@ -7,4 +7,3 @@ scipy==1.11.4
 Pillow==10.1.0
 tqdm==4.66.1
 pandas==2.1.4
-
