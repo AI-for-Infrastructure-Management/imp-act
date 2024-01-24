@@ -15,7 +15,7 @@ from params import EnvParams
 class EnvState:
     damage_state: jnp.array
     observation: jnp.array
-    # belief: jnp.array
+    belief: jnp.array
     base_travel_time: jnp.array
     capacity: jnp.array
     timestep: int
@@ -101,6 +101,18 @@ class RoadEnvironment(environment.Environment):
         # 3. Check for convergence by comparing volume changes
 
         return 0.0
+    
+    def _get_next_belief(
+            self, belief: jnp.array, obs: int, action: int, params: EnvParams
+    ) -> jnp.array:
+        next_belief = params.deterioration_table[action].T @ belief
+        state_probs = params.observation_table[action][:, obs]
+        next_belief = state_probs*next_belief
+        next_belief /= next_belief.sum()
+        return next_belief
+    
+    def _vmap_get_next_belief(self):
+        return vmap(self._get_next_belief, in_axes=(0, 0, 0, None))
 
     def step_env(
         self, keys: chex.PRNGKey, state: EnvState, action: jnp.array, params: EnvParams
@@ -118,7 +130,8 @@ class RoadEnvironment(environment.Environment):
             state.damage_state, action, params.rewards_table
         ).sum()
 
-        # TODO: belief update
+        # belief update
+        belief = self._vmap_get_next_belief()(state.belief, obs, action, params)
 
         base_travel_time = params.btt_table[action, state.damage_state]
         capacity = params.capacity_table[action, state.damage_state]
@@ -133,6 +146,7 @@ class RoadEnvironment(environment.Environment):
         next_state = EnvState(
             damage_state=next_state,
             observation=obs,
+            belief=belief,
             base_travel_time=base_travel_time,
             capacity=capacity,
             timestep=state.timestep + 1,
@@ -153,7 +167,7 @@ class RoadEnvironment(environment.Environment):
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
-        damage_state = [
+        damage_state = [ # TODO: what is this exactly?
             {"0": [0, 1]},
             {"1": [0, 3, 0]},
             {"2": [1, 1, 2]},
@@ -163,6 +177,11 @@ class RoadEnvironment(environment.Environment):
         # flatten pytree and convert to jnp.array
         damage_state = jnp.array(
             jax.tree_util.tree_leaves(damage_state), dtype=jnp.uint8
+        )
+
+        # initial belief
+        belief = jnp.array(
+            [params.initial_belief]*params.total_num_segments
         )
 
         # initial base travel times (using pytree)
@@ -175,6 +194,7 @@ class RoadEnvironment(environment.Environment):
         env_state = EnvState(
             damage_state=damage_state,
             observation=damage_state,
+            belief=belief,
             base_travel_time=initial_btt,
             capacity=initial_capacity,
             timestep=0,
@@ -184,7 +204,7 @@ class RoadEnvironment(environment.Environment):
 
     def _to_pytree(self, x: jnp.array):
         # example pytree
-        py_tree = [
+        py_tree = [ # TODO: what is this exactly?
             {"0": np.array([0, 1], dtype=np.uint8)},
             {"1": np.array([0, 3, 0], dtype=np.uint8)},
             {"2": np.array([1, 1, 2], dtype=np.uint8)},
@@ -206,7 +226,7 @@ class RoadEnvironment(environment.Environment):
         # TODO: precompute idxs_map
 
         # map of segment indices to segment ids
-        idxs_map = jnp.array(
+        idxs_map = jnp.array( # TODO: what is this exactly?
             [
                 [100, 0, 1],
                 [2, 3, 4],
@@ -269,7 +289,7 @@ if __name__ == "__main__":
 
         # generate keys for next timestep
         keys = jax.random.split(
-            keys, params.total_num_segments * 2
+            keys, params.total_num_segments * 2 # TODO: we actually only need (total_num_segments+1) keys since we can use the last one for new splits. Check if the current implementation take too long for large graphs and evantually change to this other implementation
         )  # keys for all segments
         subkeys = keys[: params.total_num_segments, :]  # subkeys for each segment
         keys = keys[params.total_num_segments, :]  # subkeys for each segment
@@ -289,6 +309,8 @@ if __name__ == "__main__":
     number, repeat = 1000, 3
 
     jit_step_env = jax.jit(env.step_env)
+
+    # TODO: I do not think that the following timeit test with jit is reliable 
 
     # python documentation suggests using min
     # step w/o jit (best of 3)
