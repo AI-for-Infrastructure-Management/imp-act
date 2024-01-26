@@ -80,11 +80,73 @@ class RoadEnvironment(environment.Environment):
         )
 
         return edge_travel_times
+    
+    def _get_weight_matrix(self, weights, num_nodes, edges, destination):
+        # Compute the weight matrix, which is from all possible sources to a give destination node
+        weights_matrix = jnp.full((num_nodes, num_nodes), jnp.inf)
+        for edge, w in zip(edges, weights):
+            i, j = edge
+            weights_matrix = weights_matrix.at[i,j].set(w)
+        weights_matrix = weights_matrix.at[destination, destination].set(0)
+        return weights_matrix 
+    
+    def _get_cost_to_go_from_all_sources_to_one_destination(self, weights_matrix, num_nodes, max_iter):
+        # Compute the costs from all sorces to one given destination node
+        J = jnp.zeros(num_nodes)      # Initial guess
 
-    def _get_shortest_paths(self, state, action, params):
-        #! Cannot use igraph in JAX if we want to jit this function
-        # update edge volumes
-        pass
+        def body_fun(values):
+            # Define the body function of while loop
+            i, J, break_cond = values
+
+            # Update J and break condition
+            next_J = jnp.min(weights_matrix + J, axis=1)
+            break_condition = jnp.allclose(next_J, J, 0.01, 0.01)
+
+            # Return next iteration values
+            return i + 1, next_J, break_condition
+
+        def cond_fun(values):
+            i, J, break_condition = values
+            return ~break_condition & (i < max_iter)
+
+        return jax.lax.while_loop(cond_fun, body_fun,
+                                init_val=(0, J, False))[1]
+
+
+    def _get_volumes(self, source, destination, weights_matrix, J, edges, trips):
+        # Computes the shortest path from one given source to a given destination,
+        # which is used to compute the vector of volumes
+        # Access this function through _get_volumes_shortest_path
+        volumes = jnp.full((len(edges),), 0)
+
+        def body_fun(val):
+            step, current_node, volumes, break_cond = val
+            next_node = jnp.argmin(weights_matrix[current_node, :] + J)
+            #path = path.at[step+1].set(next_node)
+            edge_index = jnp.asarray(edges==jnp.array([current_node, next_node])).all(axis=1).nonzero(size=1)[0]
+            trip = trips[edge_index][0][2]
+            volumes = volumes.at[edge_index].set(volumes[edge_index]+trip)
+            return step+1, next_node, volumes, destination != next_node
+        
+        def cond_fun(val): # we might want to add a max_depth condition if too slow
+            step, current_node, volumes, break_cond = val
+            return break_cond
+        
+        return jax.lax.while_loop(cond_fun, body_fun, init_val=(0, source, volumes, True))[2]
+    
+    def _get_volumes_shortest_path(self, source, destination, weights, params):
+        # We need to vmap it over all paths
+
+        num_nodes = params.num_vertices
+        edges = params.edges
+        max_iter = params.traffic_assignment_max_iterations # likely this does not coincide, reference uses 500
+        trips = params.trips
+
+        weight_matrix = self._get_weight_matrix(weights, num_nodes, edges, destination)
+        cost_to_go = self._get_cost_to_go_from_all_sources_to_one_destination(weight_matrix, num_nodes, max_iter)
+        volumes = self._get_volumes(source, destination, weight_matrix, cost_to_go, edges, trips)
+        return volumes
+        
 
     def _get_total_travel_time(self, state, action, params):
         # 0.1 get edge volumes: Initialize with all-or-nothing assignment
