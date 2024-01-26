@@ -7,3 +7,6 @@ scipy==1.11.4
 Pillow==10.1.0
 tqdm==4.66.1
 pandas==2.1.4
+jax==0.4.23
+flax==0.7.5
+gymnax==0.0.6
