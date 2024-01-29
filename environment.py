@@ -1,14 +1,14 @@
 import numpy as np
 from igraph import Graph
-import numpy as np
 from shock import Shock
 
-class RoadSegment():
+
+class RoadSegment:
     def __init__(self, random_generator, shocks):
         # state [0-3]
         self.random_generator = random_generator
         self.shocks = shocks
-        self.initial_observation = 0 
+        self.initial_observation = 0
         self.number_of_states = 4
 
         self.reset()
@@ -102,17 +102,17 @@ class RoadSegment():
         )
 
         # Costs (negative rewards)
-        self.state_action_reward = np.array([
-            [0, -1, -20, -150],
-            [0, -1, -25, -150],
-            [0, -1, -30, -150],
-            [0, -1, -40, -150],
-        ])
-    
+        self.state_action_reward = np.array(
+            [
+                [0, -1, -20, -150],
+                [0, -1, -25, -150],
+                [0, -1, -30, -150],
+                [0, -1, -40, -150],
+            ]
+        )
 
     def calc_distance(self, loc_a: np.array, loc_b: np.array) -> float:
         return np.linalg.norm(loc_a - loc_b)
-
 
     def reset(self):
         self.state = 0
@@ -122,17 +122,35 @@ class RoadSegment():
         self.base_travel_time = (
             50.0  # maybe minutes it takes to travel trough a segment
         )
-        times_len = len(len(self.shocks.times))
+        times_len = len(self.shocks.times)
         if times_len > 0:
-            self.distances = np.zeros(times_len)
-            self.shock_tables = self.shocks.loc_based_det_table_transform(magn=self.shocks.magni, det_table_list=[self.deterioration_table[0]]*times_len, 
-                                                                          dist=self.distances, shift_list=[np.diag(np.diag(self.deterioration_table[0],1))]*times_len, 
-                                                                          pga_dict=self.shocks.pga_dict, fragility_dict=self.shocks.fragility_dict)
+            self.distances = self.calc_distance(
+                loc_a=np.expand_dims(self.pos, axis=1), 
+                loc_b=self.shocks.locs
+            ) 
+            self.shock_tables = self.shocks.loc_based_det_table_transform(
+                magn=self.shocks.magni,
+                det_table_list=[self.deterioration_table[0]] * times_len,
+                dist=self.distances,
+                shift_list=[np.diag(np.diag(self.deterioration_table[0], 1))]
+                * times_len,
+                pga_dict=self.shocks.pga_dict,
+                fragility_dict=self.shocks.fragility_dict,
+            )
             self.pgas = list()
             self.fragilities = list()
             for k in range(len(self.shocks.times)):
-                self.distances.append(self.calc_distance(self.loc, self.shocks.locations[k]))
-                self.pgas.append(self.shocks.get_pga_from_distance(self, magn=self.shocks.magni[k], dist=self.distances[-1], **self.shocks.pga_dict))
+                self.distances.append(
+                    self.calc_distance(self.loc, self.shocks.locations[k])
+                )
+                self.pgas.append(
+                    self.shocks.get_pga_from_distance(
+                        self,
+                        magn=self.shocks.magni[k],
+                        dist=self.distances[-1],
+                        **self.shocks.pga_dict
+                    )
+                )
 
         # calculate here the effects of a potential shock, has to get passed somehow the shock instance
 
@@ -146,16 +164,17 @@ class RoadSegment():
             # get modified deterioration matrix
             shock_ind = np.where(timestep == self.shocks.times)[0]
             magn = np.where(timestep == self.shocks.times)[0]
-            shock_det_mat = self.shocks.loc_based_det_table_transform(magn=self.shocks.magni[shock_ind], 
-                                                                      det_table=self.deterioration_table[0], 
-                                                                      dist=self.dist[shock_ind], 
-                                                                      pga_dict=self.shocks.pga_dict, 
-                                                                      fragility_dict=self.shocks.fragility_dict)
+            shock_det_mat = self.shocks.loc_based_det_table_transform(
+                magn=self.shocks.magni[shock_ind],
+                det_table=self.deterioration_table[0],
+                dist=self.dist[shock_ind],
+                pga_dict=self.shocks.pga_dict,
+                fragility_dict=self.shocks.fragility_dict,
+            )
             next_deterioration_state = self.random_generator.choice(
                 np.arange(self.number_of_states), p=shock_det_mat[shock_ind][self.state]
             )
-            
-        
+
         # 1. could already superpose shock with this, but: no effect of action
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
@@ -164,7 +183,7 @@ class RoadSegment():
 
         # 2. could add shock as another deterioration step after potential repair
         # -> shock happens directly after repair affects whole year
-        # -> agent gets notified of shock due to negative reward + bad observations 
+        # -> agent gets notified of shock due to negative reward + bad observations
         self.base_travel_time = self.base_travel_time_table[action][self.state]
         self.capacity = self.capacity_table[action][self.state]
 
@@ -199,13 +218,13 @@ class RoadSegment():
 
 class RoadEdge:
     def __init__(
-        self, number_of_segments, random_generator, bpr_alpha=0.15, bpr_beta=4
+        self, number_of_segments, random_generator, shocks, bpr_alpha=0.15, bpr_beta=4
     ):
         self.number_of_segments = number_of_segments
         self.inspection_campaign_reward = -5
         self.random_generator = random_generator
         self.segments = [
-            RoadSegment(random_generator=random_generator)
+            RoadSegment(random_generator=random_generator, shocks=shocks)
             for _ in range(number_of_segments)
         ]
         self.bpr_alpha = bpr_alpha
@@ -276,6 +295,7 @@ class RoadEnvironment:
         edges,
         edge_segments_numbers,
         trips,
+        shock_dict,
         max_timesteps=50,
         graph=None,
         seed=42,
@@ -290,10 +310,17 @@ class RoadEnvironment:
         else:
             self.graph = graph
 
+        self.shocks = Shock(
+            **shock_dict,
+            max_timesteps=self.max_timesteps,
+            random_state=self.random_generator,
+        )
+
         for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
             edge["road_segments"] = RoadEdge(
                 number_of_segments=number_of_segments,
                 random_generator=self.random_generator,
+                shocks=self.shocks
             )
 
         self.trips = trips
@@ -302,8 +329,6 @@ class RoadEnvironment:
         self.traffic_assignment_update_weight = 0.5
 
         self.travel_time_reward_factor = -0.01
-
-        self.shocks = Shock(lambda_t=lambda_t, lambda_m=lambda_m, max_timesteps=self.max_timesteps, random_state=self.random_generator)
 
         self.reset()
 
@@ -402,8 +427,8 @@ class RoadEnvironment:
     def step(self, actions):
         """newly added shock"""
         if self.timestep in self.shocks.times:
-            #print('In shock', self.shocks.times, self.timestep, self.shocks.magnits)
-            when = np.where(self.timestep==self.shocks.times)[0][0]
+            # print('In shock', self.shocks.times, self.timestep, self.shocks.magnits)
+            when = np.where(self.timestep == self.shocks.times)[0][0]
             """the shock changes the deterioration tables fo the segments to increase the 
             probability of transitioning to the next state. This is currently horribly solved
             by saving and then restoring the original deterioration tables. This will be adjusted
@@ -411,10 +436,14 @@ class RoadEnvironment:
             self.shocks.save_det_tables(graph=self.graph)
             for i, edge in enumerate(self.graph.es["road_segments"]):
                 for j, s in enumerate(edge.segments):
-                    s.deterioration_table[actions[i][j]] = self.shocks.add_equal_shock_to_deterioration_table(magn=self.shocks.magnits[when], 
-                                                                                                              det_table=s.deterioration_table[actions[i][j]])
-            #print(self.shocks.copied_graph)
-                    
+                    s.deterioration_table[
+                        actions[i][j]
+                    ] = self.shocks.add_equal_shock_to_deterioration_table(
+                        magn=self.shocks.magnits[when],
+                        det_table=s.deterioration_table[actions[i][j]],
+                    )
+            # print(self.shocks.copied_graph)
+
         maintenance_reward = 0
         for i, edge in enumerate(self.graph.es):
             maintenance_reward += edge["road_segments"].step(actions[i])
@@ -430,7 +459,7 @@ class RoadEnvironment:
         observation = self._get_observation()
 
         if self.timestep in self.shocks.times:
-            """ restoring of deterioration tables """
+            """restoring of deterioration tables"""
             self.graph = self.shocks.restore_det_tables(graph=self.graph)
 
         self.timestep += 1
