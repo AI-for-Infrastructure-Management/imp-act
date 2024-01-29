@@ -10,12 +10,14 @@ class EnvParams:
     discount_factor: float = 1.0
 
     # Reward parameters
-    travel_time_reward_factor: float = 0.1
+    travel_time_reward_factor: float = -0.1
 
     # Graph parameters
     num_vertices: int = 4
     edges: jnp.array = jnp.array([(0, 1), (1, 3), (2, 0), (3, 2)])
-    total_num_segments: int = 11
+    num_edges: int = 4
+    edge_segments_numbers: jnp.array = jnp.array([2, 2, 2, 2])
+    total_num_segments: int = 8
 
     traffic_assignment_max_iterations: int = 15
     traffic_assignment_convergence_threshold: float = 0.01
@@ -24,7 +26,11 @@ class EnvParams:
     traffic_beta: float = 4.0
 
     # Road Network parameters
-    trips: jnp.array = jnp.array([(0, 1, 200), (1, 3, 200), (2, 0, 200), (3, 2, 200)])
+    trips: jnp.array = jnp.array(
+        [[0, 200, 0, 0], [0, 0, 0, 200], [200, 0, 0, 0], [0, 0, 200, 0]],
+        dtype=jnp.int32,
+    )
+
     btt_table: jnp.array = (
         jnp.array(
             [
