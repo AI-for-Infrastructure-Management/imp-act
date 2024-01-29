@@ -29,8 +29,10 @@ class RoadEnvironment(environment.Environment):
 
     """
 
-    def __init__(self):
+    def __init__(self, params: EnvParams):
         super().__init__()
+
+        self.num_nodes = params.num_vertices
 
     def _get_next(
         self, key: chex.PRNGKey, dam_state: int, action: int, table: jnp.array
@@ -105,7 +107,7 @@ class RoadEnvironment(environment.Environment):
         # calculate travel time on each edge
         return btt_factor + capacity_factor * edge_volumes**params.traffic_beta
 
-    def _get_weight_matrix(self, weights, num_nodes, edges, destination):
+    def _get_weight_matrix(self, weights, edges, destination):
         """
         Get the weight matrix for the shortest path algorithm from all
         nodes to the given destination node.
@@ -134,12 +136,11 @@ class RoadEnvironment(environment.Environment):
             node j, then weights_matrix[i,j] = jnp.inf
         """
 
-        weights_matrix = jnp.full((num_nodes, num_nodes), jnp.inf)
-
         # set destination node to 0
+        weights_matrix = jnp.full((self.num_nodes, self.num_nodes), jnp.inf)
         weights_matrix = weights_matrix.at[destination, destination].set(0)
 
-        # TODO: can we do this without a for loop? or jax.fori_loop?
+        # TODO: can we do this with jax.fori_loop?
         for edge, w in zip(edges, weights):
             i, j = edge  # node indices
             # undirected graph, so we need to set both directions
@@ -172,7 +173,7 @@ class RoadEnvironment(environment.Environment):
             node. J[i] is the cost from node i to the destination node.
         """
 
-        J = jnp.zeros(num_nodes)  # Initial guess
+        J = jnp.zeros(self.num_nodes)  # Initial guess
 
         def body_fun(values):
             # Define the body function of while loop
@@ -307,7 +308,7 @@ class RoadEnvironment(environment.Environment):
         num_nodes = params.num_vertices
         edges = params.edges
 
-        weight_matrix = self._get_weight_matrix(weights, num_nodes, edges, destination)
+        weight_matrix = self._get_weight_matrix(weights, edges, destination)
         cost_to_go = self._get_cost_to_go(weight_matrix, num_nodes, max_iter=500)
         volumes = self._get_volumes(
             source, destination, weight_matrix, cost_to_go, params
@@ -353,7 +354,9 @@ class RoadEnvironment(environment.Environment):
         _sources, _destinations = jnp.nonzero(params.trips, size=4)
 
         # repeat until convergence
-        for _ in range(params.traffic_assignment_max_iterations):
+        def body_fun(val):
+            edge_volumes, _ = val
+
             # 1. Recalculate travel times with current volumes
             edge_travel_times = self.compute_edge_travel_time(
                 state, edge_volumes, params
@@ -369,14 +372,23 @@ class RoadEnvironment(environment.Environment):
             volume_changes = jnp.abs(edge_volumes - new_edge_volumes)
             max_volume_change = jnp.max(volume_changes)
 
-            if max_volume_change < params.traffic_assignment_convergence_threshold:
-                break
-
             # 4. Update edge volumes
             edge_volumes = (
                 params.traffic_assignment_update_weight * new_edge_volumes
                 + (1 - params.traffic_assignment_update_weight) * edge_volumes
             )
+
+            return edge_volumes, max_volume_change
+
+        def cond_fun(val):
+            _, max_volume_change = val
+            return max_volume_change > params.traffic_assignment_convergence_threshold
+
+        edge_volumes, _ = jax.lax.while_loop(
+            cond_fun, body_fun, init_val=(edge_volumes, jnp.inf)
+        )
+
+        edge_travel_times = self.compute_edge_travel_time(state, edge_volumes, params)
 
         # 5. Calculate total travel time
         return jnp.sum(edge_travel_times * edge_volumes)
@@ -532,7 +544,7 @@ class RoadEnvironment(environment.Environment):
 
 if __name__ == "__main__":
     params = EnvParams()
-    env = RoadEnvironment()
+    env = RoadEnvironment(params)
 
     _action = [{"0": [0, 0]}, {"1": [0, 0]}, {"2": [0, 0]}, {"3": [0, 0]}]
     __action = jax.tree_util.tree_leaves(_action)
@@ -546,12 +558,15 @@ if __name__ == "__main__":
     # reset
     obs, state = env.reset_env(key, params)
 
+    jit_step_env = jax.jit(env.step_env)
+
     total_rewards = 0.0
 
     # rollout
     for _ in range(params.max_timesteps):
         # step
-        obs, reward, done, info, state = env.step_env(subkeys, state, action, params)
+        # obs, reward, done, info, state = env.step_env(subkeys, state, action, params)
+        obs, reward, done, info, state = jit_step_env(subkeys, state, action, params)
 
         # generate keys for next timestep
         # keys for all segments
