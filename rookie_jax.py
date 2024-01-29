@@ -7,8 +7,8 @@ import numpy as np
 from flax import struct
 from gymnax.environments import environment, spaces
 from jax import vmap
-from jax.tree_util import tree_flatten, tree_unflatten
 from params import EnvParams
+from functools import cached_property
 
 
 @struct.dataclass
@@ -52,51 +52,131 @@ class RoadEnvironment(environment.Environment):
     def _vmap_get_maintenance_reward(self):
         return vmap(self._get_maintenance_reward, in_axes=(0, 0, None))
 
-    def calculate_bpr_travel_time(
-        volume: int, capacity: int, base_time: float, alpha: float, beta: int
-    ):
-        return base_time * (1 + alpha * (volume / capacity) ** beta)
-
-    def _vmap_calculate_bpr_travel_time(self):
-        return vmap(self.calculate_bpr_travel_time, in_axes=(0, 0, 0, None, None))
-
-    def compute_edge_base_travel_time(self, state: EnvState):
-        # map segments to edges, gather base travel times and sum over segments
-        return self._gather(state.base_travel_time).sum(axis=0)
-
     def compute_edge_travel_time(
         self, state: EnvState, edge_volumes: jnp.array, params: EnvParams
     ):
-        # get edge base travel times
-        edge_base_travel_time = self.compute_edge_base_travel_time(state)
+        """
+        Compute the travel time of each edge given the current volumes
+        of each edge.
 
-        # get edge travel times
-        edge_travel_times = self._vmap_calculate_bpr_travel_time()(
-            edge_volumes,
-            state.capacity,
-            edge_base_travel_time,
-            params.traffic_alpha,
-            params.traffic_beta,
+        BPR function:
+        travel_time = btt * (1 + alpha * (v / c) ** beta)
+
+        btt: base travel time
+        alpha, beta: parameters
+        v: volume of cars on the edge
+        c: capacity of the edge
+
+        Since we have edge volumes, we aggregate the btt and capacity
+        of all segments belonging to an edge and multiply capacity by
+        the edge volume.
+
+        Parameters
+        ----------
+        state : EnvState
+            Environment state
+
+        edge_volumes : jnp.array
+            Vector of volumes of each edge in the graph.
+            shape: (num_edges)
+
+        params : EnvParams
+            Environment parameters
+
+        Returns
+        -------
+        edge_travel_times : jnp.array
+            Vector of travel times of each edge in the graph.
+            shape: (num_edges, 1)
+        """
+
+        # gather base travel time and capacity of each edge
+        btt_factor = self._gather(state.base_travel_time).sum(axis=1)
+
+        # compute capacity factor for each segment
+        capacity_factor = (
+            state.base_travel_time
+            * params.traffic_alpha
+            / (state.capacity) ** params.traffic_beta
         )
+        # gather capacity factor of each edge
+        capacity_factor = self._gather(capacity_factor).sum(axis=1)
 
-        return edge_travel_times
-    
+        # calculate travel time on each edge
+        return btt_factor + capacity_factor * edge_volumes**params.traffic_beta
+
     def _get_weight_matrix(self, weights, num_nodes, edges, destination):
-        # Compute the weight matrix, which is from all possible sources to a give destination node
+        """
+        Get the weight matrix for the shortest path algorithm from all
+        nodes to the given destination node.
+
+        Parameters
+        -------
+        weights: jnp.array
+            Vector of weights (example: travel time) for each edge
+
+        num_nodes: int
+            Number of nodes in the graph
+
+        edges: jnp.array
+            Vector of tuples (example: [(0, 1), (1,3)]) representing the
+            nodes of each edge.
+
+        destination: int
+            Destination node
+
+        Returns
+        -------
+        weights_matrix: jnp.array
+            Matrix of weights (example: travel time) between each pair
+            of nodes. The weights_matrix[i,j] is the weight of the edge
+            from node i to node j. If there is no edge between node i and
+            node j, then weights_matrix[i,j] = jnp.inf
+        """
+
         weights_matrix = jnp.full((num_nodes, num_nodes), jnp.inf)
-        for edge, w in zip(edges, weights):
-            i, j = edge
-            weights_matrix = weights_matrix.at[i,j].set(w)
+
+        # set destination node to 0
         weights_matrix = weights_matrix.at[destination, destination].set(0)
-        return weights_matrix 
-    
-    def _get_cost_to_go_from_all_sources_to_one_destination(self, weights_matrix, num_nodes, max_iter):
-        # Compute the costs from all sorces to one given destination node
-        J = jnp.zeros(num_nodes)      # Initial guess
+
+        # TODO: can we do this without a for loop? or jax.fori_loop?
+        for edge, w in zip(edges, weights):
+            i, j = edge  # node indices
+            # undirected graph, so we need to set both directions
+            weights_matrix = weights_matrix.at[i, j].set(w)
+            weights_matrix = weights_matrix.at[j, i].set(w)
+
+        return weights_matrix
+
+    def _get_cost_to_go(self, weights_matrix, num_nodes, max_iter):
+        """
+        Get the cost-to-go from all nodes to the given destination node.
+
+        Parameters
+        ----------
+        weights_matrix : jnp.array
+            Matrix of weights (example: travel time) between each pair
+            of nodes. The weights_matrix[i,j] is the weight of the edge
+            from node i to node j. If there is no edge between node i and
+            node j, then weights_matrix[i,j] = jnp.inf
+
+        num_nodes : int
+            Number of nodes in the graph
+        max_iter : int
+            Maximum number of iterations for the while loop
+
+        Returns
+        -------
+        J : jnp.array
+            Vector of cost-to-go from all nodes to the given destination
+            node. J[i] is the cost from node i to the destination node.
+        """
+
+        J = jnp.zeros(num_nodes)  # Initial guess
 
         def body_fun(values):
             # Define the body function of while loop
-            i, J, break_cond = values
+            i, J, _ = values
 
             # Update J and break condition
             next_J = jnp.min(weights_matrix + J, axis=1)
@@ -106,73 +186,210 @@ class RoadEnvironment(environment.Environment):
             return i + 1, next_J, break_condition
 
         def cond_fun(values):
-            i, J, break_condition = values
+            i, _, break_condition = values
             return ~break_condition & (i < max_iter)
 
-        return jax.lax.while_loop(cond_fun, body_fun,
-                                init_val=(0, J, False))[1]
+        return jax.lax.while_loop(cond_fun, body_fun, init_val=(0, J, False))[1]
 
+    def _get_volumes(self, source, destination, weights_matrix, J, params):
+        """
+        Get a vector containing the volume of each edge in the shortest
+        path from the given source to the given destination.
 
-    def _get_volumes(self, source, destination, weights_matrix, J, edges, trips):
-        # Computes the shortest path from one given source to a given destination,
-        # which is used to compute the vector of volumes
-        # Access this function through _get_volumes_shortest_path
-        volumes = jnp.full((len(edges),), 0)
+        Access this function through _get_volumes_shortest_path
+
+        Parameters
+        ----------
+        source : int
+            Source node
+
+        destination : int
+            Destination node
+
+        weights_matrix : jnp.array
+            Matrix of weights (example: travel time) between each pair
+            of nodes. The weights_matrix[i,j] is the weight of the edge
+            from node i to node j. If there is no edge between node i and
+            node j, then weights_matrix[i,j] = jnp.inf
+
+        J : jnp.array
+            Vector of cost-to-go from all nodes to the given destination
+            node. J[i] is the cost from node i to the destination node.
+
+        params : EnvParams
+            Environment parameters
+
+        """
+        edges = params.edges
+        trips = params.trips
+        num_edges = len(edges)
+        volumes = jnp.full((num_edges,), 0)
 
         def body_fun(val):
-            step, current_node, volumes, break_cond = val
+            step, current_node, volumes, _ = val
+            # TODO: ties: usually returns the first index, should we randomize?
             next_node = jnp.argmin(weights_matrix[current_node, :] + J)
-            #path = path.at[step+1].set(next_node)
-            edge_index = jnp.asarray(edges==jnp.array([current_node, next_node])).all(axis=1).nonzero(size=1)[0]
-            trip = trips[edge_index][0][2]
-            volumes = volumes.at[edge_index].set(volumes[edge_index]+trip)
-            return step+1, next_node, volumes, destination != next_node
-        
-        def cond_fun(val): # we might want to add a max_depth condition if too slow
-            step, current_node, volumes, break_cond = val
+            # path = path.at[step+1].set(next_node)
+            # find edge index given current_node and next_node
+            edge_index = (
+                jnp.asarray(edges == jnp.array([current_node, next_node]))
+                .all(axis=1)
+                .nonzero(size=1)[0]
+            )
+            trip = trips[source][destination]
+            volumes = volumes.at[edge_index].set(volumes[edge_index] + trip)
+            return step + 1, next_node, volumes, destination != next_node
+
+        def cond_fun(val):  # we might want to add a max_depth condition if too slow
+            _, _, _, break_cond = val
             return break_cond
-        
-        return jax.lax.while_loop(cond_fun, body_fun, init_val=(0, source, volumes, True))[2]
-    
+
+        return jax.lax.while_loop(
+            cond_fun, body_fun, init_val=(0, source, volumes, True)
+        )[2]
+
+    # def print_best_path(self, source, destination, weights_matrix, J, params):
+
+    #     current_node = source
+    #     edges = params.edges
+    #     trips = params.trips
+    #     num_edges = len(edges)
+    #     volumes = jnp.full((num_edges,), 0)
+
+    #     while current_node != destination:
+    #         next_node = jnp.argmin(weights_matrix[current_node, :] + J)
+
+    #         edge_index = (
+    #             jnp.asarray(edges == jnp.array([current_node, next_node]))
+    #             .all(axis=1)
+    #             .nonzero(size=1)[0]
+    #         )
+
+    #         trip = trips[source][destination]
+
+    #         print(f"{current_node} -> {next_node} ({edge_index}) ({trip})")
+
+    #         volumes = volumes.at[edge_index].set(volumes[edge_index] + trip)
+
+    #         print(volumes)
+
+    #         current_node = next_node
+    #     return volumes
+
     def _get_volumes_shortest_path(self, source, destination, weights, params):
-        # We need to vmap it over all paths
+        """
+
+        Compute the volumes of each edge in the shortest path from the
+        given source to the given destination.
+
+        source: https://jax.quantecon.org/short_path.html
+
+        Parameters
+        ----------
+        source : int
+            source node
+        destination : int
+            destination node
+        weights : jnp.array
+            Vector of weights (example: travel time) for each edge in the
+            graph.
+        params : EnvParams
+            Environment parameters
+
+        Returns
+        -------
+        volumes : jnp.array
+            Vector of volumes of each edge in the shortest path from the
+            given source to the given destination.
+            shape: (num_edges,)
+        """
 
         num_nodes = params.num_vertices
         edges = params.edges
-        max_iter = params.traffic_assignment_max_iterations # likely this does not coincide, reference uses 500
-        trips = params.trips
 
         weight_matrix = self._get_weight_matrix(weights, num_nodes, edges, destination)
-        cost_to_go = self._get_cost_to_go_from_all_sources_to_one_destination(weight_matrix, num_nodes, max_iter)
-        volumes = self._get_volumes(source, destination, weight_matrix, cost_to_go, edges, trips)
+        cost_to_go = self._get_cost_to_go(weight_matrix, num_nodes, max_iter=500)
+        volumes = self._get_volumes(
+            source, destination, weight_matrix, cost_to_go, params
+        )
         return volumes
-        
 
-    def _get_total_travel_time(self, state, action, params):
-        # 0.1 get edge volumes: Initialize with all-or-nothing assignment
+    def _vmap_get_volumes_shortest_path(self):
+        return vmap(self._get_volumes_shortest_path, in_axes=(0, 0, None, None))
 
-        # 0.2 get edge travel times
+    # @cached_property
+    def _get_initial_volumes(self, params):
+        """
+        Get the initial volumes of each edge in the graph with
+        all-or-nothing assignment. @cached_property is used to ensure
+        that this function is only run the first time. Subsequent calls
+        will return the cached result.
+
+        Parameters
+        ----------
+        params : EnvParams
+            Environment parameters
+
+        Returns
+        -------
+        initial_volumes : jnp.array
+            Vector of initial volumes of each edge in the graph.
+            shape: (num_edges,)
+        """
+
+        # TODO: what if there are no direct paths from source to destination?
+        num_edges = len(params.edges)
+        edge_volumes = jnp.full((num_edges,), 0)
+        for k, (i, j) in enumerate(params.edges):
+            num_cars = params.trips[i, j]
+            edge_volumes = edge_volumes.at[k].set(num_cars)
+
+        return edge_volumes
+
+    def _get_total_travel_time(self, state, params):
+        # 0.1 get initial edge volumes
+        edge_volumes = self._get_initial_volumes(params)
+
+        _sources, _destinations = jnp.nonzero(params.trips, size=4)
 
         # repeat until convergence
+        for _ in range(params.traffic_assignment_max_iterations):
+            # 1. Recalculate travel times with current volumes
+            edge_travel_times = self.compute_edge_travel_time(
+                state, edge_volumes, params
+            )
 
-        # 1. Recalculate travel times with current volumes
+            # 2. Find the shortest paths using updated travel times
+            #    (recalculates edge volumes)
+            new_edge_volumes = self._vmap_get_volumes_shortest_path()(
+                _sources, _destinations, edge_travel_times, params
+            ).sum(axis=0)
 
-        # 2. Find the shortest paths using updated travel times
-        #    (recalculates edge volumes)
+            # 3. Check for convergence by comparing volume changes
+            volume_changes = jnp.abs(edge_volumes - new_edge_volumes)
+            max_volume_change = jnp.max(volume_changes)
 
-        # 3. Check for convergence by comparing volume changes
+            if max_volume_change < params.traffic_assignment_convergence_threshold:
+                break
 
-        return 0.0
-    
+            # 4. Update edge volumes
+            edge_volumes = (
+                params.traffic_assignment_update_weight * new_edge_volumes
+                + (1 - params.traffic_assignment_update_weight) * edge_volumes
+            )
+
+        # 5. Calculate total travel time
+        return jnp.sum(edge_travel_times * edge_volumes)
+
     def _get_next_belief(
-            self, belief: jnp.array, obs: int, action: int, params: EnvParams
+        self, belief: jnp.array, obs: int, action: int, params: EnvParams
     ) -> jnp.array:
         next_belief = params.deterioration_table[action].T @ belief
         state_probs = params.observation_table[action][:, obs]
-        next_belief = state_probs*next_belief
+        next_belief = state_probs * next_belief
         next_belief /= next_belief.sum()
         return next_belief
-    
+
     def _vmap_get_next_belief(self):
         return vmap(self._get_next_belief, in_axes=(0, 0, 0, None))
 
@@ -198,8 +415,8 @@ class RoadEnvironment(environment.Environment):
         base_travel_time = params.btt_table[action, state.damage_state]
         capacity = params.capacity_table[action, state.damage_state]
 
-        # TODO: traffic assignment (returning 0.0 for now)
-        total_travel_time = self._get_total_travel_time(state, action, params)
+        total_travel_time = self._get_total_travel_time(state, params)
+        # total_travel_time = 0.0
         travel_time_reward = params.travel_time_reward_factor * total_travel_time
 
         # reward
@@ -229,22 +446,11 @@ class RoadEnvironment(environment.Environment):
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
-        damage_state = [ # TODO: what is this exactly?
-            {"0": [0, 1]},
-            {"1": [0, 3, 0]},
-            {"2": [1, 1, 2]},
-            {"3": [3, 1, 2]},
-        ]
-
-        # flatten pytree and convert to jnp.array
-        damage_state = jnp.array(
-            jax.tree_util.tree_leaves(damage_state), dtype=jnp.uint8
-        )
+        # initial damage state
+        damage_state = jnp.zeros(params.total_num_segments, dtype=jnp.uint8)
 
         # initial belief
-        belief = jnp.array(
-            [params.initial_belief]*params.total_num_segments
-        )
+        belief = jnp.array([params.initial_belief] * params.total_num_segments)
 
         # initial base travel times (using pytree)
         initial_btt = jnp.ones(params.total_num_segments) * params.btt_table[0, 0]
@@ -264,36 +470,34 @@ class RoadEnvironment(environment.Environment):
 
         return self.get_obs(env_state), env_state
 
-    def _to_pytree(self, x: jnp.array):
-        # example pytree
-        py_tree = [ # TODO: what is this exactly?
-            {"0": np.array([0, 1], dtype=np.uint8)},
-            {"1": np.array([0, 3, 0], dtype=np.uint8)},
-            {"2": np.array([1, 1, 2], dtype=np.uint8)},
-            {"3": np.array([3, 1, 2], dtype=np.uint8)},
-        ]
-
-        # flatten pytree
-        _, treedef = tree_flatten(py_tree)
-
-        # put x into pytree
-        py_tree = tree_unflatten(treedef, x.tolist())
-
-        return py_tree
-
     def _gather(self, x: jnp.array):
-        # map segment indices to edge indices
-        # and pad gathered values with 0.0
-        # to make get equal number of columns
-        # TODO: precompute idxs_map
+        """
+        Gather the properties (example: base travel time) of all
+        segments belonging to an edge.
 
-        # map of segment indices to segment ids
-        idxs_map = jnp.array( # TODO: what is this exactly?
+        We gather the properties using idxs_map to map segment indices
+        to edge indices. We pad the gathered values with 0.0 to make get
+        equal number of columns using jnp.take.
+
+        Parameters
+        ----------
+        x : jnp.array
+            Array of properties of all segments.
+            shape: (num_segments)
+
+        Returns
+        -------
+        x_gathered : jnp.array
+            Array of properties of all edges.
+            shape: (max_num_segments_per_edge, num_edges)
+        """
+
+        idxs_map = jnp.array(
             [
-                [100, 0, 1],
-                [2, 3, 4],
-                [5, 6, 7],
-                [8, 9, 10],
+                [0, 1],
+                [2, 3],
+                [4, 5],
+                [6, 7],
             ]
         )
 
@@ -330,7 +534,7 @@ if __name__ == "__main__":
     params = EnvParams()
     env = RoadEnvironment()
 
-    _action = [{"0": [0, 0]}, {"1": [0, 0, 0]}, {"2": [0, 0, 0]}, {"3": [0, 0, 0]}]
+    _action = [{"0": [0, 0]}, {"1": [0, 0]}, {"2": [0, 0]}, {"3": [0, 0]}]
     __action = jax.tree_util.tree_leaves(_action)
     action = jnp.array(__action, dtype=jnp.uint8)
 
@@ -350,9 +554,11 @@ if __name__ == "__main__":
         obs, reward, done, info, state = env.step_env(subkeys, state, action, params)
 
         # generate keys for next timestep
+        # keys for all segments
         keys = jax.random.split(
-            keys, params.total_num_segments * 2 # TODO: we actually only need (total_num_segments+1) keys since we can use the last one for new splits. Check if the current implementation take too long for large graphs and evantually change to this other implementation
-        )  # keys for all segments
+            keys,
+            params.total_num_segments + 1,
+        )
         subkeys = keys[: params.total_num_segments, :]  # subkeys for each segment
         keys = keys[params.total_num_segments, :]  # subkeys for each segment
 
@@ -360,41 +566,3 @@ if __name__ == "__main__":
         total_rewards += reward
 
     print(f"Total rewards: {total_rewards}")
-
-    ################ Speed test #################
-    # Check speed of step_env with and without jit
-    # run it to check if jit is working properly
-    # after making changes(takes ~30s)
-    # check speed to run 1000 steps
-    import timeit
-
-    number, repeat = 1000, 3
-
-    jit_step_env = jax.jit(env.step_env)
-
-    # TODO: I do not think that the following timeit test with jit is reliable 
-
-    # python documentation suggests using min
-    # step w/o jit (best of 3)
-    output_nj = min(
-        timeit.repeat(
-            "env.step_env(subkeys, state, action, params)",
-            number=number,
-            repeat=repeat,
-            globals=globals(),
-        )
-    )
-    print(f"Non-jit per step: {output_nj / number:.3e}s")
-
-    # step w/ jit (best of 3)
-    output_j = min(
-        timeit.repeat(
-            "jit_step_env(subkeys, state, action, params)",
-            number=number,
-            repeat=repeat,
-            globals=globals(),
-        )
-    )
-    print(f"Jit per step: {output_j / number:.3e}s")
-
-    print(f"Speedup: {output_nj / output_j:.2f}x")
