@@ -1,11 +1,11 @@
-import igraph as ig
-import pytest
 import time
+
+import igraph as ig
 import numpy as np
 import pytest
+from environments.config.environment_presets import small_environment_dict
 
-from environment import RoadEnvironment
-from environment_presets import small_environment_dict
+from environments.road_env import RoadEnvironment
 
 
 @pytest.fixture
@@ -82,19 +82,19 @@ def test_large_environment(large_environment):
     while not done:
         timestep += 1
         obs, cost, done, info = env.step(actions)
-        
+
     assert timestep == small_environment_dict["max_timesteps"]
 
 
 def test_timing(small_environment):
     "Test if the average time per trajectory is below the threshold"
     env = small_environment
-    
-    _ = env.reset()
-    actions = [[k,k] for k in range(len(env.edge_segments_numbers))]
 
-    MAX_TIME_PER_TRAJECTORY = 2 # seconds
-    timesteps_per_traj = small_environment_dict['max_timesteps']
+    _ = env.reset()
+    actions = [[k, k] for k in range(len(env.edge_segments_numbers))]
+
+    MAX_TIME_PER_TRAJECTORY = 2  # seconds
+    # timesteps_per_traj = small_environment_dict["max_timesteps"]
     repeats = 100
     store_timings = np.empty(repeats)
 
@@ -111,7 +111,8 @@ def test_timing(small_environment):
     # print(f'Average time taken per timestep: {store_timings.mean()/timesteps_per_traj:.2e} seconds')
 
     assert store_timings.mean() < MAX_TIME_PER_TRAJECTORY
-    
+
+
 def test_seed(small_environment):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
