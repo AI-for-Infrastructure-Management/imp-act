@@ -1,7 +1,8 @@
 import numpy as np
 
-from environment import RoadEnvironment
-from environment_presets import small_environment_dict
+from environments.config.environment_presets import small_environment_dict
+
+from environments.road_env import RoadEnvironment
 
 
 def main():
