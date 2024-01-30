@@ -1,0 +1,16 @@
+general:
+  max_timesteps: 50
+model:
+  deterioration:  "TODO"
+  observation:    "TODO"
+  reward:         "TODO"
+network:
+  graph:
+    type: "file"
+    path: "./countries/BE/graph.graphml"
+  trips:     
+    type: "file"
+    path: "./countries/BE/traffic.csv"
+  segments: 
+    type: "file"
+    path: "./countries/BE/segments.csv"

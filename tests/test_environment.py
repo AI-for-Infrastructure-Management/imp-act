@@ -30,6 +30,12 @@ def large_environment():
     return env
 
 
+@pytest.fixture
+def large_environment_path():
+    """Path to large environment file"""
+    return "environments/config/environment_presets/large_environment.yaml"
+
+
 def test_observation_keys(small_environment):
     """Test if the observation dictionary has the correct keys in reset and step functions."""
 
@@ -345,3 +351,12 @@ def test_seeding_function(small_environment):
     # Assert env is reproducible and seeding works effectively
     assert np.array_equal(reward_all, reward_same_all)
     assert not np.array_equal(reward_all, reward_different_all)
+
+
+from environments.config.environment_loader import EnvironmentLoader
+
+
+def test_large_environment_load(large_environment_path):
+    """Test if the large environment can be loaded from congig files"""
+    loader = EnvironmentLoader(large_environment_path)
+    loader.to_numpy()

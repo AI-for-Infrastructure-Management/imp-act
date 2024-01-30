@@ -235,7 +235,7 @@ class RoadEnvironment:
         trips,
         max_timesteps=50,
         graph=None,
-        seed=42,
+        seed=None,
     ):
         self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = max_timesteps
@@ -247,11 +247,12 @@ class RoadEnvironment:
         else:
             self.graph = graph
 
-        for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
-            edge["road_segments"] = RoadEdge(
-                number_of_segments=number_of_segments,
-                random_generator=self.random_generator,
-            )
+        if edge_segments_numbers is not None:
+            for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
+                edge["road_segments"] = RoadEdge(
+                    number_of_segments=number_of_segments,
+                    random_generator=self.random_generator,
+                )
 
         self.trips = trips
         self.traffic_assignment_max_iterations = 15
@@ -386,3 +387,26 @@ class RoadEnvironment:
             edge["road_segments"].random_generator = self.random_generator
             for segment in edge["road_segments"].segments:
                 segment.random_generator = self.random_generator
+
+    @staticmethod
+    def from_config(config):
+        graph = config.graph
+        trips_df = config.trips
+        trips = []
+        for index, row in trips_df.iterrows():
+            trips.append((row["origin"], row["destination"], row["volume"]))
+
+        max_timesteps = config.max_timesteps
+        env = RoadEnvironment(
+            num_vertices=None,
+            edges=None,
+            edge_segments_numbers=None,
+            trips=trips,
+            max_timesteps=max_timesteps,
+            graph=graph,
+        )
+
+        # segments_df = config.segments
+        # TODO: add segments to graph
+
+        return env
