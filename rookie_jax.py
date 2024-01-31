@@ -38,11 +38,6 @@ class RoadEnvironment(environment.Environment):
         Compute the idxs_map used to gather the properties of all
         segments belonging to an edge.
 
-        Parameters
-        ----------
-        params : EnvParams
-            Environment parameters
-
         Returns
         -------
         idxs_map : jnp.array
@@ -68,22 +63,6 @@ class RoadEnvironment(environment.Environment):
         """
         Abstract method to get the next state/observation given the
         current state, action, and transition/observation table.
-
-        Parameters
-        ----------
-        key : chex.PRNGKey
-            Random key
-        dam_state : int
-            Damage state of the segment
-        action : int
-            Action taken
-        table : jnp.array
-            Transition/observation table
-
-        Returns
-        -------
-        int
-            Next state/observation
         """
         # sample
         next_dam_state = jax.random.choice(
@@ -93,47 +72,14 @@ class RoadEnvironment(environment.Environment):
         return next_dam_state
 
     def _vmap_get_next(self):
-        """
-        Vectorized version of _get_next. To compute next
-        state/observation for all segments.
-
-        Returns
-        -------
-        function
-            Vectorized version of _get_next
-        """
         return vmap(self._get_next, in_axes=(0, 0, 0, None))
 
     def _get_maintenance_reward(
         self, dam_state: int, action: int, rewards_table: jnp.array
     ) -> float:
-        """
-        Parameters
-        ----------
-        dam_state : int
-            Damage state of the segment
-        action : int
-            Action taken
-
-        Returns
-        -------
-        float
-            Maintenance reward
-        """
-
         return rewards_table[action, dam_state]
 
     def _vmap_get_maintenance_reward(self):
-        """
-        Vectorized version of _get_maintenance_reward. To compute
-        maintenance reward for all segments.
-
-        Returns
-        -------
-        function
-            Vectorized version of _get_maintenance_reward
-        """
-
         return vmap(self._get_maintenance_reward, in_axes=(0, 0, None))
 
     def compute_edge_travel_time(
@@ -157,21 +103,17 @@ class RoadEnvironment(environment.Environment):
 
         Parameters
         ----------
-        state : EnvState
-            Environment state
+        state : Environment state
 
-        edge_volumes : jnp.array
-            Vector of volumes of each edge in the graph.
-            shape: (num_edges)
+        edge_volumes : Vector of volumes of each edge
+                       shape: (num_edges)
 
-        params : EnvParams
-            Environment parameters
+        params : Environment parameters
 
         Returns
         -------
-        edge_travel_times : jnp.array
-            Vector of travel times of each edge in the graph.
-            shape: (num_edges, 1)
+        edge_travel_times : Vector of travel times of each edge
+                            shape: (num_edges, 1)
         """
 
         # gather base travel time and capacity of each edge
@@ -189,29 +131,27 @@ class RoadEnvironment(environment.Environment):
         # calculate travel time on each edge
         return btt_factor + capacity_factor * edge_volumes**params.traffic_beta
 
-    def _get_weight_matrix(self, weights, edges, destination):
+    def _get_weight_matrix(
+        self, weights: jnp.array, edges: jnp.array, destination: int
+    ):
         """
         Get the weight matrix for the shortest path algorithm from all
         nodes to the given destination node.
 
         Parameters
         -------
-        weights: jnp.array
-            Vector of weights (example: travel time) for each edge
+        weights: Vector of weights (example: travel time) for each edge
 
-        num_nodes: int
-            Number of nodes in the graph
+        num_nodes: Number of nodes in the graph
 
-        edges: jnp.array
-            Vector of tuples (example: [(0, 1), (1,3)]) representing the
+        edges: Vector of tuples (example: [(0, 1), (1,3)]) representing the
             nodes of each edge.
 
-        destination: int
-            Destination node
+        destination: Destination node
 
         Returns
         -------
-        weights_matrix: jnp.array
+        weights_matrix:
             Matrix of weights (example: travel time) between each pair
             of nodes. The weights_matrix[i,j] is the weight of the edge
             from node i to node j. If there is no edge between node i and
@@ -231,27 +171,24 @@ class RoadEnvironment(environment.Environment):
 
         return weights_matrix
 
-    def _get_cost_to_go(self, weights_matrix, max_iter):
+    def _get_cost_to_go(self, weights_matrix: jnp.array, max_iter: int):
         """
         Get the cost-to-go from all nodes to the given destination node.
 
         Parameters
         ----------
-        weights_matrix : jnp.array
+        weights_matrix :
             Matrix of weights (example: travel time) between each pair
             of nodes. The weights_matrix[i,j] is the weight of the edge
             from node i to node j. If there is no edge between node i and
             node j, then weights_matrix[i,j] = jnp.inf
 
-        num_nodes : int
-            Number of nodes in the graph
-        max_iter : int
-            Maximum number of iterations for the while loop
+        num_nodes : Number of nodes in the graph
+        max_iter : Maximum number of iterations for the while loop
 
         Returns
         -------
-        J : jnp.array
-            Vector of cost-to-go from all nodes to the given destination
+        J : Vector of cost-to-go from all nodes to the given destination
             node. J[i] is the cost from node i to the destination node.
         """
 
@@ -274,7 +211,14 @@ class RoadEnvironment(environment.Environment):
 
         return jax.lax.while_loop(cond_fun, body_fun, init_val=(0, J, False))[1]
 
-    def _get_volumes(self, source, destination, weights_matrix, J, params):
+    def _get_volumes(
+        self,
+        source: int,
+        destination: int,
+        weights_matrix: jnp.array,
+        J: jnp.array,
+        params: EnvParams,
+    ):
         """
         Get a vector containing the volume of each edge in the shortest
         path from the given source to the given destination.
@@ -283,11 +227,9 @@ class RoadEnvironment(environment.Environment):
 
         Parameters
         ----------
-        source : int
-            Source node
+        source : Source node
 
-        destination : int
-            Destination node
+        destination : Destination node
 
         weights_matrix : jnp.array
             Matrix of weights (example: travel time) between each pair
@@ -295,12 +237,10 @@ class RoadEnvironment(environment.Environment):
             from node i to node j. If there is no edge between node i and
             node j, then weights_matrix[i,j] = jnp.inf
 
-        J : jnp.array
-            Vector of cost-to-go from all nodes to the given destination
+        J : Vector of cost-to-go from all nodes to the given destination
             node. J[i] is the cost from node i to the destination node.
 
-        params : EnvParams
-            Environment parameters
+        params : Environment parameters
 
         """
         edges = params.edges
@@ -332,7 +272,9 @@ class RoadEnvironment(environment.Environment):
             cond_fun, body_fun, init_val=(0, source, volumes, True)
         )[2]
 
-    def _get_volumes_shortest_path(self, source, destination, weights, params):
+    def _get_volumes_shortest_path(
+        self, source: int, destination: int, weights: jnp.array, params: EnvParams
+    ):
         """
         Compute the volumes of each edge in the shortest path from the
         given source to the given destination.
@@ -341,22 +283,19 @@ class RoadEnvironment(environment.Environment):
 
         Parameters
         ----------
-        source : int
-            source node
-        destination : int
-            destination node
-        weights : jnp.array
-            Vector of weights (example: travel time) for each edge in the
-            graph.
-        params : EnvParams
-            Environment parameters
+        source : source node
+
+        destination : destination node
+
+        weights : Vector of weights (example: travel time) for each edge
+
+        params : Environment parameters
 
         Returns
         -------
-        volumes : jnp.array
-            Vector of volumes of each edge in the shortest path from the
-            given source to the given destination.
-            shape: (num_edges,)
+        volumes : Vector of volumes of each edge in the shortest path
+                  from the given source to the given destination.
+                  shape: (num_edges,)
         """
 
         edges = params.edges
@@ -411,25 +350,7 @@ class RoadEnvironment(environment.Environment):
         return edge_volumes
 
     def _get_total_travel_time(self, state, params):
-        """
-        Get the total travel time of all cars in the graph.
-
-        Parameters
-        ----------
-        state : EnvState
-            Environment state
-
-        params : EnvParams
-            Environment parameters
-
-        Returns
-        -------
-        total_travel_time : float
-            Total travel time of all cars in the graph.
-        """
-
-        # 0.1 get initial edge volumes
-        edge_volumes = self._get_initial_volumes(params)
+        """Get the total travel time of all cars in the network."""
 
         # repeat until convergence
         def body_fun(val):
@@ -474,28 +395,7 @@ class RoadEnvironment(environment.Environment):
     def _get_next_belief(
         self, belief: jnp.array, obs: int, action: int, params: EnvParams
     ) -> jnp.array:
-        """
-        Compute the next belief given the current belief, observation,
-        and action.
-
-        Parameters
-        ----------
-        belief : jnp.array
-            Current belief
-            shape: (num_dam_states)
-
-        obs : int
-            Observation
-
-        action : int
-            Action taken
-
-        Returns
-        -------
-        next_belief : jnp.array
-            Next belief
-            shape: (num_dam_states)
-        """
+        """Update belief for a single segment."""
 
         next_belief = params.deterioration_table[action].T @ belief
         state_probs = params.observation_table[action][:, obs]
@@ -504,51 +404,12 @@ class RoadEnvironment(environment.Environment):
         return next_belief
 
     def _vmap_get_next_belief(self):
-        """
-        Vectorized version of _get_next_belief. To compute next belief
-        for all segments.
-
-        Returns
-        -------
-        function
-            Vectorized version of _get_next_belief
-        """
         return vmap(self._get_next_belief, in_axes=(0, 0, 0, None))
 
     def step_env(
         self, keys: chex.PRNGKey, state: EnvState, action: jnp.array, params: EnvParams
     ) -> Tuple[chex.Array, list, float, bool, dict]:
-        """
-        Move the environment one timestep forward.
-
-        Parameters
-        ----------
-        keys : chex.PRNGKey
-            Random key
-
-        state : EnvState
-            Environment state
-
-        action : jnp.array
-            Action taken
-
-        params : EnvParams
-            Environment parameters
-
-        Returns
-        -------
-        obs : jnp.Array
-            Observation
-
-        reward : float
-            Reward
-
-        done : bool
-            Boolean indicating if the episode has ended
-
-        info : dict
-            Information about the environment at the current timestep
-        """
+        """Move the environment one timestep forward."""
 
         # next state
         next_state = self._vmap_get_next()(
@@ -600,15 +461,6 @@ class RoadEnvironment(environment.Environment):
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
-        """
-        Reset the environment to the initial state.
-
-        Returns
-        -------
-        obs : jnp.Array
-            Observation
-        """
-
         # initial damage state
         damage_state = jnp.zeros(params.total_num_segments, dtype=jnp.uint8)
 
