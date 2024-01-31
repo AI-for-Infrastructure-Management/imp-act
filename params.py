@@ -10,7 +10,7 @@ class EnvParams:
     discount_factor: float = 1.0
 
     # Reward parameters
-    travel_time_reward_factor: float = -0.1
+    travel_time_reward_factor: float = -0.01
 
     # Graph parameters
     num_vertices: int = 4
@@ -41,7 +41,7 @@ class EnvParams:
                 [1.50, 1.50, 1.50, 1.50],
             ]
         )
-        * 150.0
+        * 50.0
     )
 
     capacity_table: jnp.array = (

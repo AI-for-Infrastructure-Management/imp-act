@@ -77,7 +77,7 @@ class RoadEnvironment(environment.Environment):
     def _get_maintenance_reward(
         self, dam_state: int, action: int, rewards_table: jnp.array
     ) -> float:
-        return rewards_table[action, dam_state]
+        return rewards_table[dam_state, action]
 
     def _vmap_get_maintenance_reward(self):
         return vmap(self._get_maintenance_reward, in_axes=(0, 0, None))
@@ -408,8 +408,9 @@ class RoadEnvironment(environment.Environment):
         capacity = params.capacity_table[action, state.damage_state]
 
         total_travel_time = self._get_total_travel_time(state, params)
-        # total_travel_time = 0.0
-        travel_time_reward = params.travel_time_reward_factor * total_travel_time
+        travel_time_reward = params.travel_time_reward_factor * (
+            total_travel_time - self.total_base_travel_time
+        )
 
         # reward
         reward = maintenance_reward + travel_time_reward
@@ -444,7 +445,7 @@ class RoadEnvironment(environment.Environment):
         # initial belief
         belief = jnp.array([params.initial_belief] * params.total_num_segments)
 
-        # initial base travel times (using pytree)
+        # initial base travel times
         initial_btt = jnp.ones(params.total_num_segments) * params.btt_table[0, 0]
         # initial capacity
         initial_capacity = (
@@ -459,6 +460,10 @@ class RoadEnvironment(environment.Environment):
             capacity=initial_capacity,
             timestep=0,
         )
+
+        # compute total base travel time in the initial state
+        # (baseline for travel time reward)
+        self.total_base_travel_time = self._get_total_travel_time(env_state, params)
 
         return self.get_obs(env_state), env_state
 
@@ -534,7 +539,7 @@ if __name__ == "__main__":
     total_rewards = 0.0
 
     # rollout
-    for _ in range(100):
+    for _ in range(params.max_timesteps):
         # step
         # obs, reward, done, info, state = env.step_env(subkeys, state, action, params)
         obs, reward, done, info, state = jit_step_env(subkeys, state, action, params)
