@@ -19,6 +19,7 @@ class EnvParams:
     edge_segments_numbers: jnp.array = jnp.array([2, 2, 2, 2])
     total_num_segments: int = 8
 
+    shortest_path_max_iterations: int = 500
     traffic_assignment_max_iterations: int = 15
     traffic_assignment_convergence_threshold: float = 0.01
     traffic_assignment_update_weight: float = 0.5

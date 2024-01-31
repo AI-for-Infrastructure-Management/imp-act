@@ -246,7 +246,10 @@ class RoadEnvironment(environment.Environment):
         edges = params.edges
         trips = params.trips
         num_edges = len(edges)
-        volumes = jnp.full((num_edges,), 0)
+        # this need to be float32 since we multiply by
+        # params.traffic_assignment_update_weight (float) in the traffic
+        # assignment loop
+        volumes = jnp.full((num_edges,), 0.0)
 
         def body_fun(val):
             step, current_node, volumes, _ = val
@@ -301,56 +304,30 @@ class RoadEnvironment(environment.Environment):
         edges = params.edges
 
         weight_matrix = self._get_weight_matrix(weights, edges, destination)
-        cost_to_go = self._get_cost_to_go(weight_matrix, max_iter=500)
+        cost_to_go = self._get_cost_to_go(
+            weight_matrix, max_iter=params.shortest_path_max_iterations
+        )
         volumes = self._get_volumes(
             source, destination, weight_matrix, cost_to_go, params
         )
         return volumes
 
     def _vmap_get_volumes_shortest_path(self):
-        """
-        Vectorized version of _get_volumes_shortest_path. To compute
-        volumes of each edge in the shortest path from the given source
-        to the given destination for all sources and destinations.
-
-        Returns
-        -------
-        function
-            Vectorized version of _get_volumes_shortest_path
-        """
-
         return vmap(self._get_volumes_shortest_path, in_axes=(0, 0, None, None))
-
-    def _get_initial_volumes(self, params):
-        """
-        Get the initial volumes of each edge in the graph with
-        all-or-nothing assignment. @cached_property is used to ensure
-        that this function is only run the first time. Subsequent calls
-        will return the cached result.
-
-        Parameters
-        ----------
-        params : EnvParams
-            Environment parameters
-
-        Returns
-        -------
-        initial_volumes : jnp.array
-            Vector of initial volumes of each edge in the graph.
-            shape: (num_edges,)
-        """
-
-        # TODO: what if there are no direct paths from source to destination?
-        num_edges = len(params.edges)
-        edge_volumes = jnp.full((num_edges,), 0)
-        for k, (i, j) in enumerate(params.edges):
-            num_cars = params.trips[i, j]
-            edge_volumes = edge_volumes.at[k].set(num_cars)
-
-        return edge_volumes
 
     def _get_total_travel_time(self, state, params):
         """Get the total travel time of all cars in the network."""
+
+        # 0.1 Initialize volumes
+        edge_volumes = jnp.full((len(params.edges)), 0)
+
+        # 0.2 Calculate initial travel times
+        edge_travel_times = self.compute_edge_travel_time(state, edge_volumes, params)
+
+        # 0.3 Find the shortest paths using all-or-nothing assignment
+        edge_volumes = self._vmap_get_volumes_shortest_path()(
+            self.trip_sources, self.trip_destinations, edge_travel_times, params
+        ).sum(axis=0)
 
         # repeat until convergence
         def body_fun(val):
