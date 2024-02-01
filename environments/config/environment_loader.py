@@ -21,8 +21,13 @@ class EnvironmentLoader:
 
         self.config = self._check_params(config)
 
+        # load general
+        self.general = config["general"]
+        self.max_timesteps = self.general["max_timesteps"]
+
         # load network
         network_config = config["network"]
+        self.network = network_config
 
         # load graph
         graph_config = network_config["graph"]
@@ -41,6 +46,10 @@ class EnvironmentLoader:
         if trips_config["type"] == "file":
             path = Path(trips_config["path"])
             self.trips = pd.read_csv(path)
+            # ensure that origin, destination are integers
+            self.trips["origin"] = self.trips["origin"].astype(int)
+            self.trips["destination"] = self.trips["destination"].astype(int)
+            
         elif trips_config["type"] in ["dict", "random"]:
             raise NotImplementedError(
                 f"Trips type {trips_config['type']} has not implemented yet"
@@ -53,6 +62,11 @@ class EnvironmentLoader:
         if segments_config["type"] == "file":
             path = Path(segments_config["path"])
             self.segments = pd.read_csv(path)
+            # group segments by origin, destination
+            segments = {}
+            for group, df in self.segments.groupby(["Network_Node_A_ID", "Network_Node_B_ID"]):
+                segments[group] = df.to_dict("records")
+            self.segments = segments
         elif segments_config["type"] in ["dict", "random"]:
             raise NotImplementedError(
                 f"Segments type {segments_config['type']} has not implemented yet"

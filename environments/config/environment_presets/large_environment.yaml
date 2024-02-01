@@ -5,12 +5,6 @@ model:
   observation:    "TODO"
   reward:         "TODO"
 network:
-  graph:
-    type: "file"
-    path: "./countries/BE/graph.graphml"
-  trips:     
-    type: "file"
-    path: "./countries/BE/traffic.csv"
-  segments: 
-    type: "file"
-    path: "./countries/BE/segments.csv"
+  include:
+    path: "./countries/BE/network.yaml"
+  
