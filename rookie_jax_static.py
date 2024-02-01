@@ -210,7 +210,6 @@ class RoadEnvironment(environment.Environment):
             i, j = edge  # node indices
             # undirected graph, so we need to set both directions
             weights_matrix = weights_matrix.at[i, j].set(w)
-            weights_matrix = weights_matrix.at[j, i].set(w)
 
         return weights_matrix
 

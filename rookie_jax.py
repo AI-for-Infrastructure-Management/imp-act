@@ -167,7 +167,6 @@ class RoadEnvironment(environment.Environment):
             i, j = edge  # node indices
             # undirected graph, so we need to set both directions
             weights_matrix = weights_matrix.at[i, j].set(w)
-            weights_matrix = weights_matrix.at[j, i].set(w)
 
         return weights_matrix
 
@@ -522,7 +521,7 @@ if __name__ == "__main__":
     params = EnvParams()
     env = RoadEnvironment(params)
 
-    _action = [{"0": [0, 0]}, {"1": [0, 0]}, {"2": [0, 0]}, {"3": [0, 0]}]
+    _action = [{f"{i}": [0]*int(n_segment)} for i, n_segment in enumerate(params.edge_segments_numbers)]
     __action = jax.tree_util.tree_leaves(_action)
     action = jnp.array(__action, dtype=jnp.uint8)
 
