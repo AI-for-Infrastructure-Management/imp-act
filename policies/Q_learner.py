@@ -1,5 +1,6 @@
-import numpy as np
 import random
+
+import numpy as np
 
 
 class Q_learner:
@@ -66,12 +67,12 @@ class Q_learner:
 
             # update learning rate
             self.lr = max(self.lr_end, self.lr - self.lr_decay)
-            
+
             # update total reward
             total_reward += reward
 
         if verbose:
-            print(f'Episode {self.episode} | Total reward: {total_reward}')
+            print(f"Episode {self.episode} | Total reward: {total_reward}")
 
     def train(self, verbose=False):
         for episode in range(self.num_episodes):
