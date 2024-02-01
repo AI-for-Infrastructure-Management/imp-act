@@ -15,25 +15,15 @@ def small_environment():
     env = RoadEnvironment(**small_environment_dict)
     return env
 
-
-@pytest.fixture
-def large_environment():
-    """Create a large environment for testing."""
-    graph = ig.Graph.Read_GraphML("germany.graphml")
-
-    edge_segments_numbers = [2 for _ in range(len(graph.es))]
-    trips = [(a, b, 200) for a, b in graph.get_edgelist()]
-    env = RoadEnvironment(
-        None, None, edge_segments_numbers, trips, max_timesteps=50, graph=graph
-    )
-
-    return env
-
-
 @pytest.fixture
 def large_environment_path():
     """Path to large environment file"""
     return "environments/config/environment_presets/large_environment.yaml"
+
+@pytest.fixture
+def large_environment(large_environment_path):
+    loader = EnvironmentLoader(large_environment_path)
+    return loader.to_numpy()
 
 
 def test_observation_keys(small_environment):
@@ -75,13 +65,15 @@ def test_one_episode(small_environment):
     assert timestep == env.max_timesteps
 
 
-@pytest.mark.skip(reason="Takes too long")
+#@pytest.mark.skip(reason="Takes too long")
 def test_large_environment(large_environment):
     """Test if the large environment can run one episode."""
     env = large_environment
 
+    start_time = time.time()
+
     obs = env.reset()
-    actions = [[1, 1] for _ in range(len(env.edge_segments_numbers))]
+    actions = [[1]*len(e) for e in obs["edge_observations"]]
     timestep = 0
     done = False
 
@@ -91,6 +83,9 @@ def test_large_environment(large_environment):
 
     assert timestep == small_environment_dict["max_timesteps"]
 
+    print(f"\nLarge ENV one episode time taken: {time.time() - start_time:.2} seconds")
+    print(f"Nodes: {len(env.graph.vs)}, Edges: {len(env.graph.es)}, Timesteps: {timestep}, Trips: {len(env.trips)}")
+    print(f"Test Result: ", end="")
 
 def test_timing(small_environment):
     "Test if the average time per trajectory is below the threshold"
