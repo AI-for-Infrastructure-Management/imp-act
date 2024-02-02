@@ -298,7 +298,7 @@ def export_country(args):
 
 
 
-    truck_traffic_df_filtered = truck_traffic_df[~truck_traffic_df['remove']]
+    truck_traffic_df_filtered = truck_traffic_df[~truck_traffic_df['remove']].copy()
 
     print(f'Number of trips edges in graph: {len(truck_traffic_df_filtered)} / {len(truck_traffic_df)}')
 
@@ -328,7 +328,7 @@ def export_country(args):
     #change datatype of [origin_node	destination_node	origin_node_reduced	destination_node_reduced] to int
     change = ['origin_node', 'destination_node', 'origin_node_reduced', 'destination_node_reduced']
     for column in change:
-        truck_traffic_df_filtered[column] = truck_traffic_df_filtered[column].astype(int)
+        truck_traffic_df_filtered.loc[:, column] = truck_traffic_df_filtered[column].astype(int)
 
     #drop columns
     drop = ['remove', 'completly_in_graph', 'Edge_path_E_road', 'Distance_from_origin_region_to_E_road', 'Distance_within_E_road', 'Distance_from_E_road_to_destination_region', 'Total_distance']
@@ -337,7 +337,7 @@ def export_country(args):
     # sort origin_node_reduced and destination_node_reduced by id (The order of origin destination are irrelevant for the traffic assignment. So this reduces the number of duplicates)
     for index, row in truck_traffic_df_filtered.iterrows():
         if row['origin_node_reduced'] > row['destination_node_reduced']:
-            truck_traffic_df_filtered.loc[index, 'origin_node_reduced'], truck_traffic_df_filtered.loc[index, 'destination_node_reduced'] = row['destination_node_reduced'], row['origin_node_reduced']
+            truck_traffic_df_filtered.loc[index, ['origin_node_reduced', 'destination_node_reduced']] = row['destination_node_reduced'], row['origin_node_reduced']
 
 
     # aggregate duplicates (same origin and destination) by adding up the volume
