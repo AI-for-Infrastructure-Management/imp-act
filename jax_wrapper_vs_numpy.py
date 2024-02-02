@@ -1,10 +1,11 @@
 import time
-import jax
 
-from jax import numpy as jnp 
+import jax
 
 from environment import RoadEnvironment as NumPyRoadEnvironment
 from environment_presets import small_environment_dict
+
+from jax import numpy as jnp
 
 from jax_env_wrapper import JaxRoadEnvironmentWrapper
 from params import EnvParams
@@ -12,6 +13,7 @@ from params import EnvParams
 
 def do_nothing_policy_numpy(env):
     return [[0] * segments for segments in env.edge_segments_numbers]
+
 
 def do_nothing_policy_jax(env):
     _action = [{"0": [0, 0]}, {"1": [0, 0]}, {"2": [0, 0]}, {"3": [0, 0]}]
@@ -31,11 +33,11 @@ def rollout(env, actions):
 
     return total_reward
 
+
 if __name__ == "__main__":
     experiments = [1, 10, 100, 1_000, 10_000]
 
     store_returns_for = experiments[-1]
-
 
     ################### NUMPY ###################
     np_env = NumPyRoadEnvironment(**small_environment_dict)
@@ -78,7 +80,6 @@ if __name__ == "__main__":
 
         jax_timings.append(end - start)
 
-    
     # Print results
     print(f"NumPy timings: {numpy_timings}")
     print(f"Jax timings: {jax_timings}")
@@ -89,8 +90,8 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 2)
 
     # Timing
-    ax[0].plot(experiments, numpy_timings, '.-', label="NumPy")
-    ax[0].plot(experiments, jax_timings, '.-', label="Jax")
+    ax[0].plot(experiments, numpy_timings, ".-", label="NumPy")
+    ax[0].plot(experiments, jax_timings, ".-", label="Jax")
 
     ax[0].set_xlabel("Number of episodes")
     ax[0].set_ylabel("Time (s)")

@@ -1,14 +1,14 @@
-from typing import Optional, Tuple
+from functools import partial
+from typing import Tuple
 
 import chex
 import jax
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 from flax import struct
 from gymnax.environments import environment, spaces
 from jax import vmap
 from params import EnvParams
-from functools import partial
 
 
 @struct.dataclass
@@ -124,9 +124,7 @@ class RoadEnvironment(environment.Environment):
         return rewards_table[dam_state, action]
 
     @partial(jax.jit, static_argnums=0)
-    def compute_edge_travel_time(
-        self, state: EnvState, edge_volumes: jnp.array
-    ):
+    def compute_edge_travel_time(self, state: EnvState, edge_volumes: jnp.array):
         """
         Compute the travel time of each edge given the current volumes
         of each edge.
@@ -352,9 +350,7 @@ class RoadEnvironment(environment.Environment):
         cost_to_go = self._get_cost_to_go(
             weight_matrix, max_iter=self.shortest_path_max_iterations
         )
-        volumes = self._get_volumes(
-            source, destination, weight_matrix, cost_to_go
-        )
+        volumes = self._get_volumes(source, destination, weight_matrix, cost_to_go)
         return volumes
 
     @partial(jax.jit, static_argnums=0)
@@ -377,9 +373,7 @@ class RoadEnvironment(environment.Environment):
             edge_volumes, _ = val
 
             # 1. Recalculate travel times with current volumes
-            edge_travel_times = self.compute_edge_travel_time(
-                state, edge_volumes
-            )
+            edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
 
             # 2. Find the shortest paths using updated travel times
             #    (recalculates edge volumes)
@@ -413,9 +407,7 @@ class RoadEnvironment(environment.Environment):
         return jnp.sum(edge_travel_times * edge_volumes)
 
     @partial(vmap, in_axes=(None, 0, 0, 0))
-    def _get_next_belief(
-        self, belief: jnp.array, obs: int, action: int
-    ) -> jnp.array:
+    def _get_next_belief(self, belief: jnp.array, obs: int, action: int) -> jnp.array:
         """Update belief for a single segment."""
 
         next_belief = self.deterioration_table[action].T @ belief
@@ -426,7 +418,10 @@ class RoadEnvironment(environment.Environment):
 
     @partial(jax.jit, static_argnums=0)
     def step_env(
-        self, keys: chex.PRNGKey, state: EnvState, action: jnp.array,
+        self,
+        keys: chex.PRNGKey,
+        state: EnvState,
+        action: jnp.array,
     ) -> Tuple[chex.Array, list, float, bool, dict]:
         """Move the environment one timestep forward."""
 

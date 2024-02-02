@@ -521,7 +521,10 @@ if __name__ == "__main__":
     params = EnvParams()
     env = RoadEnvironment(params)
 
-    _action = [{f"{i}": [0]*int(n_segment)} for i, n_segment in enumerate(params.edge_segments_numbers)]
+    _action = [
+        {f"{i}": [0] * int(n_segment)}
+        for i, n_segment in enumerate(params.edge_segments_numbers)
+    ]
     __action = jax.tree_util.tree_leaves(_action)
     action = jnp.array(__action, dtype=jnp.uint8)
 

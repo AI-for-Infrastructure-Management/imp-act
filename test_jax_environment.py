@@ -1,17 +1,15 @@
-import pytest
+import jax
+import jax.numpy as jnp
 import numpy as np
 import pytest
 
-import jax
-from igraph import Graph
-import jax.numpy as jnp
-from flax import struct
-
 from environment import RoadEnvironment
 from environment_presets import small_environment_dict
+from flax import struct
+from igraph import Graph
+from params import EnvParams
 
 from rookie_jax import RoadEnvironment as JAXRoadEnvironment
-from params import EnvParams
 
 
 @pytest.fixture
@@ -91,4 +89,3 @@ def test_shortest_path_computation():
     cost_2 = jax_env._get_cost_to_go(weights_matrix, 100)[source]
 
     assert cost_1 == cost_2
-

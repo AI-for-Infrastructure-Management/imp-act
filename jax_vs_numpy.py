@@ -1,14 +1,14 @@
 import time
-
-from environment import RoadEnvironment as NumPyRoadEnvironment
-from environment_presets import small_environment_dict
-
-from rookie_jax_static import RoadEnvironment as JaxRoadEnvironmentStatic
+from functools import partial
 
 import jax
 import jax.numpy as jnp
+
+from environment import RoadEnvironment as NumPyRoadEnvironment
+from environment_presets import small_environment_dict
 from params import EnvParams
-from functools import partial
+
+from rookie_jax_static import RoadEnvironment as JaxRoadEnvironmentStatic
 
 
 def do_nothing_policy(env, obs):
@@ -29,6 +29,7 @@ def numpy_rollout(env, policy):
         total_reward += reward
 
     return total_reward
+
 
 @partial(jax.jit, static_argnums=(1,))
 def split_key(key, num_segments):
@@ -93,10 +94,12 @@ if __name__ == "__main__":
             # rollout
             for _ in range(jax_env_static.max_timesteps):
                 # step
-                obs, reward, done, info, state = jax_env_static.step_env(step_keys, state, action)
+                obs, reward, done, info, state = jax_env_static.step_env(
+                    step_keys, state, action
+                )
 
-                step_keys, key = split_key(key, params.total_num_segments)  
-            
+                step_keys, key = split_key(key, params.total_num_segments)
+
                 total_reward += reward
 
             if NUM_EPISODES == store_returns_for:
@@ -116,8 +119,8 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 2)
 
     # Timing
-    ax[0].plot(experiments, numpy_timings, '.-', label="NumPy")
-    ax[0].plot(experiments, jax_static_timings, '.-', label="Jax")
+    ax[0].plot(experiments, numpy_timings, ".-", label="NumPy")
+    ax[0].plot(experiments, jax_static_timings, ".-", label="Jax")
 
     ax[0].set_xlabel("Number of episodes")
     ax[0].set_ylabel("Time (s)")
