@@ -49,7 +49,7 @@ class EnvironmentLoader:
             # ensure that origin, destination are integers
             self.trips["origin"] = self.trips["origin"].astype(int)
             self.trips["destination"] = self.trips["destination"].astype(int)
-            
+
         elif trips_config["type"] in ["dict", "random"]:
             raise NotImplementedError(
                 f"Trips type {trips_config['type']} has not implemented yet"
@@ -64,7 +64,9 @@ class EnvironmentLoader:
             self.segments = pd.read_csv(path)
             # group segments by origin, destination
             segments = {}
-            for group, df in self.segments.groupby(["Network_Node_A_ID", "Network_Node_B_ID"]):
+            for group, df in self.segments.groupby(
+                ["Network_Node_A_ID", "Network_Node_B_ID"]
+            ):
                 segments[group] = df.to_dict("records")
             self.segments = segments
         elif segments_config["type"] in ["dict", "random"]:
