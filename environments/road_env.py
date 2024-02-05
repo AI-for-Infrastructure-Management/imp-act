@@ -431,16 +431,24 @@ class RoadEnvironment:
             vertex_1_list = graph.vs.select(id_eq=trips_df["origin"][index])
             vertex_2_list = graph.vs.select(id_eq=trips_df["destination"][index])
             if (len(vertex_1_list) == 0) or (len(vertex_2_list) == 0):
-                print(f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}")
+                print(
+                    f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}"
+                )
                 missing_counter += 1
                 continue
             try:
                 trips.append(
-                    (vertex_1_list[0].index, vertex_2_list[0].index, trips_df["volume"][index])
+                    (
+                        vertex_1_list[0].index,
+                        vertex_2_list[0].index,
+                        trips_df["volume"][index],
+                    )
                 )
             except IndexError as e:
                 print(f"Error: {e}")
-                print(f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}")
+                print(
+                    f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}"
+                )
                 missing_counter += 1
         if missing_counter > 0:
             raise ValueError(f"Trips not in graph: {missing_counter}")
