@@ -198,8 +198,34 @@ def export_country(args):
     }
     nx.set_node_attributes(G_reduced_3, position_dict)
 
-    # print(G_reduced_3.nodes()[106886])
+    # Plotting the network
+    plot_network(
+        G_reduced_3,
+        pos_filtered,
+        f"Reduced Network for {args.country} (N: {len(G_reduced_3.nodes)}, E: {len(G_reduced_3.edges)})",
+        country_output_path,
+    )
 
+    # rename attribute "Distance" to "distance" and make sure it is a float
+    # drop attribute "original"
+    for edge in G_reduced_3.edges():
+        G_reduced_3.edges[edge]["distance"] = float(G_reduced_3.edges[edge]["Distance"])
+        del G_reduced_3.edges[edge]["Distance"]
+        del G_reduced_3.edges[edge]["original"]
+
+    # rename attribute "Network_Edge_ID" to "id" and make sure it is an int
+    # drop attribute "Manually_Added", "Traffic_flow_trucks_2019", "Traffic_flow_trucks_2030" from edge
+    for edge in G_reduced_3.edges():
+        G_reduced_3.edges[edge]["id"] = int(G_reduced_3.edges[edge]["Network_Edge_ID"])
+        del G_reduced_3.edges[edge]["Network_Edge_ID"]
+        if "Manually_Added" in G_reduced_3.edges[edge].keys():
+            del G_reduced_3.edges[edge]["Manually_Added"]
+        if "Traffic_flow_trucks_2019" in G_reduced_3.edges[edge].keys():
+            del G_reduced_3.edges[edge]["Traffic_flow_trucks_2019"]
+        if "Traffic_flow_trucks_2030" in G_reduced_3.edges[edge].keys():
+            del G_reduced_3.edges[edge]["Traffic_flow_trucks_2030"]
+
+    # Export graph to graphml
     nx.write_graphml_lxml(
         G_reduced_3, f"{country_output_path.absolute()}/graph.graphml"
     )
@@ -220,7 +246,7 @@ def export_country(args):
         node_a = G_reduced_3.nodes()[edge[0]]
         node_b = G_reduced_3.nodes()[edge[1]]
         no_segments = int(
-            np.ceil(G_reduced_3.edges[edge]["Distance"] / args.segment_length)
+            np.ceil(G_reduced_3.edges[edge]["distance"] / args.segment_length)
         )
 
         # linear interpolation of coordinates
@@ -255,6 +281,7 @@ def export_country(args):
 
     print(f"Total number of segments: {total_number_of_segments}")
 
+    # load NUTS-3 regions
     nuts_regions_df = pd.read_csv(os.path.join(args.data_dir, nuts_regions_file))
 
     # Filter so only regions which are in the graph or are part of the reduced edges are left
@@ -379,10 +406,6 @@ def export_country(args):
 
     truck_traffic_df_filtered = truck_traffic_df[~truck_traffic_df["remove"]].copy()
 
-    print(
-        f"Number of trips edges in graph: {len(truck_traffic_df_filtered)} / {len(truck_traffic_df)}"
-    )
-
     # Create reduced graph node lookup table
     new_edge_info_lookup = {}
     new_node_info_lookup = {}
@@ -418,10 +441,9 @@ def export_country(args):
         "origin_node_reduced",
         "destination_node_reduced",
     ]
-    for column in change:
-        truck_traffic_df_filtered.loc[:, column] = truck_traffic_df_filtered[
-            column
-        ].astype(int)
+    truck_traffic_df_filtered = truck_traffic_df_filtered.astype(
+        {column: int for column in change}
+    )
 
     # drop columns
     drop = [
@@ -492,6 +514,11 @@ def export_country(args):
         }
     )
 
+    # make sure origin and destination are integers
+    truck_traffic_df_filtered = truck_traffic_df_filtered.astype(
+        {"origin": int, "destination": int}
+    )
+
     # export to csv
     truck_traffic_df_filtered.to_csv(
         f"{country_output_path.absolute()}/traffic_full.csv", index=False
@@ -507,10 +534,33 @@ def export_country(args):
         columns={"Traffic_flow_trucks_2019": "volume"}
     )
 
+    print(f"Number of Trips: {len(truck_traffic_df_filtered)}")
+
     # export to csv
     truck_traffic_df_filtered.to_csv(
         f"{country_output_path.absolute()}/traffic.csv", index=False
     )
+
+    # create config file
+    config_dict = {
+        "graph": {"type": "file", "path": "./graph.graphml"},
+        "trips": {"type": "file", "path": "./traffic.csv"},
+        "segments": {"type": "file", "path": "./segments.csv"},
+    }
+
+    with open(f"{country_output_path.absolute()}/network.yaml", "w") as file:
+        yaml.dump(config_dict, file)
+
+    # save info file for the reduced graph
+    info = {
+        "nodes": len(G_reduced_3.nodes),
+        "edges": len(G_reduced_3.edges),
+        "segments": total_number_of_segments,
+        "trips": len(truck_traffic_df_filtered),
+    }
+
+    with open(f"{country_output_path.absolute()}/info.yaml", "w") as file:
+        yaml.dump(info, file)
 
 
 def main(args):

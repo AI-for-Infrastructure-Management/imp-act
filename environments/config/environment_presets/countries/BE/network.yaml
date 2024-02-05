@@ -1,9 +1,9 @@
 graph:
-  type: "file"
-  path: "./graph.graphml"
-trips:     
-  type: "file"
-  path: "./traffic.csv"
-segments: 
-  type: "file"
-  path: "./segments.csv"
+  path: ./graph.graphml
+  type: file
+segments:
+  path: ./segments.csv
+  type: file
+trips:
+  path: ./traffic.csv
+  type: file

@@ -62,7 +62,9 @@ class EnvironmentLoader:
             path = Path(trips_config["path"])
             self.trips = pd.read_csv(path)
             # ensure that origin, destination are integers
-            self.trips= self.trips.astype({"origin": int, "destination": int, "volume": float})
+            self.trips = self.trips.astype(
+                {"origin": int, "destination": int, "volume": float}
+            )
         elif trips_config["type"] == "list":
             self.trips = pd.DataFrame(trips_config["list"])
         else:
