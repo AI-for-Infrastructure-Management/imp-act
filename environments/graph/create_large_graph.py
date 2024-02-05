@@ -242,8 +242,8 @@ def export_country(args):
     segments_df = pd.DataFrame(
         segments,
         columns=[
-            "Network_Node_A_ID",
-            "Network_Node_B_ID",
+            "source",
+            "target",
             "position_x",
             "position_y",
             "capacity",
@@ -261,7 +261,7 @@ def export_country(args):
     nodes_in_graph = [
         row["Network_Node_ID"]
         for index, row in (
-            nodes_df[nodes_df["Network_Node_ID"].isin(G_reduced_2.nodes())]
+            nodes_df[nodes_df["Network_Node_ID"].isin(G_reduced_3.nodes())]
         ).iterrows()
     ]
     # add nodes which have been removed during reduction
@@ -274,7 +274,7 @@ def export_country(args):
     edges_in_graph = [
         row["Network_Edge_ID"]
         for index, row in (
-            edges_df[edges_df["Network_Edge_ID"].isin(G_reduced_2.edges())]
+            edges_df[edges_df["Network_Edge_ID"].isin(G_reduced_3.edges())]
         ).iterrows()
     ]
 
@@ -394,8 +394,9 @@ def export_country(args):
                 edge[ab] for ab in ["Network_Node_A_ID", "Network_Node_B_ID"]
             ]
 
-    nodes_in_reduced_graph = [node for node in G_reduced_2.nodes()]
+    nodes_in_reduced_graph = [node for node in G_reduced_3.nodes()]
 
+    # lookup new nodes in reduced graph
     for index, row in truck_traffic_df_filtered.iterrows():
         origin_node = int(row["origin_node"])
         destination_node = int(row["destination_node"])
