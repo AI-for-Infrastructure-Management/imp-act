@@ -34,10 +34,24 @@ class EnvironmentLoader:
         if graph_config["type"] == "file":
             path = Path(graph_config["path"])
             self.graph = Graph.Read_GraphML(open(path, "r"))
-        elif graph_config["type"] in ["dict", "random"]:
-            raise NotImplementedError(
-                f"Graph type {graph_config['type']} has not implemented yet"
-            )
+        elif graph_config["type"] == "list":
+            self.graph = Graph(directed=False)
+
+            nodes_list = graph_config["nodes"]
+            nodes = [n["id"] for n in nodes_list]
+            node_attributes = {
+                key: [n[key] for n in nodes_list] for key in nodes_list[0].keys()
+            }
+            self.graph.add_vertices(nodes, attributes=node_attributes)
+
+            edges_list = graph_config["edges"]
+            edges = [(e["source"], e["target"]) for e in edges_list]
+            edge_attributes = {
+                key: [e[key] for e in edges_list]
+                for key in edges_list[0].keys()
+                if key not in ["source", "target"]
+            }
+            self.graph.add_edges(edges, attributes=edge_attributes)
         else:
             raise ValueError(f"Graph type {graph_config['type']} not supported")
 
@@ -49,11 +63,8 @@ class EnvironmentLoader:
             # ensure that origin, destination are integers
             self.trips["origin"] = self.trips["origin"].astype(int)
             self.trips["destination"] = self.trips["destination"].astype(int)
-
-        elif trips_config["type"] in ["dict", "random"]:
-            raise NotImplementedError(
-                f"Trips type {trips_config['type']} has not implemented yet"
-            )
+        elif trips_config["type"] == "list":
+            self.trips = pd.DataFrame(trips_config["list"])
         else:
             raise ValueError(f"Trips type {trips_config['type']} not supported")
 
@@ -62,19 +73,16 @@ class EnvironmentLoader:
         if segments_config["type"] == "file":
             path = Path(segments_config["path"])
             self.segments = pd.read_csv(path)
-            # group segments by origin, destination
-            segments = {}
-            for group, df in self.segments.groupby(
-                ["Network_Node_A_ID", "Network_Node_B_ID"]
-            ):
-                segments[group] = df.to_dict("records")
-            self.segments = segments
-        elif segments_config["type"] in ["dict", "random"]:
-            raise NotImplementedError(
-                f"Segments type {segments_config['type']} has not implemented yet"
-            )
+        elif segments_config["type"] == "list":
+            self.segments = pd.DataFrame(segments_config["list"])
         else:
             raise ValueError(f"Segments type {segments_config['type']} not supported")
+
+        # group segments by origin, destination
+        segments = {}
+        for group, df in self.segments.groupby(["source", "target"]):
+            segments[group] = df.to_dict("records")
+        self.segments = segments
 
         # load model
         # TODO: load model data
