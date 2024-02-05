@@ -282,8 +282,8 @@ class RoadEnvironment:
             for nodes, road_edge in road_edges.items():
                 # print(nodes)
                 # print(type(self.graph.vs[0]["id"]))
-                vertex_1 = self.graph.vs.select(id_eq=str(nodes[0]))
-                vertex_2 = self.graph.vs.select(id_eq=str(nodes[1]))
+                vertex_1 = self.graph.vs.select(id_eq=nodes[0])
+                vertex_2 = self.graph.vs.select(id_eq=nodes[1])
                 graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))[0]
                 graph_edge["road_segments"] = road_edge
 
@@ -426,15 +426,24 @@ class RoadEnvironment:
         graph = config.graph
         trips_df = config.trips
         trips = []
+        missing_counter = 0
         for index, row in trips_df.iterrows():
-            vertex_1_list = graph.vs.select(id_eq=str(row["origin"].astype(int)))
-            vertex_2_list = graph.vs.select(id_eq=str(row["destination"].astype(int)))
+            vertex_1_list = graph.vs.select(id_eq=row["origin"])
+            vertex_2_list = graph.vs.select(id_eq=row["destination"])
             if (len(vertex_1_list) == 0) or (len(vertex_2_list) == 0):
-                continue  # skip trips that are not in the graph for now TODO: fix this
-                raise ValueError("Origin or destination not found in graph")
-            trips.append(
-                (vertex_1_list[0].index, vertex_2_list[0].index, row["volume"])
-            )
+                print(f"Trip not in graph: {row['origin']} -> {row['destination']}")
+                missing_counter += 1
+                continue
+            try:
+                trips.append(
+                    (vertex_1_list[0].index, vertex_2_list[0].index, row["volume"])
+                )
+            except IndexError as e:
+                print(f"Error: {e}")
+                print(f"Trip not in graph: {row['origin']} -> {row['destination']}")
+                missing_counter += 1
+        if missing_counter > 0:
+            raise ValueError(f"Trips not in graph: {missing_counter}")
 
         max_timesteps = config.max_timesteps
         seed = None  # TODO: add correct rng generator handling
