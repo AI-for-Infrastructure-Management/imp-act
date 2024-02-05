@@ -126,10 +126,6 @@ class RoadSegment:
         self.state = 0
         self.observation = self.initial_observation
         self.belief = np.array([1, 0, 0, 0])
-        # self.capacity = 500.0  # maybe cars per minute # TODO Remove
-        # self.base_travel_time = (
-        #    50.0  # maybe minutes it takes to travel trough a segment
-        # )
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
@@ -280,8 +276,6 @@ class RoadEnvironment:
                 )
         else:
             for nodes, road_edge in road_edges.items():
-                # print(nodes)
-                # print(type(self.graph.vs[0]["id"]))
                 vertex_1 = self.graph.vs.select(id_eq=nodes[0])
                 vertex_2 = self.graph.vs.select(id_eq=nodes[1])
                 graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))[0]
