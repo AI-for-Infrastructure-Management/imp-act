@@ -2,7 +2,7 @@
 
 With [poetry](https://python-poetry.org/docs/#installation) (1.7 used)
 ```bash
-poetry install
+poetry install --without test
 ```
 
 With pip on any virtual environment:

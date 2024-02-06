@@ -23,9 +23,9 @@ tqdm="4.66.1"
 pandas="2.1.4"
 gymnasium="0.29.1"
 
-[tool.poetry.group.tests]
+[tool.poetry.group.test]
 optional = true
-[tool.poetry.group.tests.dependencies]
+[tool.poetry.group.test.dependencies]
 pytest="7.4.3"
 
 [build-system]
