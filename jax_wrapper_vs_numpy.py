@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     store_returns_for = experiments[-1]
 
-    ################### NUMPY ###################
+    # NUMPY
     np_env = NumPyRoadEnvironment(**small_environment_dict)
     numpy_actions = do_nothing_policy_numpy(np_env)
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
         numpy_timings.append(end - start)
 
-    ################### JAX ###################
+    # JAX
     params = EnvParams()
     jax_env = JaxRoadEnvironmentWrapper(params)
     jax_actions = do_nothing_policy_jax(jax_env)
