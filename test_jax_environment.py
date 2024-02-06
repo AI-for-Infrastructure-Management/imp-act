@@ -30,8 +30,7 @@ def graph_params():
             [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (4, 6), (5, 6)]
         )
         num_edges: int = 8
-        edge_segments_numbers: jnp.array = jnp.array([2, 2, 2, 2])
-        total_num_segments: int = 8
+        edge_segments_numbers: jnp.array = jnp.array([2, 2, 2, 2, 2, 2, 2, 2])
         edge_weights = [2, 6, 5, 8, 10, 15, 2, 6]
 
         shortest_path_max_iterations: int = 500
@@ -160,7 +159,7 @@ def small_numpy_environment():
     return env
 
 
-def test_total_base_travel_time(small_numpy_environment, small_jax_environment, params):
+def test_total_base_travel_time(small_numpy_environment, small_jax_environment):
     _, _ = small_jax_environment.reset_env()
     _jax = small_jax_environment.total_base_travel_time
 
@@ -176,8 +175,8 @@ def test_shortest_path_computation(graph_params):
     edges_list = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (4, 6), (5, 6)]
     weights_list = [2, 6, 5, 8, 10, 15, 2, 6]
 
-    source = 0
-    target = 6
+    source = 1
+    target = 0
 
     # create graph using igraph
     graph = Graph()
@@ -194,9 +193,9 @@ def test_shortest_path_computation(graph_params):
     jax_env = JaxRoadEnvironment(graph_params)
 
     # get cost to travel from 0 to 6
-    weights_matrix = jax_env._get_weight_matrix(
-        graph_params.edge_weights, graph_params.edges, target
-    )
-    cost_2 = jax_env._get_cost_to_go(weights_matrix, 100)[source]
+    weights_matrix = jax_env._get_weight_matrix(weights_list, edges_list, target)
+
+    print(weights_matrix)
+    cost_2 = jax_env._get_cost_to_go(weights_matrix, 10)[source]
 
     assert cost_1 == cost_2

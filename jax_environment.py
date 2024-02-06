@@ -41,7 +41,7 @@ class JaxRoadEnvironment(environment.Environment):
         self.edges = params.edges
         self.num_edges = params.num_edges
         self.edge_segments_numbers = params.edge_segments_numbers
-        self.total_num_segments = params.total_num_segments
+        self.total_num_segments = int(jnp.sum(self.edge_segments_numbers))
 
         # Traffic assignment parameters
         self.shortest_path_max_iterations = params.shortest_path_max_iterations
@@ -208,6 +208,7 @@ class JaxRoadEnvironment(environment.Environment):
             i, j = edge  # node indices
             # undirected graph, so we need to set both directions
             weights_matrix = weights_matrix.at[i, j].set(w)
+            weights_matrix = weights_matrix.at[j, i].set(w)
 
         return weights_matrix
 
