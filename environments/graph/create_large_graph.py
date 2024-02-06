@@ -317,6 +317,8 @@ def export_country(args):
         for edge in new_edge_info:
             edges_in_graph += edge["edge_ids"]
 
+        edges_in_graph_set = set(edges_in_graph)
+
         regions_in_graph = nuts_regions_df[
             nuts_regions_df["Network_Node_ID"].isin(nodes_in_graph)
         ]
@@ -343,7 +345,7 @@ def export_country(args):
             path_edges = parse_string_list_of_integer(row["Edge_path_E_road"])
             found = False
             for edge in path_edges:
-                if edge in edges_in_graph:
+                if edge in edges_in_graph_set:
                     truck_traffic_df.loc[index, "remove"] = False
                     found = True
                     break
@@ -360,7 +362,7 @@ def export_country(args):
                 # find first edge in the region
                 found = False
                 for i, edge in enumerate(path_edges):
-                    if edge in edges_in_graph:
+                    if edge in edges_in_graph_set:
                         edge_in = edge
                         edge_out = path_edges[i - 1]
                         found = True
@@ -393,7 +395,7 @@ def export_country(args):
             else:
                 found = False
                 for i, edge in enumerate(path_edges[::-1]):
-                    if edge in edges_in_graph:
+                    if edge in edges_in_graph_set:
                         edge_in = edge
                         edge_out = path_edges[::-1][i - 1]
                         found = True
