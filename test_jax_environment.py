@@ -1,6 +1,7 @@
+import itertools
+
 import jax.numpy as jnp
 import pytest
-import itertools
 
 from environment import RoadEnvironment as NumPyRoadEnvironment
 from environment_presets import small_environment_dict
@@ -31,7 +32,7 @@ def graph_params():
             [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (4, 6), (5, 6)]
         )
         num_edges: int = 8
-        edge_segments_numbers: jnp.array = jnp.array([2]*num_edges)
+        edge_segments_numbers: jnp.array = jnp.array([2] * num_edges)
         edge_weights = [2, 6, 5, 8, 10, 15, 2, 6]
 
         shortest_path_max_iterations: int = 500
@@ -176,7 +177,6 @@ def test_shortest_path_computation(graph_params):
     edges_list = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (4, 6), (5, 6)]
     weights_list = [2, 6, 5, 8, 10, 15, 2, 6]
 
-
     # create graph using igraph
     graph = Graph()
     graph.add_vertices(_num_vertices)
@@ -205,4 +205,4 @@ def test_shortest_path_computation(graph_params):
         cost_2 = jax_env._get_cost_to_go(weights_matrix, 100)[source]
         print(cost_2)
 
-        assert cost_1 == cost_2 
+        assert cost_1 == cost_2

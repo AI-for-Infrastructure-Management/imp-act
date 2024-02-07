@@ -16,7 +16,7 @@ class EnvParams:
     num_vertices: int = 4
     edges: jnp.array = jnp.array([(0, 1), (1, 3), (2, 0), (3, 2)])
     num_edges: int = 4
-    edge_segments_numbers: jnp.array = jnp.array([2]*num_edges)
+    edge_segments_numbers: jnp.array = jnp.array([2] * num_edges)
 
     shortest_path_max_iterations: int = 500
     traffic_assignment_max_iterations: int = 15
