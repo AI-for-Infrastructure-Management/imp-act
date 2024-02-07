@@ -195,11 +195,11 @@ def test_shortest_path_computation(graph_params):
         shortest_path = graph.get_shortest_paths(
             source, target, weights=weights_list, mode="out", output="epath"
         )
-        # get cost to travel from 0 to 6 using shortest path
+        # get cost to travel from source to target using shortest path
         cost_1 = float(sum([weights_list[i] for i in shortest_path[0]]))
         print(cost_1)
 
-        # get cost to travel from 0 to 6
+        # get cost to travel from source to target
         weights_matrix = jax_env._get_weight_matrix(weights_list, edges_list, target)
         print(weights_matrix)
         cost_2 = jax_env._get_cost_to_go(weights_matrix, 100)[source]
