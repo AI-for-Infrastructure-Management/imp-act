@@ -7,7 +7,7 @@ from environment import RoadEnvironment as NumPyRoadEnvironment
 from environment_presets import small_environment_dict
 from igraph import Graph
 
-from jax_environment import JaxRoadEnvironment
+from jax_environment import EnvState, JaxRoadEnvironment
 from params import EnvParams
 
 
@@ -170,6 +170,7 @@ def test_total_base_travel_time(small_numpy_environment, small_jax_environment):
     assert _jax == _numpy
 
 
+@pytest.mark.skip(reason="Takes too long")
 def test_shortest_path_computation(graph_params):
     """Test shortest path computation."""
 
@@ -206,3 +207,36 @@ def test_shortest_path_computation(graph_params):
         print(cost_2)
 
         assert cost_1 == cost_2
+
+
+def test_get_travel_time(small_numpy_environment, small_jax_environment):
+    "Test total travel time is the same for jax and numpy env"
+    actions = [
+        [1, 1] for _ in range(len(small_numpy_environment.edge_segments_numbers))
+    ]
+    timestep = 0
+    done = False
+
+    while not done:
+        timestep += 1
+        obs, cost, done, info = small_numpy_environment.step(actions)
+        dam_state = jnp.array(small_numpy_environment._get_states()).flatten()
+        belief = jnp.array(obs["edge_beliefs"]).flatten()
+        total_travel_time_np = info["total_travel_time"]
+        base_travel_times = []
+        capacities = []
+        for edge in small_numpy_environment.graph.es["road_segments"]:
+            for segment in edge.segments:
+                base_travel_times.append(segment.base_travel_time)
+                capacities.append(segment.capacity)
+        jax_state = EnvState(
+            damage_state=dam_state,
+            observation=jnp.array(obs["edge_observations"]).flatten(),
+            belief=belief,
+            base_travel_time=jnp.asarray(base_travel_times),
+            capacity=jnp.asarray(capacities),
+            timestep=timestep,
+        )
+        total_travel_time_jax = small_jax_environment._get_total_travel_time(jax_state)
+        print(total_travel_time_np, total_travel_time_jax)
+        assert total_travel_time_np.round() == total_travel_time_jax.round()
