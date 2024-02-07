@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 import pytest
+import itertools
 
 from environment import RoadEnvironment as NumPyRoadEnvironment
 from environment_presets import small_environment_dict
@@ -30,8 +31,7 @@ def graph_params():
             [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (4, 6), (5, 6)]
         )
         num_edges: int = 8
-        edge_segments_numbers: jnp.array = jnp.array([2, 2, 2, 2])
-        total_num_segments: int = 8
+        edge_segments_numbers: jnp.array = jnp.array([2]*num_edges)
         edge_weights = [2, 6, 5, 8, 10, 15, 2, 6]
 
         shortest_path_max_iterations: int = 500
@@ -160,7 +160,7 @@ def small_numpy_environment():
     return env
 
 
-def test_total_base_travel_time(small_numpy_environment, small_jax_environment, params):
+def test_total_base_travel_time(small_numpy_environment, small_jax_environment):
     _, _ = small_jax_environment.reset_env()
     _jax = small_jax_environment.total_base_travel_time
 
@@ -176,27 +176,33 @@ def test_shortest_path_computation(graph_params):
     edges_list = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (4, 6), (5, 6)]
     weights_list = [2, 6, 5, 8, 10, 15, 2, 6]
 
-    source = 0
-    target = 6
 
     # create graph using igraph
     graph = Graph()
     graph.add_vertices(_num_vertices)
     graph.add_edges(edges_list)
 
-    # Find shortest path using igraph
-    shortest_path = graph.get_shortest_paths(
-        source, target, weights=weights_list, mode="out", output="epath"
-    )
-    # get cost to travel from 0 to 6 using shortest path
-    cost_1 = sum([weights_list[i] for i in shortest_path[0]])
-
     jax_env = JaxRoadEnvironment(graph_params)
 
-    # get cost to travel from 0 to 6
-    weights_matrix = jax_env._get_weight_matrix(
-        graph_params.edge_weights, graph_params.edges, target
-    )
-    cost_2 = jax_env._get_cost_to_go(weights_matrix, 100)[source]
+    sources = [0, 1, 2, 3, 4, 5, 6]
+    targets = [0, 1, 2, 3, 4, 5, 6]
 
-    assert cost_1 == cost_2
+    for source, target in itertools.product(sources, targets):
+
+        print(f"source {source} target {target}")
+
+        # Find shortest path using igraph
+        shortest_path = graph.get_shortest_paths(
+            source, target, weights=weights_list, mode="out", output="epath"
+        )
+        # get cost to travel from 0 to 6 using shortest path
+        cost_1 = float(sum([weights_list[i] for i in shortest_path[0]]))
+        print(cost_1)
+
+        # get cost to travel from 0 to 6
+        weights_matrix = jax_env._get_weight_matrix(weights_list, edges_list, target)
+        print(weights_matrix)
+        cost_2 = jax_env._get_cost_to_go(weights_matrix, 100)[source]
+        print(cost_2)
+
+        assert cost_1 == cost_2 
