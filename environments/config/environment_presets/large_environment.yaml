@@ -1,0 +1,10 @@
+general:
+  max_timesteps: 50
+model:
+  deterioration:  "TODO"
+  observation:    "TODO"
+  reward:         "TODO"
+network:
+  include:
+    path: "./countries/BE/network.yaml"
+  

@@ -2,16 +2,15 @@ import glob
 import os
 
 import igraph as ig
-import numpy as np
-from PIL import Image
-from test_environment import *
-from environment_presets import *
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import myutils as mu
 import networkx as nx
+import numpy as np
+import utils_nx_ig as mu
+from PIL import Image
 
-from environment import RoadEnvironment
+from environments.config.environment_presets import small_environment_dict
+from environments.road_env import RoadEnvironment
 
 # plot dict for visualization with networkx
 standard_dict = {"with_labels": True}
@@ -371,7 +370,7 @@ def save_frames_as_gif(frame_folder: str) -> None:
     return
 
 
-""" special plotting function which make use of general_plot. Not really necessary, but maybe someone wants to use these instead"""
+# special plotting function which make use of general_plot. Not really necessary, but maybe someone wants to use these instead
 
 
 def plot_only_graph_structure(

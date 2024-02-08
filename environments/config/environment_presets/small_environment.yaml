@@ -1,0 +1,108 @@
+general:
+  max_timesteps: 50
+model:
+  deterioration:  "TODO"
+  observation:    "TODO"
+  reward:         "TODO"
+network:
+  graph:
+    type: "list"
+    nodes:
+      - id: 0
+        position_x: 0
+        position_y: 0
+      - id: 1
+        position_x: 0
+        position_y: 1
+      - id: 2
+        position_x: 1
+        position_y: 0
+      - id: 3
+        position_x: 1
+        position_y: 1
+    edges:
+      - id: 0
+        source: 0
+        target: 1
+        distance: 1
+      - id: 1
+        source: 1
+        target: 2
+        distance: 1
+      - id: 2
+        source: 2
+        target: 3
+        distance: 1
+      - id: 3
+        source: 3
+        target: 0
+        distance: 1
+  trips:     
+    type: "list"
+    list:
+      - origin: 0
+        destination: 1
+        volume: 200
+      - origin: 1
+        destination: 3
+        volume: 200
+      - origin: 2
+        destination: 0
+        volume: 200
+      - origin: 3
+        destination: 2
+        volume: 200
+  segments: 
+    type: "list"
+    list:
+      - source: 0
+        target: 1
+        capacity: 100
+        travel_time: 1
+        position_x: 0
+        position_y: 0.33
+      - source: 0
+        target: 1
+        capacity: 100
+        travel_time: 1
+        position_x: 0.66
+        position_y: 0
+      - source: 1
+        target: 2
+        capacity: 100
+        travel_time: 1
+        position_x: 0.33
+        position_y: 1
+      - source: 1
+        target: 2
+        capacity: 100
+        travel_time: 1
+        position_x: 1
+        position_y: 0.66
+      - source: 0
+        target: 3
+        capacity: 100
+        travel_time: 1
+        position_x: 0
+        position_y: 0.33
+      - source: 0
+        target: 3
+        capacity: 100
+        travel_time: 1
+        position_x: 0
+        position_y: 0.66
+      - source: 2
+        target: 3
+        capacity: 100
+        travel_time: 1
+        position_x: 1
+        position_y: 0.33
+      - source: 2
+        target: 3
+        capacity: 100
+        travel_time: 1
+        position_x: 0.66
+        position_y: 1
+
+
+  
