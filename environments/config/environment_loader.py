@@ -90,21 +90,24 @@ class EnvironmentLoader:
         # TODO: load model data
 
     def _handle_includes(self, config, root_path):
-        """Handle includes in the config file"""
+        """Handle includes in the config dict by recursively loading them and updating the config."""
         self._handle_relative_paths(config, root_path)
         if "include" in config:
             include_path = config["include"]["path"]
             include_root_path = Path(include_path).parent
             include_config = yaml.load(open(include_path, "r"), Loader=yaml.FullLoader)
             include_config = self._handle_includes(include_config, include_root_path)
-            config = {**config, **include_config}
+            config.update(include_config)
         for key in config.keys():
             if isinstance(config[key], dict):
                 config[key] = self._handle_includes(config[key], root_path)
         return config
 
     def _handle_relative_paths(self, config, root_path):
-        """Handle relative paths in the config file"""
+        """
+        Recursively handle relative paths in the config dict by converting them to absolute paths based
+        on the given root path.
+        """
         if "path" in config.keys():
             config["path"] = Path(root_path, config["path"]).absolute()
         for key in config.keys():
