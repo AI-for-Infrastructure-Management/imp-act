@@ -437,8 +437,7 @@ class RoadEnvironment:
             )
 
         max_timesteps = config.max_timesteps
-        seed = None  # TODO: add correct rng generator handling
-        random_generator = np.random.default_rng(seed)
+        random_generator = np.random.default_rng(None)
 
         road_edges = {}
         for nodes, edge_segments in config.segments.items():
@@ -468,5 +467,7 @@ class RoadEnvironment:
             graph=graph,
             road_edges=road_edges,
         )
+
+        env.seed(None)  # Ensure that the same random generator object is set
 
         return env
