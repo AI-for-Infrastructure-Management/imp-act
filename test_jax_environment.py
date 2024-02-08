@@ -271,3 +271,23 @@ def test_jax_keys(small_jax_environment):
 
     # check if keys are the same
     assert (jnp.array([3808878501, 3829080728]) == _rollout_key).all()
+
+
+def test_belief_computation(small_jax_environment):
+
+    _initial_belief = [0.9, 0.1, 0.9, 0.0]
+    _action = 1  # inspect
+    _obs = 0  # no damage
+
+    initial_belief = jnp.array([_initial_belief])
+    action = jnp.array([_action], dtype=jnp.uint8)
+    obs = jnp.array([_obs], dtype=jnp.uint8)
+
+    computed_belief = small_jax_environment._get_next_belief(
+        initial_belief, obs, action
+    )
+
+    # calculated manually
+    true_belief = jnp.array([[0.97298, 0.02702, 0.00000, 0.00000]])
+
+    assert jnp.allclose(true_belief, computed_belief, atol=1e-3)
