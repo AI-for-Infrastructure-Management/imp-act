@@ -176,7 +176,10 @@ def test_shortest_path_computation(graph_params):
     """Test shortest path computation."""
 
     _num_vertices = 7
-    edges_list = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (4, 6), (5, 6)]
+    edges_list = jnp.array(
+        [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (4, 6), (5, 6)]
+    )
+
     weights_list = [2, 6, 5, 8, 10, 15, 2, 6]
 
     # create graph using igraph

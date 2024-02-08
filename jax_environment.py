@@ -201,16 +201,13 @@ class JaxRoadEnvironment(environment.Environment):
             node j, then weights_matrix[i,j] = jnp.inf
         """
 
-        # set destination node to 0
         weights_matrix = jnp.full((self.num_nodes, self.num_nodes), jnp.inf)
+        # set destination node to 0
         weights_matrix = weights_matrix.at[destination, destination].set(0)
 
-        # TODO: can we do this with jax.fori_loop?
-        for edge, w in zip(edges, weights):
-            i, j = edge  # node indices
-            # undirected graph, so we need to set both directions
-            weights_matrix = weights_matrix.at[i, j].set(w)
-            weights_matrix = weights_matrix.at[j, i].set(w)
+        # set weights (uses jax.lax.scatter behind the scenes)
+        weights_matrix = weights_matrix.at[edges[:, 0], edges[:, 1]].set(weights)
+        weights_matrix = weights_matrix.at[edges[:, 1], edges[:, 0]].set(weights)
 
         return weights_matrix
 
