@@ -1,5 +1,6 @@
 import itertools
 
+import jax
 import jax.numpy as jnp
 import pytest
 
@@ -240,3 +241,30 @@ def test_get_travel_time(small_numpy_environment, small_jax_environment):
         total_travel_time_jax = small_jax_environment._get_total_travel_time(jax_state)
         print(total_travel_time_np, total_travel_time_jax)
         assert total_travel_time_np.round() == total_travel_time_jax.round()
+
+
+def test_jax_keys(small_jax_environment):
+
+    _action = [{"0": [0, 0]}, {"1": [0, 0]}, {"2": [0, 0]}, {"3": [0, 0]}]
+    __action = jax.tree_util.tree_leaves(_action)
+    action = jnp.array(__action, dtype=jnp.uint8)
+
+    # rollout
+    key = jax.random.PRNGKey(442)
+    step_keys, key = small_jax_environment.split_key(key)
+
+    # environment reset
+    _, state = small_jax_environment.reset_env()
+
+    done = False
+
+    while not done:
+        _, _, done, _, state = small_jax_environment.step_env(step_keys, state, action)
+
+        # generate keys for next timestep
+        step_keys, key = small_jax_environment.split_key(key)
+
+    _rollout_key = key
+
+    # check if keys are the same
+    assert (jnp.array([3808878501, 3829080728]) == _rollout_key).all()
