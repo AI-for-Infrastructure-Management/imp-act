@@ -102,6 +102,7 @@ class JaxRoadEnvironment(environment.Environment):
 
         return idxs_map
 
+    @partial(jax.jit, static_argnums=(0,))
     @partial(vmap, in_axes=(None, 0, 0, 0, None))
     def _get_next(
         self, key: chex.PRNGKey, dam_state: int, action: int, table: jnp.array
@@ -117,6 +118,7 @@ class JaxRoadEnvironment(environment.Environment):
 
         return next_dam_state
 
+    @partial(jax.jit, static_argnums=(0,))
     @partial(vmap, in_axes=(None, 0, 0, None))
     def _get_maintenance_reward(
         self, dam_state: int, action: int, rewards_table: jnp.array
@@ -426,13 +428,16 @@ class JaxRoadEnvironment(environment.Environment):
     ) -> Tuple[chex.Array, list, float, bool, dict]:
         """Move the environment one timestep forward."""
 
+        # split keys into keys for damage transitions and observations
+        keys_transition, keys_obs = jnp.split(keys, 2, axis=0)
+
         # next state
         next_state = self._get_next(
-            keys, state.damage_state, action, self.deterioration_table
+            keys_transition, state.damage_state, action, self.deterioration_table
         )
 
         # observation
-        obs = self._get_next(keys, next_state, action, self.observation_table)
+        obs = self._get_next(keys_obs, next_state, action, self.observation_table)
 
         # maintenance reward
         maintenance_reward = self._get_maintenance_reward(
@@ -525,7 +530,7 @@ class JaxRoadEnvironment(environment.Environment):
     def get_obs(self, state: EnvState) -> chex.Array:
         return state.observation
 
-    def is_terminal(self, state: EnvParams) -> bool:
+    def is_terminal(self, state: EnvState) -> bool:
         return state.timestep >= self.max_timesteps
 
     def action_space(self) -> spaces.Discrete:
@@ -548,15 +553,25 @@ class JaxRoadEnvironment(environment.Environment):
     def num_actions(self) -> int:
         return self.total_num_segments
 
-    @partial(jax.jit, static_argnums=(0,))
-    def split_key(self, key):
-        """Split key into keys for each segment"""
-        # keys for all segments and next timestep
-        keys = jax.random.split(key, self.total_num_segments + 1)
-        subkeys = keys[: self.total_num_segments, :]  # subkeys for each segment
-        keys = keys[self.total_num_segments, :]  # key for next timestep
+    @partial(jax.jit, static_argnums=(0))
+    def split_key(self, key: chex.PRNGKey) -> Tuple[chex.PRNGKey, chex.PRNGKey]:
+        """
+        #! The rule of thumb is: never reuse keys
+        (unless you want identical outputs)
 
-        return subkeys, keys
+        Split key into keys for each random variable:
+
+        - keys for damage transitions of each segment (#segments)
+        - keys for observations of each segment (#segments)
+        - key for next timestep (1)
+
+        """
+
+        keys = jax.random.split(key, self.total_num_segments * 2 + 1)
+        subkeys = keys[: self.total_num_segments * 2, :]
+        key = keys[-1, :]
+
+        return subkeys, key
 
 
 if __name__ == "__main__":
