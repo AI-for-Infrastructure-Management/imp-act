@@ -92,7 +92,7 @@ class EnvironmentLoader:
     def _handle_includes(self, config, root_path):
         """Handle includes in the config file"""
         self._handle_relative_paths(config, root_path)
-        if "include" in config.keys():
+        if "include" in config:
             include_path = config["include"]["path"]
             include_root_path = Path(include_path).parent
             include_config = yaml.load(open(include_path, "r"), Loader=yaml.FullLoader)
