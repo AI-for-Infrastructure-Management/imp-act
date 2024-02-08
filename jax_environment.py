@@ -93,7 +93,9 @@ class JaxRoadEnvironment(environment.Environment):
             segment belonging to the ith edge.
         """
 
-        idxs_map = np.full((self.num_edges, self.edge_segments_numbers.max()), 1_0000)
+        idxs_map = np.full(
+            (self.num_edges, self.edge_segments_numbers.max()), 1_000_000
+        )
         idx = 0
         for i, num_segments in enumerate(self.edge_segments_numbers):
             idxs_map[i, :num_segments] = np.arange(idx, idx + num_segments)

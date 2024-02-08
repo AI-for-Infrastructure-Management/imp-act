@@ -291,3 +291,78 @@ def test_belief_computation(small_jax_environment):
     true_belief = jnp.array([[0.97298, 0.02702, 0.00000, 0.00000]])
 
     assert jnp.allclose(true_belief, computed_belief, atol=1e-3)
+
+
+def test_idxs_map(graph_params):
+
+    graph_params.edge_segments_numbers = jnp.array([1, 2, 3, 4, 1, 2, 3, 4])
+
+    jax_env = JaxRoadEnvironment(graph_params)
+
+    compute_idxs_map = jax_env._compute_idxs_map()
+
+    f = 1_000_000
+
+    true_idxs_map = jnp.array(
+        [
+            [0, f, f, f],
+            [1, 2, f, f],
+            [3, 4, 5, f],
+            [6, 7, 8, 9],
+            [10, f, f, f],
+            [11, 12, f, f],
+            [13, 14, 15, f],
+            [16, 17, 18, 19],
+        ]
+    )
+
+    assert jnp.allclose(true_idxs_map, compute_idxs_map)
+
+
+def test_gather(graph_params):
+
+    graph_params.edge_segments_numbers = jnp.array([1, 2, 3, 4, 1, 2, 3, 4])
+
+    jax_env = JaxRoadEnvironment(graph_params)
+
+    edge_values = jnp.array(
+        [
+            101,
+            102,
+            103,
+            104,
+            105,
+            106,
+            107,
+            108,
+            109,
+            110,
+            111,
+            112,
+            113,
+            114,
+            115,
+            116,
+            117,
+            118,
+            119,
+            120,
+        ]
+    )
+
+    computed_values = jax_env._gather(edge_values)
+
+    true_values = jnp.array(
+        [
+            [101, 0.0, 0.0, 0.0],
+            [102, 103, 0.0, 0.0],
+            [104, 105, 106, 0.0],
+            [107, 108, 109, 110],
+            [111, 0.0, 0.0, 0.0],
+            [112, 113, 0.0, 0.0],
+            [114, 115, 116, 0.0],
+            [117, 118, 119, 120],
+        ]
+    )
+
+    assert jnp.allclose(true_values, computed_values)
