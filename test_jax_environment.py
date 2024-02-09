@@ -10,6 +10,7 @@ from igraph import Graph
 
 from jax_environment import EnvState, JaxRoadEnvironment
 from params import EnvParams
+from jax_env_wrapper import JaxRoadEnvironmentWrapper
 
 
 @pytest.fixture
@@ -171,7 +172,7 @@ def test_total_base_travel_time(small_numpy_environment, small_jax_environment):
     assert _jax == _numpy
 
 
-@pytest.mark.skip(reason="Takes too long")
+
 def test_shortest_path_computation(graph_params):
     """Test shortest path computation."""
 
@@ -272,25 +273,47 @@ def test_jax_keys(small_jax_environment):
     # check if keys are the same
     assert (jnp.array([3808878501, 3829080728]) == _rollout_key).all()
 
+def test_jax_wrapper_keys(params):
+    jax_env = JaxRoadEnvironmentWrapper(params)
+    step_keys, key = jax_env.step_keys, jax_env.key
 
-def test_belief_computation(small_jax_environment):
+    _ = jax_env.reset() 
+    done = False
 
-    _initial_belief = [0.9, 0.1, 0.9, 0.0]
-    _action = 1  # inspect
-    _obs = 0  # no damage
+    _action = [{"0": [0, 0]}, {"1": [0, 0]}, {"2": [0, 0]}, {"3": [0, 0]}]
+    __action = jax.tree_util.tree_leaves(_action)
+    action = jnp.array(__action, dtype=jnp.uint8)
 
-    initial_belief = jnp.array([_initial_belief])
-    action = jnp.array([_action], dtype=jnp.uint8)
-    obs = jnp.array([_obs], dtype=jnp.uint8)
+    while not done:
+        _, _, done, _ = jax_env.step(action)
+        step_keys_new, key_new = jax_env.step_keys, jax_env.key
+        assert (step_keys != step_keys_new).all()
+        assert (key != key_new).all()
+        step_keys, key = step_keys_new, key_new
 
-    computed_belief = small_jax_environment._get_next_belief(
-        initial_belief, obs, action
-    )
 
-    # calculated manually
-    true_belief = jnp.array([[0.97298, 0.02702, 0.00000, 0.00000]])
+def test_belief_computation(small_jax_environment, small_numpy_environment):
 
-    assert jnp.allclose(true_belief, computed_belief, atol=1e-3)
+    action_np = [[1, 1] for _ in range(len(small_numpy_environment.edge_segments_numbers))]
+    action_jax = [{"0": [1, 1]}, {"1": [1, 1]}, {"2": [1, 1]}, {"3": [1, 1]}]
+    action_jax = jax.tree_util.tree_leaves(action_jax)
+    action_jax = jnp.array(action_jax, dtype=jnp.uint8)
+
+
+    observation = small_numpy_environment.reset()
+    belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
+    done = False
+
+    while not done:
+        observation, _, done, _ = small_numpy_environment.step(action_np)
+        obs = jnp.array(observation["edge_observations"]).flatten()
+        print(jnp.array(observation["edge_beliefs"]), obs, action_jax)
+        belief_jax = small_jax_environment._get_next_belief(
+            belief, obs, action_jax
+        )
+        belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
+
+        assert jnp.allclose(belief, belief_jax, atol=1e-3)
 
 
 def test_idxs_map(graph_params):
