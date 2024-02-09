@@ -7,10 +7,10 @@ import pytest
 from environment import RoadEnvironment as NumPyRoadEnvironment
 from environment_presets import small_environment_dict
 from igraph import Graph
+from jax_env_wrapper import JaxRoadEnvironmentWrapper
 
 from jax_environment import EnvState, JaxRoadEnvironment
 from params import EnvParams
-from jax_env_wrapper import JaxRoadEnvironmentWrapper
 
 
 @pytest.fixture
@@ -172,7 +172,6 @@ def test_total_base_travel_time(small_numpy_environment, small_jax_environment):
     assert _jax == _numpy
 
 
-
 def test_shortest_path_computation(graph_params):
     """Test shortest path computation."""
 
@@ -273,11 +272,12 @@ def test_jax_keys(small_jax_environment):
     # check if keys are the same
     assert (jnp.array([3808878501, 3829080728]) == _rollout_key).all()
 
+
 def test_jax_wrapper_keys(params):
     jax_env = JaxRoadEnvironmentWrapper(params)
     step_keys, key = jax_env.step_keys, jax_env.key
 
-    _ = jax_env.reset() 
+    _ = jax_env.reset()
     done = False
 
     _action = [{"0": [0, 0]}, {"1": [0, 0]}, {"2": [0, 0]}, {"3": [0, 0]}]
@@ -294,11 +294,12 @@ def test_jax_wrapper_keys(params):
 
 def test_belief_computation(small_jax_environment, small_numpy_environment):
 
-    action_np = [[1, 1] for _ in range(len(small_numpy_environment.edge_segments_numbers))]
+    action_np = [
+        [1, 1] for _ in range(len(small_numpy_environment.edge_segments_numbers))
+    ]
     action_jax = [{"0": [1, 1]}, {"1": [1, 1]}, {"2": [1, 1]}, {"3": [1, 1]}]
     action_jax = jax.tree_util.tree_leaves(action_jax)
     action_jax = jnp.array(action_jax, dtype=jnp.uint8)
-
 
     observation = small_numpy_environment.reset()
     belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
@@ -308,9 +309,7 @@ def test_belief_computation(small_jax_environment, small_numpy_environment):
         observation, _, done, _ = small_numpy_environment.step(action_np)
         obs = jnp.array(observation["edge_observations"]).flatten()
         print(jnp.array(observation["edge_beliefs"]), obs, action_jax)
-        belief_jax = small_jax_environment._get_next_belief(
-            belief, obs, action_jax
-        )
+        belief_jax = small_jax_environment._get_next_belief(belief, obs, action_jax)
         belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
 
         assert jnp.allclose(belief, belief_jax, atol=1e-3)
