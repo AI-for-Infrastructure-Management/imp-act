@@ -4,6 +4,10 @@ model:
   deterioration:  "TODO"
   observation:    "TODO"
   reward:         "TODO"
+  shocks: 
+    enabled: True
+    include:
+      path: "./shock.yaml"
 network:
   graph:
     type: "list"
@@ -103,6 +107,7 @@ network:
         travel_time: 1
         position_x: 0.66
         position_y: 1
+    
 
 
   

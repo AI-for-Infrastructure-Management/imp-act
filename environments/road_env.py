@@ -1,5 +1,7 @@
 import numpy as np
 from igraph import Graph
+import os
+from environments.shock import Shock
 
 
 class RoadSegment:
@@ -10,9 +12,11 @@ class RoadSegment:
         position_y=0,
         capacity=500.0,
         base_travel_time=50.0,
+        shocks=None,
     ):
         # state [0-3]
         self.random_generator = random_generator
+        self.shocks = shocks
         self.initial_observation = 0
         self.number_of_states = 4
 
@@ -21,8 +25,6 @@ class RoadSegment:
 
         self.capacity = capacity  # trucks per year
         self.base_travel_time = base_travel_time  # in hours
-
-        self.reset()
 
         # base travel time table
         # shape: A x S
@@ -122,10 +124,60 @@ class RoadSegment:
             ]
         )
 
+        self.reset()
+    
+    def calc_distance(self, loc_a: np.array, loc_b: np.array) -> float:
+        return np.linalg.norm(loc_a - loc_b, axis=1)
+
     def reset(self):
         self.state = 0
         self.observation = self.initial_observation
         self.belief = np.array([1, 0, 0, 0])
+        if self.shocks is not None:
+            times_len = len(self.shocks.times)
+            if times_len > 0:
+                if not hasattr(self, "shock_shift_table"):
+                    self.shock_shift_table = self.shocks.get_shift_table_from_det_table(
+                        det_table = self.deterioration_table[0]
+                    )
+                    print(self.shock_shift_table)
+                self.distances = self.calc_distance(
+                    loc_a=np.array([self.position_x, self.position_y]),  
+                    loc_b=self.shocks.locs
+                ) 
+                self.pgas, self.shock_tables = self.shocks.loc_based_det_table_transform(
+                    magn=self.shocks.magni,
+                    det_table_list=[self.deterioration_table[0]] * times_len,
+                    dist=self.distances,
+                    shift_list=[np.diag(np.diag(self.deterioration_table[0], 1))]
+                    * times_len,
+                    pga_dict=self.shocks.pga_dict,
+                    fragility_dict=self.shocks.fragility_dict,
+                )
+
+                """
+                self.pgas = list()
+                self.fragilities = list()
+                for k in range(len(self.shocks.times)):
+                    self.pgas.append(
+                        self.shocks.get_pga_from_distance(
+                            magn=self.shocks.magni[k],
+                            dist=self.distances[k],
+                            **self.shocks.pga_dict
+                        )
+                    )
+                    print("pga", self.pgas[-1])
+                    self.fragilities.append(
+                        self.shocks.get_fragilities(
+                            shift=self.shock_shift_table,
+                            pga=self.pgas[k],
+                            **self.shocks.fragility_dict
+                        )
+                    )
+                """
+                print("\n")
+                print("pgas", self.pgas)
+                print("shock tables", self.shock_tables)
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
@@ -171,13 +223,15 @@ class RoadEdge:
         bpr_alpha=0.15,
         bpr_beta=4,
         segments=None,
+        shocks=None,
     ):
+        print("shocks", shocks)
         if segments is None:
             self.number_of_segments = number_of_segments
             self.inspection_campaign_reward = -5
             self.random_generator = random_generator
             self.segments = [
-                RoadSegment(random_generator=random_generator)
+                RoadSegment(random_generator=random_generator, shocks=shocks)
                 for _ in range(number_of_segments)
             ]
         else:
@@ -187,6 +241,7 @@ class RoadEdge:
             self.random_generator = random_generator
         self.bpr_alpha = bpr_alpha
         self.bpr_beta = bpr_beta
+        self.shocks = shocks
         self.reset()
 
     # Define a function for calculating BPR travel times based on volume and capacity
@@ -257,6 +312,7 @@ class RoadEnvironment:
         graph=None,
         seed=None,
         road_edges=None,
+        shocks=None,
     ):
         self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = max_timesteps
@@ -268,11 +324,15 @@ class RoadEnvironment:
         else:
             self.graph = graph
 
+        self.shocks = shocks
+
         if road_edges is None:
             for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
+                print("shock in envs", self.shocks)
                 edge["road_segments"] = RoadEdge(
                     number_of_segments=number_of_segments,
                     random_generator=self.random_generator,
+                    shocks=self.shocks,
                 )
         else:
             for nodes, road_edge in road_edges.items():
@@ -294,6 +354,8 @@ class RoadEnvironment:
 
     def reset(self):
         self.timestep = 0
+        if self.shocks is not None:
+            self.shocks.reset()
         for edge in self.graph.es:
             edge["road_segments"].reset()
         return self._get_observation()
@@ -410,6 +472,8 @@ class RoadEnvironment:
 
     def seed(self, seed):
         self.random_generator = np.random.default_rng(seed)
+        if self.shocks is not None:
+            self.shocks.random_state = self.random_generator
         for edge in self.graph.es:
             edge["road_segments"].random_generator = self.random_generator
             for segment in edge["road_segments"].segments:
@@ -451,6 +515,14 @@ class RoadEnvironment:
         seed = None  # TODO: add correct rng generator handling
         random_generator = np.random.default_rng(seed)
 
+        if config.shocks is not None:
+            shocks = Shock(
+                max_timesteps=max_timesteps, 
+                random_generator=random_generator,
+                **config.shocks)
+        else:
+            shocks = None
+
         road_edges = {}
         for nodes, edge_segments in config.segments.items():
             segments = []
@@ -462,12 +534,14 @@ class RoadEnvironment:
                         position_y=segment["position_y"],
                         capacity=segment["capacity"],
                         base_travel_time=segment["travel_time"],
+                        shocks=shocks
                     )
                 )
             road_edges[nodes] = RoadEdge(
                 number_of_segments=None,
                 random_generator=random_generator,
                 segments=segments,
+                shocks=shocks
             )
 
         env = RoadEnvironment(
@@ -478,6 +552,7 @@ class RoadEnvironment:
             max_timesteps=max_timesteps,
             graph=graph,
             road_edges=road_edges,
+            shocks=shocks,
         )
 
         return env

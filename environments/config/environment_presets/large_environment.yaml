@@ -4,6 +4,10 @@ model:
   deterioration:  "TODO"
   observation:    "TODO"
   reward:         "TODO"
+  shocks: 
+    enabled: True
+    include:
+      path: "./shock.yaml"
 network:
   include:
     path: "./countries/BE/network.yaml"
