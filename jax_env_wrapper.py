@@ -8,7 +8,6 @@ class JaxRoadEnvironmentWrapper:
 
     def __init__(self, params):
         self.jax_env = JaxRoadEnvironment(params)
-        self.num_segments = params.total_num_segments
         self.max_timesteps = params.max_timesteps
 
         key = jax.random.PRNGKey(442)
