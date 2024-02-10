@@ -6,9 +6,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import utils_nx_ig as mu
 from PIL import Image
 
+import environments.utils_nx_ig as mu
 from environments.config.environment_presets import small_environment_dict
 from environments.road_env import RoadEnvironment
 
@@ -96,11 +96,14 @@ def update_multiple_dicts(g: nx.Graph, str_list: list, dict_list: list) -> list:
     return return_list
 
 
-def plot_prepare(g: nx.Graph, layout: str):
+def plot_prepare(g: nx.Graph, layout: str, use_pos: bool):
     if isinstance(g, ig.Graph):
         g = mu.convert_graph_to_nx(g=g)
     fig, ax = plt.subplots(figsize=(10, 6))
-    pos = layout_dict[layout](g)
+    if use_pos and mu.check_for_positions(g=g):
+        pos = mu.get_pos_dict(g=g)
+    else:
+        pos = layout_dict[layout](g)
     return fig, ax, pos, g
 
 
@@ -227,6 +230,7 @@ def only_volumes(g: nx.Graph, my_edge_dict: dict = {}) -> dict:
 def general_plot(
     g: nx.Graph,
     layout="planar",
+    use_pos: bool = False,
     with_color: bool = False,
     use_cmap: bool = False,
     with_edge_labels: bool = False,
@@ -242,7 +246,7 @@ def general_plot(
     return_stuff: bool = False,
 ) -> None:
 
-    fig, ax, pos, g = plot_prepare(g=g, layout=layout)
+    fig, ax, pos, g = plot_prepare(g=g, layout=layout, use_pos=use_pos)
     (
         new_node_dict,
         new_edge_dict,
@@ -375,7 +379,8 @@ def save_frames_as_gif(frame_folder: str) -> None:
 
 def plot_only_graph_structure(
     g: nx.Graph,
-    layout="planar",
+    layout: str = "planar",
+    use_pos: bool = False,
     my_node_dict: dict = {},
     my_edge_dict: dict = {},
     my_node_label_dict: dict = {},
@@ -389,6 +394,7 @@ def plot_only_graph_structure(
     fig, ax, pos, g, nnd, ned, nnld, _ = general_plot(
         g=g,
         layout=layout,
+        use_pos=use_pos,
         my_node_dict=my_node_dict,
         my_edge_dict=my_edge_dict,
         my_node_label_dict=my_node_label_dict,
@@ -403,8 +409,9 @@ def plot_only_graph_structure(
 
 def plot_only_states(
     g: nx.Graph,
-    layout="planar",
-    use_cmap=False,
+    layout: str = "planar",
+    use_pos: bool = False,
+    use_cmap: bool = False,
     my_node_dict: dict = {},
     my_edge_dict: dict = {},
     my_node_label_dict: dict = {},
@@ -418,6 +425,7 @@ def plot_only_states(
     fig, ax, pos, g, nnd, ned, nnld, _ = general_plot(
         g=g,
         layout=layout,
+        use_pos=use_pos,
         with_color=True,
         use_cmap=use_cmap,
         my_node_dict=my_node_dict,
@@ -434,8 +442,9 @@ def plot_only_states(
 
 def plot_states_with_edge_labels(
     g: nx.Graph,
-    layout="planar",
-    use_cmap=False,
+    layout: str = "planar",
+    use_pos: bool = False,
+    use_cmap: bool = False,
     my_node_dict: dict = {},
     my_edge_dict: dict = {},
     my_node_label_dict: dict = {},
@@ -450,6 +459,7 @@ def plot_states_with_edge_labels(
     fig, ax, pos, g, nnd, ned, nnld, neld = general_plot(
         g=g,
         layout=layout,
+        use_pos=use_pos,
         with_color=True,
         use_cmap=use_cmap,
         with_edge_labels=True,
@@ -468,7 +478,8 @@ def plot_states_with_edge_labels(
 
 def plot_only_volumes(
     g: nx.Graph,
-    layout="planar",
+    layout: str = "planar",
+    use_pos: bool = False,
     my_node_dict: dict = {},
     my_edge_dict: dict = {},
     my_node_label_dict: dict = {},
@@ -483,6 +494,7 @@ def plot_only_volumes(
     fig, ax, pos, g, nnd, ned, nnld, _ = general_plot(
         g=g,
         layout=layout,
+        use_pos=use_pos,
         with_volumes=True,
         my_node_dict=my_node_dict,
         my_edge_dict=my_edge_dict,
@@ -499,7 +511,8 @@ def plot_only_volumes(
 
 def plot_states_labels_and_volumes(
     g: nx.Graph,
-    layout="planar",
+    layout: str = "planar",
+    use_pos: bool = False, 
     with_color: bool = True,
     use_cmap: bool = False,
     with_edge_labels: bool = True,
@@ -517,6 +530,7 @@ def plot_states_labels_and_volumes(
     fig, ax, pos, g, nnd, ned, nnld, neld = general_plot(
         g=g,
         layout=layout,
+        use_pos=use_pos,
         with_color=True,
         use_cmap=use_cmap,
         with_edge_labels=True,

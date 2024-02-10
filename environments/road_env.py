@@ -137,20 +137,21 @@ class RoadSegment:
             times_len = len(self.shocks.times)
             if times_len > 0:
                 if not hasattr(self, "shock_shift_table"):
-                    self.shock_shift_table = self.shocks.get_shift_table_from_det_table(
-                        det_table = self.deterioration_table[0]
-                    )
-                    print(self.shock_shift_table)
+                    #self.shock_shift_table = self.shocks.get_shift_table_from_det_table(
+                    #    det_table = self.deterioration_table[0]
+                    #)
+                    self.shock_shift_table = np.zeros((self.deterioration_table[0],)*2)
                 self.distances = self.calc_distance(
                     loc_a=np.array([self.position_x, self.position_y]),  
                     loc_b=self.shocks.locs
                 ) 
                 self.pgas, self.shock_tables = self.shocks.loc_based_det_table_transform(
                     magn=self.shocks.magni,
-                    det_table_list=[self.deterioration_table[0]] * times_len,
                     dist=self.distances,
-                    shift_list=[np.diag(np.diag(self.deterioration_table[0], 1))]
-                    * times_len,
+                    shift_list=[self.shock_shift_table] * times_len,
+                    det_table_append_list=[np.expand_dims(
+                        self.deterioration_table[0,-1,:], axis=0
+                        )] * times_len,
                     pga_dict=self.shocks.pga_dict,
                     fragility_dict=self.shocks.fragility_dict,
                 )
@@ -174,10 +175,11 @@ class RoadSegment:
                             **self.shocks.fragility_dict
                         )
                     )
-                """
+
                 print("\n")
                 print("pgas", self.pgas)
                 print("shock tables", self.shock_tables)
+                """
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
@@ -210,6 +212,34 @@ class RoadSegment:
         self.belief /= np.sum(self.belief)  # normalize
 
         return reward
+    
+    def shock_step(self, index):
+        # another deterioration after reward computation (earthquake happens at 31st of Dec.)
+        next_deterioration_state = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            p=self.shock_tables[index][self.state],
+        )
+
+        self.state = next_deterioration_state
+
+        self.observation = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            # observation received with action==0
+            p=self.observation_tables[0][self.state],
+        )
+
+        # Belief state computation
+        self.belief = self.shock_tables[index].T @ self.belief
+
+        state_probs = self.observation_tables[0][
+            :, self.observation
+        ]  # likelihood of observation
+
+        # Bayes' rule
+        self.belief = state_probs * self.belief  # likelihood * prior
+        self.belief /= np.sum(self.belief)  # normalize
+
+        return
 
     def compute_travel_time(self, action):
         return 0  # travel_time
@@ -225,7 +255,6 @@ class RoadEdge:
         segments=None,
         shocks=None,
     ):
-        print("shocks", shocks)
         if segments is None:
             self.number_of_segments = number_of_segments
             self.inspection_campaign_reward = -5
@@ -285,6 +314,13 @@ class RoadEdge:
         self.update_edge_travel_time_factors()
 
         return reward
+    
+    def shock_step(self, index):
+        for segment in self.segments:
+            segment.shock_step(index)
+
+        self.update_edge_travel_time_factors()
+        return
 
     def reset(self):
         for segment in self.segments:
@@ -455,6 +491,14 @@ class RoadEnvironment:
         )
 
         reward = maintenance_reward + travel_time_reward
+    
+
+        # shock as additional deterioration after reward computation
+        if self.timestep in self.shocks.times:
+            index = np.where(self.timestep == self.shocks.times)[0][0]
+            for i, edge in enumerate(self.graph.es):
+                edge["road_segments"].shock_step(index)
+
 
         observation = self._get_observation()
 
@@ -473,7 +517,7 @@ class RoadEnvironment:
     def seed(self, seed):
         self.random_generator = np.random.default_rng(seed)
         if self.shocks is not None:
-            self.shocks.random_state = self.random_generator
+            self.shocks.random_generator = self.random_generator
         for edge in self.graph.es:
             edge["road_segments"].random_generator = self.random_generator
             for segment in edge["road_segments"].segments:

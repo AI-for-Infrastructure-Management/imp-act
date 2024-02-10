@@ -164,41 +164,43 @@ class Shock:
     def single_loc_based_det_table_transform(
         self,
         magn: float,
-        det_table: np.array,
         dist: float,
         shift: np.array,
+        det_table_append: np.array,
         pga_dict: dict,
         fragility_dict: dict,
     ) -> np.array:
         assert (
-            det_table.dtype == float
+            shift.dtype == float
         )  # otherwise np.nan is just a very large negative number and yields an error in np.log
 
         # get local pga from distance
         pga = self.get_pga_from_distance(magn=magn, dist=dist, **pga_dict)
         frag_mat = self.get_fragilities(pga=pga, shift=shift, **fragility_dict)
         shock_det_table = self.get_det_probs_from_fragility_matrix(frag_mat=frag_mat)
+        # add the last row at the bottom (disregarded in computation)
+        shock_det_table = np.concatenate([shock_det_table, det_table_append], axis=0)
         return pga, shock_det_table
 
     def loc_based_det_table_transform(
         self,
         magn: np.array,
-        det_table_list: list,
         dist: np.array,
         shift_list: list,
+        det_table_append_list: list,
         pga_dict: dict,
         fragility_dict: dict,
     ) -> list:
-
-        assert len(magn) == len(det_table_list) == len(dist) == len(shift_list)
+        
+        assert len(magn) == len(dist) == len(shift_list) == len(det_table_append_list)
         shock_table_list = list()
         pga_list = list()
         for k in range(len(magn)):
             pga, shock_table = self.single_loc_based_det_table_transform(
                     magn=magn[k],
-                    det_table=det_table_list[k],
                     dist=dist[k],
                     shift=shift_list[k],
+                    det_table_append=det_table_append_list[k],
                     pga_dict=pga_dict,
                     fragility_dict=fragility_dict,
                 )
