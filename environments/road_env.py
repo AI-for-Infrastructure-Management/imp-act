@@ -12,6 +12,7 @@ class RoadSegment:
         position_y=0,
         capacity=500.0,
         base_travel_time=50.0,
+        config=None,
     ):
         # state [0-3]
         self.random_generator = random_generator
@@ -40,6 +41,11 @@ class RoadSegment:
             * self.base_travel_time
         )
 
+        if config is not None:
+            self.base_travel_time_table = (
+                config["traffic"]["base_travel_time_factors"] * self.base_travel_time
+            )
+
         # capacity table
         # shape: A x S
         self.capacity_table = (
@@ -53,6 +59,9 @@ class RoadSegment:
             )
             * self.capacity
         )
+
+        if config is not None:
+            self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
 
         # deterioration tables
         # shape: A x S x S
@@ -85,6 +94,9 @@ class RoadSegment:
             ]
         )
 
+        if config is not None:
+            self.deterioration_table = config["deterioration"]
+
         self.observation_tables = np.array(
             [
                 [  # Action 0: do-nothing
@@ -114,6 +126,9 @@ class RoadSegment:
             ]
         )
 
+        if config is not None:
+            self.observation_tables = config["observation"]
+
         # Costs (negative rewards)
         self.state_action_reward = np.array(
             [
@@ -123,6 +138,9 @@ class RoadSegment:
                 [0, -1, -40, -150],
             ]
         )
+
+        if config is not None:
+            self.state_action_reward = config["state_action_reward"]
 
     def reset(self):
         self.state = 0
@@ -290,6 +308,7 @@ class RoadEnvironment:
                         position_y=segment["position_y"],
                         capacity=segment["capacity"],
                         base_travel_time=segment["travel_time"],
+                        config=config["model"]["segment"],
                     )
                 )
             road_edge = RoadEdge(
@@ -309,7 +328,9 @@ class RoadEnvironment:
         self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
 
-        self.travel_time_reward_factor = config["model"]["reward"]["travel_time_factor"]
+        self.travel_time_reward_factor = config["model"]["network"][
+            "travel_time_reward_factor"
+        ]
 
         self.reset()
 
