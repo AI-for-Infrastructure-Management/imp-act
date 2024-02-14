@@ -3,7 +3,8 @@ general:
 model:
   deterioration:  "TODO"
   observation:    "TODO"
-  reward:         "TODO"
+  reward:
+    travel_time_factor: -0.01
 network:
   include:
     path: "./countries/BE/network.yaml"

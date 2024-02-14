@@ -10,40 +10,35 @@ from environments.road_env import RoadEnvironment
 class EnvironmentLoader:
     def __init__(self, filename):
         self.filename = filename
-        self.root_path = Path(filename).parent
-        self._load(filename)
+        self.config = self._load(filename)
 
     def _load(self, filename):
         """Load the environment from the config file"""
         config = yaml.load(open(filename, "r"), Loader=yaml.FullLoader)
 
-        config = self._handle_includes(config, root_path=self.root_path)
+        root_path = Path(filename).parent
+        config = self._handle_includes(config, root_path=root_path)
 
-        self.config = self._check_params(config)
-
-        # load general
-        self.general = config["general"]
-        self.max_timesteps = self.general["max_timesteps"]
+        config = self._check_params(config)
 
         # load network
         network_config = config["network"]
-        self.network = network_config
 
         # load graph
         graph_config = network_config["graph"]
         if graph_config["type"] == "file":
             path = Path(graph_config["path"])
-            self.graph = Graph.Read_GraphML(open(path, "r"))
-            self.graph.vs["id"] = [int(v["id"]) for v in self.graph.vs]
+            graph = Graph.Read_GraphML(open(path, "r"))
+            graph.vs["id"] = [int(v["id"]) for v in graph.vs]
         elif graph_config["type"] == "list":
-            self.graph = Graph(directed=False)
+            graph = Graph(directed=False)
 
             nodes_list = graph_config["nodes"]
             nodes = [n["id"] for n in nodes_list]
             node_attributes = {
                 key: [n[key] for n in nodes_list] for key in nodes_list[0].keys()
             }
-            self.graph.add_vertices(nodes, attributes=node_attributes)
+            graph.add_vertices(nodes, attributes=node_attributes)
 
             edges_list = graph_config["edges"]
             edges = [(e["source"], e["target"]) for e in edges_list]
@@ -52,42 +47,47 @@ class EnvironmentLoader:
                 for key in edges_list[0].keys()
                 if key not in ["source", "target"]
             }
-            self.graph.add_edges(edges, attributes=edge_attributes)
+            graph.add_edges(edges, attributes=edge_attributes)
         else:
             raise ValueError(f"Graph type {graph_config['type']} not supported")
+
+        config["network"]["graph"] = graph
 
         # load trips
         trips_config = network_config["trips"]
         if trips_config["type"] == "file":
             path = Path(trips_config["path"])
-            self.trips = pd.read_csv(path)
+            trips = pd.read_csv(path)
             # ensure that origin, destination are integers
-            self.trips = self.trips.astype(
-                {"origin": int, "destination": int, "volume": float}
-            )
+            trips = trips.astype({"origin": int, "destination": int, "volume": float})
         elif trips_config["type"] == "list":
-            self.trips = pd.DataFrame(trips_config["list"])
+            trips = pd.DataFrame(trips_config["list"])
         else:
             raise ValueError(f"Trips type {trips_config['type']} not supported")
+
+        config["network"]["trips"] = trips
 
         # load segments
         segments_config = network_config["segments"]
         if segments_config["type"] == "file":
             path = Path(segments_config["path"])
-            self.segments = pd.read_csv(path)
+            segments_df = pd.read_csv(path)
         elif segments_config["type"] == "list":
-            self.segments = pd.DataFrame(segments_config["list"])
+            segments_df = pd.DataFrame(segments_config["list"])
         else:
             raise ValueError(f"Segments type {segments_config['type']} not supported")
 
         # group segments by origin, destination
         segments = {}
-        for group, df in self.segments.groupby(["source", "target"]):
+        for group, df in segments_df.groupby(["source", "target"]):
             segments[group] = df.to_dict("records")
-        self.segments = segments
+
+        config["network"]["segments"] = segments
 
         # load model
         # TODO: load model data
+
+        return config
 
     def _handle_includes(self, config, root_path):
         """Handle includes in the config dict by recursively loading them and updating the config."""
@@ -124,7 +124,7 @@ class EnvironmentLoader:
         return config
 
     def to_numpy(self):
-        return RoadEnvironment.from_config(self)
+        return RoadEnvironment(self.config)
 
     def to_jax(self):
         pass
