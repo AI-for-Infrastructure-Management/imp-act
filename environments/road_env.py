@@ -1,3 +1,5 @@
+from typing import Dict, Optional
+
 import numpy as np
 from igraph import Graph
 
@@ -249,44 +251,65 @@ class RoadEdge:
 class RoadEnvironment:
     def __init__(
         self,
-        num_vertices,
-        edges,
-        edge_segments_numbers,
-        trips,
-        max_timesteps=50,
-        graph=None,
-        seed=None,
-        road_edges=None,
+        config: Dict,
+        seed: Optional[int] = None,
     ):
         self.random_generator = np.random.default_rng(seed)
-        self.max_timesteps = max_timesteps
-        self.travel_time_factor = 1
-        self.edge_segments_numbers = edge_segments_numbers
+        self.max_timesteps = config["general"]["max_timesteps"]
 
-        if graph is None:
-            self.create_graph(num_vertices, edges)
-        else:
-            self.graph = graph
+        self.graph = config["network"]["graph"]
 
-        if road_edges is None:
-            for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
-                edge["road_segments"] = RoadEdge(
-                    number_of_segments=number_of_segments,
-                    random_generator=self.random_generator,
+        # Convert trips dataframe to list of tuples with correct vertex indices
+        trips_df = config["network"]["trips"]
+        trips = []
+        for index in trips_df.index:
+            vertex_1_list = self.graph.vs.select(id_eq=trips_df["origin"][index])
+            vertex_2_list = self.graph.vs.select(id_eq=trips_df["destination"][index])
+            if (len(vertex_1_list) == 0) or (len(vertex_2_list) == 0):
+                raise ValueError(
+                    f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}"
                 )
-        else:
-            for nodes, road_edge in road_edges.items():
-                vertex_1 = self.graph.vs.select(id_eq=nodes[0])
-                vertex_2 = self.graph.vs.select(id_eq=nodes[1])
-                graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))[0]
-                graph_edge["road_segments"] = road_edge
+            trips.append(
+                (
+                    vertex_1_list[0].index,
+                    vertex_2_list[0].index,
+                    trips_df["volume"][index],
+                )
+            )
 
         self.trips = trips
-        self.traffic_assignment_max_iterations = 5
-        self.traffic_assignment_convergence_threshold = 0.01
-        self.traffic_assignment_update_weight = 0.5
 
-        self.travel_time_reward_factor = -0.01
+        # Add road segments to graph edges
+        for nodes, edge_segments in config["network"]["segments"].items():
+            segments = []
+            for segment in edge_segments:
+                segments.append(
+                    RoadSegment(
+                        random_generator=self.random_generator,
+                        position_x=segment["position_x"],
+                        position_y=segment["position_y"],
+                        capacity=segment["capacity"],
+                        base_travel_time=segment["travel_time"],
+                    )
+                )
+            road_edge = RoadEdge(
+                number_of_segments=None,
+                random_generator=self.random_generator,
+                segments=segments,
+            )
+
+            vertex_1 = self.graph.vs.select(id_eq=nodes[0])
+            vertex_2 = self.graph.vs.select(id_eq=nodes[1])
+            graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))[0]
+            graph_edge["road_segments"] = road_edge
+
+        # Traffic assignment parameters
+        ta_conf = config["network"]["traffic_assignment"]
+        self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
+        self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
+        self.traffic_assignment_update_weight = ta_conf["update_weight"]
+
+        self.travel_time_reward_factor = config["model"]["reward"]["travel_time_factor"]
 
         self.reset()
 
@@ -414,60 +437,3 @@ class RoadEnvironment:
             edge["road_segments"].random_generator = self.random_generator
             for segment in edge["road_segments"].segments:
                 segment.random_generator = self.random_generator
-
-    @staticmethod
-    def from_config(config):
-        graph = config.graph
-        trips_df = config.trips
-        trips = []
-
-        for index in trips_df.index:
-            vertex_1_list = graph.vs.select(id_eq=trips_df["origin"][index])
-            vertex_2_list = graph.vs.select(id_eq=trips_df["destination"][index])
-            if (len(vertex_1_list) == 0) or (len(vertex_2_list) == 0):
-                raise ValueError(
-                    f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}"
-                )
-            trips.append(
-                (
-                    vertex_1_list[0].index,
-                    vertex_2_list[0].index,
-                    trips_df["volume"][index],
-                )
-            )
-
-        max_timesteps = config.max_timesteps
-        random_generator = np.random.default_rng(None)
-
-        road_edges = {}
-        for nodes, edge_segments in config.segments.items():
-            segments = []
-            for segment in edge_segments:
-                segments.append(
-                    RoadSegment(
-                        random_generator=random_generator,
-                        position_x=segment["position_x"],
-                        position_y=segment["position_y"],
-                        capacity=segment["capacity"],
-                        base_travel_time=segment["travel_time"],
-                    )
-                )
-            road_edges[nodes] = RoadEdge(
-                number_of_segments=None,
-                random_generator=random_generator,
-                segments=segments,
-            )
-
-        env = RoadEnvironment(
-            num_vertices=None,
-            edges=None,
-            edge_segments_numbers=None,
-            trips=trips,
-            max_timesteps=max_timesteps,
-            graph=graph,
-            road_edges=road_edges,
-        )
-
-        env.seed(None)  # Ensure that the same random generator object is set
-
-        return env
