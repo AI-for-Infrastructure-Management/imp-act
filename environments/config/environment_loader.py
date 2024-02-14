@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import numpy as np
+
 import pandas as pd
 import yaml
 from igraph import Graph
@@ -85,7 +87,46 @@ class EnvironmentLoader:
         config["network"]["segments"] = segments
 
         # load model
-        # TODO: load model data
+        segment = config["model"]["segment"]
+        if segment["deterioration"]["type"] == "list":
+            segment["deterioration"] = np.array(segment["deterioration"]["list"])
+        else:
+            raise ValueError(
+                f"Deterioration type {segment['deterioration']['type']} not supported"
+            )
+
+        if segment["observation"]["type"] == "list":
+            segment["observation"] = np.array(segment["observation"]["list"])
+        else:
+            raise ValueError(
+                f"Deterioration type {segment['observation']['type']} not supported"
+            )
+
+        if segment["state_action_reward"]["type"] == "list":
+            segment["state_action_reward"] = np.array(
+                segment["state_action_reward"]["list"]
+            )
+        else:
+            raise ValueError(
+                f"Deterioration type {segment['state_action_reward']['type']} not supported"
+            )
+
+        traffic = config["model"]["segment"]["traffic"]
+        if traffic["base_travel_time_factors"]["type"] == "list":
+            traffic["base_travel_time_factors"] = np.array(
+                traffic["base_travel_time_factors"]["list"]
+            )
+        else:
+            raise ValueError(
+                f"Deterioration type {traffic['base_travel_time_factors']['type']} not supported"
+            )
+
+        if traffic["capacity_factors"]["type"] == "list":
+            traffic["capacity_factors"] = np.array(traffic["capacity_factors"]["list"])
+        else:
+            raise ValueError(
+                f"Deterioration type {traffic['capacity_factors']['type']} not supported"
+            )
 
         return config
 

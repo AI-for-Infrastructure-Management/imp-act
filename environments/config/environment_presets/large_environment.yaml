@@ -1,10 +1,8 @@
 general:
   max_timesteps: 50
 model:
-  deterioration:  "TODO"
-  observation:    "TODO"
-  reward:
-    travel_time_factor: -0.01
+  include:
+    path: "./model/model_defaults.yaml"
 network:
   include:
     path: "./countries/BE/network.yaml"
