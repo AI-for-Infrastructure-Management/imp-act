@@ -1,13 +1,29 @@
+from typing import Dict, Optional
+
 import numpy as np
 from igraph import Graph
 
 
 class RoadSegment:
-    def __init__(self, random_generator):
+    def __init__(
+        self,
+        random_generator,
+        position_x=0,
+        position_y=0,
+        capacity=500.0,
+        base_travel_time=50.0,
+        config=None,
+    ):
         # state [0-3]
         self.random_generator = random_generator
         self.initial_observation = 0
         self.number_of_states = 4
+
+        self.position_x = position_x
+        self.position_y = position_y
+
+        self.capacity = capacity  # trucks per year
+        self.base_travel_time = base_travel_time  # in hours
 
         self.reset()
 
@@ -25,6 +41,11 @@ class RoadSegment:
             * self.base_travel_time
         )
 
+        if config is not None:
+            self.base_travel_time_table = (
+                config["traffic"]["base_travel_time_factors"] * self.base_travel_time
+            )
+
         # capacity table
         # shape: A x S
         self.capacity_table = (
@@ -38,6 +59,9 @@ class RoadSegment:
             )
             * self.capacity
         )
+
+        if config is not None:
+            self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
 
         # deterioration tables
         # shape: A x S x S
@@ -70,6 +94,9 @@ class RoadSegment:
             ]
         )
 
+        if config is not None:
+            self.deterioration_table = config["deterioration"]
+
         self.observation_tables = np.array(
             [
                 [  # Action 0: do-nothing
@@ -99,6 +126,9 @@ class RoadSegment:
             ]
         )
 
+        if config is not None:
+            self.observation_tables = config["observation"]
+
         # Costs (negative rewards)
         self.state_action_reward = np.array(
             [
@@ -109,14 +139,13 @@ class RoadSegment:
             ]
         )
 
+        if config is not None:
+            self.state_action_reward = config["state_action_reward"]
+
     def reset(self):
         self.state = 0
         self.observation = self.initial_observation
         self.belief = np.array([1, 0, 0, 0])
-        self.capacity = 500.0  # maybe cars per minute
-        self.base_travel_time = (
-            50.0  # maybe minutes it takes to travel trough a segment
-        )
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
@@ -156,15 +185,26 @@ class RoadSegment:
 
 class RoadEdge:
     def __init__(
-        self, number_of_segments, random_generator, bpr_alpha=0.15, bpr_beta=4
+        self,
+        number_of_segments,
+        random_generator,
+        bpr_alpha=0.15,
+        bpr_beta=4,
+        segments=None,
     ):
-        self.number_of_segments = number_of_segments
-        self.inspection_campaign_reward = -5
-        self.random_generator = random_generator
-        self.segments = [
-            RoadSegment(random_generator=random_generator)
-            for _ in range(number_of_segments)
-        ]
+        if segments is None:
+            self.number_of_segments = number_of_segments
+            self.inspection_campaign_reward = -5
+            self.random_generator = random_generator
+            self.segments = [
+                RoadSegment(random_generator=random_generator)
+                for _ in range(number_of_segments)
+            ]
+        else:
+            self.segments = segments
+            self.number_of_segments = len(segments)
+            self.inspection_campaign_reward = -5
+            self.random_generator = random_generator
         self.bpr_alpha = bpr_alpha
         self.bpr_beta = bpr_beta
         self.reset()
@@ -229,36 +269,68 @@ class RoadEdge:
 class RoadEnvironment:
     def __init__(
         self,
-        num_vertices,
-        edges,
-        edge_segments_numbers,
-        trips,
-        max_timesteps=50,
-        graph=None,
-        seed=42,
+        config: Dict,
+        seed: Optional[int] = None,
     ):
         self.random_generator = np.random.default_rng(seed)
-        self.max_timesteps = max_timesteps
-        self.travel_time_factor = 1
-        self.edge_segments_numbers = edge_segments_numbers
+        self.max_timesteps = config["general"]["max_timesteps"]
 
-        if graph is None:
-            self.create_graph(num_vertices, edges)
-        else:
-            self.graph = graph
+        self.graph = config["network"]["graph"]
 
-        for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
-            edge["road_segments"] = RoadEdge(
-                number_of_segments=number_of_segments,
-                random_generator=self.random_generator,
+        # Convert trips dataframe to list of tuples with correct vertex indices
+        trips_df = config["network"]["trips"]
+        trips = []
+        for index in trips_df.index:
+            vertex_1_list = self.graph.vs.select(id_eq=trips_df["origin"][index])
+            vertex_2_list = self.graph.vs.select(id_eq=trips_df["destination"][index])
+            if (len(vertex_1_list) == 0) or (len(vertex_2_list) == 0):
+                raise ValueError(
+                    f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}"
+                )
+            trips.append(
+                (
+                    vertex_1_list[0].index,
+                    vertex_2_list[0].index,
+                    trips_df["volume"][index],
+                )
             )
 
         self.trips = trips
-        self.traffic_assignment_max_iterations = 15
-        self.traffic_assignment_convergence_threshold = 0.01
-        self.traffic_assignment_update_weight = 0.5
 
-        self.travel_time_reward_factor = -0.01
+        # Add road segments to graph edges
+        for nodes, edge_segments in config["network"]["segments"].items():
+            segments = []
+            for segment in edge_segments:
+                segments.append(
+                    RoadSegment(
+                        random_generator=self.random_generator,
+                        position_x=segment["position_x"],
+                        position_y=segment["position_y"],
+                        capacity=segment["capacity"],
+                        base_travel_time=segment["travel_time"],
+                        config=config["model"]["segment"],
+                    )
+                )
+            road_edge = RoadEdge(
+                number_of_segments=None,
+                random_generator=self.random_generator,
+                segments=segments,
+            )
+
+            vertex_1 = self.graph.vs.select(id_eq=nodes[0])
+            vertex_2 = self.graph.vs.select(id_eq=nodes[1])
+            graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))[0]
+            graph_edge["road_segments"] = road_edge
+
+        # Traffic assignment parameters
+        ta_conf = config["network"]["traffic_assignment"]
+        self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
+        self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
+        self.traffic_assignment_update_weight = ta_conf["update_weight"]
+
+        self.travel_time_reward_factor = config["model"]["network"][
+            "travel_time_reward_factor"
+        ]
 
         self.reset()
 
