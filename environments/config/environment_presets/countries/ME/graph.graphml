@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"><key id="d3" for="edge" attr.name="id" attr.type="long"/>
+<key id="d2" for="edge" attr.name="distance" attr.type="double"/>
+<key id="d1" for="node" attr.name="position_y" attr.type="double"/>
+<key id="d0" for="node" attr.name="position_x" attr.type="double"/>
+<graph edgedefault="undirected"><node id="103363">
+  <data key="d0">18.950599</data>
+  <data key="d1">42.205695</data>
+</node>
+<node id="186291">
+  <data key="d0">18.536815</data>
+  <data key="d1">42.453724</data>
+</node>
+<node id="103700">
+  <data key="d0">20.168446</data>
+  <data key="d1">42.84282</data>
+</node>
+<node id="103422">
+  <data key="d0">18.941149</data>
+  <data key="d1">42.781943</data>
+</node>
+<node id="124888">
+  <data key="d0">19.37161708</data>
+  <data key="d1">42.0165029</data>
+</node>
+<node id="103713">
+  <data key="d0">19.253745</data>
+  <data key="d1">42.42080900000001</data>
+</node>
+<node id="103672">
+  <data key="d0">19.42001791</data>
+  <data key="d1">42.33036191</data>
+</node>
+<node id="103357">
+  <data key="d0">18.847671</data>
+  <data key="d1">43.349031</data>
+</node>
+<edge source="103363" target="103713">
+  <data key="d2">46.635</data>
+  <data key="d3">5000000</data>
+</edge>
+<edge source="103363" target="124888">
+  <data key="d2">69.14</data>
+  <data key="d3">5000001</data>
+</edge>
+<edge source="103363" target="186291">
+  <data key="d2">79.29899999999999</data>
+  <data key="d3">5000002</data>
+</edge>
+<edge source="103700" target="103713">
+  <data key="d2">165.53199999999998</data>
+  <data key="d3">5000003</data>
+</edge>
+<edge source="103422" target="103357">
+  <data key="d2">80.299</data>
+  <data key="d3">5000004</data>
+</edge>
+<edge source="103422" target="103713">
+  <data key="d2">51.462</data>
+  <data key="d3">5000005</data>
+</edge>
+<edge source="103713" target="103672">
+  <data key="d2">23.166</data>
+  <data key="d3">1004671</data>
+</edge>
+</graph></graphml>
