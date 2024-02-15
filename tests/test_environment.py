@@ -5,10 +5,10 @@ import numpy as np
 import pytest
 
 
-def test_observation_keys(small_environment):
+def test_observation_keys(toy_environment):
     """Test if the observation dictionary has the correct keys in reset and step functions."""
 
-    env = small_environment
+    env = toy_environment
     obs = env.reset()
 
     keys = [
@@ -28,9 +28,9 @@ def test_observation_keys(small_environment):
         assert key in obs.keys()
 
 
-def test_one_episode(small_environment):
+def test_one_episode(toy_environment):
     """Test if the environment can run one episode."""
-    env = small_environment
+    env = toy_environment
 
     obs = env.reset()
     actions = [[1] * len(e) for e in obs["edge_observations"]]
@@ -42,6 +42,30 @@ def test_one_episode(small_environment):
         obs, cost, done, info = env.step(actions)
 
     assert timestep == env.max_timesteps
+
+
+def test_small_environment(small_environment):
+    """Test if the small environment can run one episode."""
+    env = small_environment
+
+    start_time = time.time()
+
+    obs = env.reset()
+    actions = [[1] * len(e) for e in obs["edge_observations"]]
+    timestep = 0
+    done = False
+
+    while not done:
+        timestep += 1
+        obs, cost, done, info = env.step(actions)
+
+    assert timestep == env.max_timesteps
+
+    print(f"\nSmall ENV one episode time taken: {time.time() - start_time:.2} seconds")
+    print(
+        f"Nodes: {len(env.graph.vs)}, Edges: {len(env.graph.es)}, Timesteps: {timestep}, Trips: {len(env.trips)}"
+    )
+    print("Test Result: ", end="")
 
 
 def test_large_environment(large_environment):
@@ -68,9 +92,9 @@ def test_large_environment(large_environment):
     print("Test Result: ", end="")
 
 
-def test_timing(small_environment):
+def test_timing(toy_environment):
     "Test if the average time per trajectory is below the threshold"
-    env = small_environment
+    env = toy_environment
 
     obs = env.reset()
     actions = [[1] * len(e) for e in obs["edge_observations"]]
@@ -104,18 +128,18 @@ def test_seed_2():
     return 1337
 
 
-def test_seed(small_environment_loader, test_seed_1, test_seed_2):
+def test_seed(toy_environment_loader, test_seed_1, test_seed_2):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
-    actions = [[1, 1] for _ in range(4)]
     n_episodes = 2
 
     # Collect episodes
-    env = small_environment_loader.to_numpy()
+    env = toy_environment_loader.to_numpy()
     env.seed(test_seed_1)
     reward_all = []
     for episode in range(n_episodes):
         obs = env.reset()
+        actions = [[1] * len(e) for e in obs["edge_observations"]]
         done = False
         reward_episode = []
         while not done:
@@ -124,7 +148,7 @@ def test_seed(small_environment_loader, test_seed_1, test_seed_2):
         reward_all.append(reward_episode)
 
     # Create env with same random seed and collect episodes
-    env_same = small_environment_loader.to_numpy()
+    env_same = toy_environment_loader.to_numpy()
     env_same.seed(test_seed_1)
     reward_same_all = []
     for episode in range(n_episodes):
@@ -137,7 +161,7 @@ def test_seed(small_environment_loader, test_seed_1, test_seed_2):
         reward_same_all.append(reward_same_episode)
 
     # Create env with different random seed and collect episodes
-    env_different = small_environment_loader.to_numpy()
+    env_different = toy_environment_loader.to_numpy()
     env_different.seed(test_seed_2)
 
     reward_different_all = []
@@ -159,19 +183,20 @@ def test_seed(small_environment_loader, test_seed_1, test_seed_2):
     assert not np.array_equal(reward_all, reward_different_all)
 
 
-def test_seed_interfering_sampler(small_environment_loader, test_seed_1, test_seed_2):
+def test_seed_interfering_sampler(toy_environment_loader, test_seed_1, test_seed_2):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
-    actions = [[1, 1] for _ in range(4)]
     n_episodes = 2
 
     # Collect episodes
-    env = small_environment_loader.to_numpy()
+    env = toy_environment_loader.to_numpy()
     env.seed(test_seed_1)
 
     reward_all = []
     for episode in range(n_episodes):
         obs = env.reset()
+        actions = [[1] * len(e) for e in obs["edge_observations"]]
+
         done = False
         reward_episode = []
         while not done:
@@ -180,7 +205,7 @@ def test_seed_interfering_sampler(small_environment_loader, test_seed_1, test_se
         reward_all.append(reward_episode)
 
     # Create env with same random seed and collect episodes
-    env_same = small_environment_loader.to_numpy()
+    env_same = toy_environment_loader.to_numpy()
     env_same.seed(test_seed_1)
 
     reward_same_all = []
@@ -198,7 +223,7 @@ def test_seed_interfering_sampler(small_environment_loader, test_seed_1, test_se
         reward_same_all.append(reward_same_episode)
 
     # Create env with different random seed and collect episodes
-    env_different = small_environment_loader.to_numpy()
+    env_different = toy_environment_loader.to_numpy()
     env_different.seed(test_seed_2)
 
     reward_different_all = []
@@ -220,19 +245,19 @@ def test_seed_interfering_sampler(small_environment_loader, test_seed_1, test_se
     assert not np.array_equal(reward_all, reward_different_all)
 
 
-def test_seed_np_random_seed(small_environment_loader, test_seed_1, test_seed_2):
+def test_seed_np_random_seed(toy_environment_loader, test_seed_1, test_seed_2):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
-    actions = [[1, 1] for _ in range(4)]
     n_episodes = 2
 
     # Collect episodes
-    env = small_environment_loader.to_numpy()
+    env = toy_environment_loader.to_numpy()
     env.seed(test_seed_1)
 
     reward_all = []
     for episode in range(n_episodes):
         obs = env.reset()
+        actions = [[1] * len(e) for e in obs["edge_observations"]]
         done = False
         reward_episode = []
         while not done:
@@ -241,7 +266,7 @@ def test_seed_np_random_seed(small_environment_loader, test_seed_1, test_seed_2)
         reward_all.append(reward_episode)
 
     # Create env with same random seed and collect episodes
-    env_same = small_environment_loader.to_numpy()
+    env_same = toy_environment_loader.to_numpy()
     env_same.seed(test_seed_1)
 
     reward_same_all = []
@@ -259,7 +284,7 @@ def test_seed_np_random_seed(small_environment_loader, test_seed_1, test_seed_2)
         reward_same_all.append(reward_same_episode)
 
     # Create env with different random seed and collect episodes
-    env_different = small_environment_loader.to_numpy()
+    env_different = toy_environment_loader.to_numpy()
     env_different.seed(test_seed_2)
 
     reward_different_all = []
@@ -281,19 +306,19 @@ def test_seed_np_random_seed(small_environment_loader, test_seed_1, test_seed_2)
     assert not np.array_equal(reward_all, reward_different_all)
 
 
-def test_seeding_function(small_environment_loader, test_seed_1, test_seed_2):
+def test_seeding_function(toy_environment_loader, test_seed_1, test_seed_2):
     """Test if the environment is reproducible"""
     # Fix actions and number of episodes
-    actions = [[1, 1] for _ in range(4)]
     n_episodes = 2
 
     # Collect episodes
-    env = small_environment_loader.to_numpy()
+    env = toy_environment_loader.to_numpy()
     env.seed(test_seed_1)
     reward_all = []
     for episode in range(n_episodes):
         env.seed(test_seed_1 + episode)
         obs = env.reset()
+        actions = [[1] * len(e) for e in obs["edge_observations"]]
         done = False
         reward_episode = []
         while not done:
@@ -302,7 +327,7 @@ def test_seeding_function(small_environment_loader, test_seed_1, test_seed_2):
         reward_all.append(reward_episode)
 
     # Create env with same random seed and collect episodes
-    env_same = small_environment_loader.to_numpy()
+    env_same = toy_environment_loader.to_numpy()
     env_same.seed(test_seed_1)
 
     reward_same_all = []
@@ -317,7 +342,7 @@ def test_seeding_function(small_environment_loader, test_seed_1, test_seed_2):
         reward_same_all.append(reward_same_episode)
 
     # Create env with different random seed and collect episodes
-    env_different = small_environment_loader.to_numpy()
+    env_different = toy_environment_loader.to_numpy()
     env_different.seed(test_seed_1)
 
     reward_different_all = []
