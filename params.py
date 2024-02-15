@@ -11,6 +11,7 @@ class EnvParams:
 
     # Reward parameters
     travel_time_reward_factor: float = -0.01
+    inspection_campaign_reward: int = -5
 
     # Graph parameters
     num_vertices: int = 4

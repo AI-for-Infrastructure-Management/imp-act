@@ -35,6 +35,7 @@ class JaxRoadEnvironment(environment.Environment):
 
         # Reward parameters
         self.travel_time_reward_factor = params.travel_time_reward_factor
+        self.inspection_campaign_reward = params.inspection_campaign_reward
 
         # Graph parameters
         self.num_nodes = params.num_vertices
@@ -122,10 +123,38 @@ class JaxRoadEnvironment(environment.Environment):
 
     @partial(jax.jit, static_argnums=(0,))
     @partial(vmap, in_axes=(None, 0, 0, None))
-    def _get_maintenance_reward(
+    def _get_rewards_from_table(
         self, dam_state: int, action: int, rewards_table: jnp.array
     ) -> float:
         return rewards_table[dam_state, action]
+
+    @partial(jax.jit, static_argnums=(0,))
+    def _get_campaign_reward(self, action: jnp.array) -> float:
+
+        _gathered = self._gather(action)
+
+        # check which segments were inspected,
+        # return 1 if at least one segment was inspected, 0 otherwise
+        # max: avoid 2 in case of multiple inspections on the same edge
+        # sum: total number of inspections
+        y = jnp.where(_gathered == 1, 1, 0).max(axis=1).sum()
+
+        return y * self.inspection_campaign_reward
+
+    @partial(jax.jit, static_argnums=(0,))
+    def _get_maintenance_reward(
+        self, damage_state: jnp.array, action: jnp.array
+    ) -> float:
+
+        maintenance_reward = self._get_rewards_from_table(
+            damage_state, action, self.rewards_table
+        ).sum()
+
+        campaign_reward = self._get_campaign_reward(action)
+
+        maintenance_reward += campaign_reward
+
+        return maintenance_reward
 
     @partial(jax.jit, static_argnums=0)
     def compute_edge_travel_time(self, state: EnvState, edge_volumes: jnp.array):
@@ -439,9 +468,7 @@ class JaxRoadEnvironment(environment.Environment):
         obs = self._get_next(keys_obs, next_state, action, self.observation_table)
 
         # maintenance reward
-        maintenance_reward = self._get_maintenance_reward(
-            state.damage_state, action, self.rewards_table
-        ).sum()
+        maintenance_reward = self._get_maintenance_reward(state.damage_state, action)
 
         # belief update
         belief = self._get_next_belief(state.belief, obs, action)

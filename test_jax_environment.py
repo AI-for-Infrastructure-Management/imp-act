@@ -27,6 +27,7 @@ def graph_params():
 
         # Reward parameters
         travel_time_reward_factor: float = -0.01
+        inspection_campaign_reward: int = -5
 
         # Graph parameters
         num_vertices: int = 7
@@ -388,3 +389,25 @@ def test_gather(graph_params):
     )
 
     assert jnp.allclose(true_values, computed_values)
+
+
+def test_campaign_reward(small_jax_environment):
+    """Test campaign reward computation."""
+
+    # inspections on 0 edges => campaign reward: 0
+    _action = [{"0": [0, 2]}, {"1": [2, 0]}, {"2": [2, 2]}, {"3": [2, 0]}]
+    __action = jax.tree_util.tree_leaves(_action)
+    action = jnp.array(__action, dtype=jnp.uint8)
+
+    campaign_reward = small_jax_environment._get_campaign_reward(action)
+
+    assert campaign_reward == 0
+
+    # inspections on 3 edges => campaign reward: -3 * 5 = -15
+    _action = [{"0": [1, 2]}, {"1": [1, 0]}, {"2": [1, 0]}, {"3": [2, 3]}]
+    __action = jax.tree_util.tree_leaves(_action)
+    action = jnp.array(__action, dtype=jnp.uint8)
+
+    campaign_reward = small_jax_environment._get_campaign_reward(action)
+
+    assert campaign_reward == -15
