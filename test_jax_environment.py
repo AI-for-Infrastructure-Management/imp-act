@@ -404,7 +404,7 @@ def test_campaign_reward(small_jax_environment):
     assert campaign_reward == 0
 
     # inspections on 3 edges => campaign reward: -3 * 5 = -15
-    _action = [{"0": [1, 2]}, {"1": [1, 0]}, {"2": [1, 0]}, {"3": [2, 3]}]
+    _action = [{"0": [1, 2]}, {"1": [1, 1]}, {"2": [1, 0]}, {"3": [2, 3]}]
     __action = jax.tree_util.tree_leaves(_action)
     action = jnp.array(__action, dtype=jnp.uint8)
 
