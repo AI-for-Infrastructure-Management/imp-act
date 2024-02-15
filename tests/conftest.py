@@ -43,3 +43,8 @@ def large_environment_path():
 def large_environment(large_environment_path):
     loader = EnvironmentLoader(large_environment_path)
     return loader.to_numpy()
+
+
+@pytest.fixture
+def parameter_fixture(request):
+    return request.getfixturevalue(request.param)

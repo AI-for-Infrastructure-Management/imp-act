@@ -44,9 +44,12 @@ def test_one_episode(toy_environment):
     assert timestep == env.max_timesteps
 
 
-def test_small_environment(small_environment):
-    """Test if the small environment can run one episode."""
-    env = small_environment
+@pytest.mark.parametrize(
+    "parameter_fixture", ["small_environment", "large_environment"], indirect=True
+)
+def test_environment(parameter_fixture):
+    """Test if the environment can run one episode."""
+    env = parameter_fixture
 
     start_time = time.time()
 
@@ -61,34 +64,10 @@ def test_small_environment(small_environment):
 
     assert timestep == env.max_timesteps
 
-    print(f"\nSmall ENV one episode time taken: {time.time() - start_time:.2} seconds")
     print(
-        f"Nodes: {len(env.graph.vs)}, Edges: {len(env.graph.es)}, Timesteps: {timestep}, Trips: {len(env.trips)}"
+        f"\nNodes: {len(env.graph.vs)}, Edges: {len(env.graph.es)}, Timesteps: {timestep}, Trips: {len(env.trips)}"
     )
-    print("Test Result: ", end="")
-
-
-def test_large_environment(large_environment):
-    """Test if the large environment can run one episode."""
-    env = large_environment
-
-    start_time = time.time()
-
-    obs = env.reset()
-    actions = [[1] * len(e) for e in obs["edge_observations"]]
-    timestep = 0
-    done = False
-
-    while not done:
-        timestep += 1
-        obs, cost, done, info = env.step(actions)
-
-    assert timestep == env.max_timesteps
-
-    print(f"\nLarge ENV one episode time taken: {time.time() - start_time:.2} seconds")
-    print(
-        f"Nodes: {len(env.graph.vs)}, Edges: {len(env.graph.es)}, Timesteps: {timestep}, Trips: {len(env.trips)}"
-    )
+    print(f"One episode time taken: {time.time() - start_time:.2} seconds")
     print("Test Result: ", end="")
 
 
