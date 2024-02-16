@@ -139,7 +139,7 @@ class RoadSegment:
         )
 
         if config is not None:
-            self.state_action_reward = config["state_action_reward"]
+            self.state_action_reward = config["reward"]["state_action_reward"]
 
     def reset(self):
         self.state = 0
@@ -182,27 +182,17 @@ class RoadSegment:
 class RoadEdge:
     def __init__(
         self,
-        number_of_segments,
+        segments,
+        config,
         random_generator,
-        bpr_alpha=0.15,
-        bpr_beta=4,
-        segments=None,
     ):
-        if segments is None:
-            self.number_of_segments = number_of_segments
-            self.inspection_campaign_reward = -5
-            self.random_generator = random_generator
-            self.segments = [
-                RoadSegment(random_generator=random_generator)
-                for _ in range(number_of_segments)
-            ]
-        else:
-            self.segments = segments
-            self.number_of_segments = len(segments)
-            self.inspection_campaign_reward = -5
-            self.random_generator = random_generator
-        self.bpr_alpha = bpr_alpha
-        self.bpr_beta = bpr_beta
+
+        self.segments = segments
+        self.number_of_segments = len(segments)
+        self.inspection_campaign_reward = config["reward"]["inspection_campaign_reward"]
+        self.random_generator = random_generator
+        self.bpr_alpha = config["traffic"]["bpr_alpha"]
+        self.bpr_beta = config["traffic"]["bpr_beta"]
         self.reset()
 
     # Define a function for calculating BPR travel times based on volume and capacity
@@ -308,9 +298,9 @@ class RoadEnvironment:
                     )
                 )
             road_edge = RoadEdge(
-                number_of_segments=None,
-                random_generator=self.random_generator,
                 segments=segments,
+                config=config["model"]["segment"],
+                random_generator=self.random_generator,
             )
 
             vertex_1 = self.graph.vs.select(id_eq=nodes[0])
