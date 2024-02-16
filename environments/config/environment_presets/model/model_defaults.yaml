@@ -1,4 +1,5 @@
 segment:
+  initial_damage_state: 0
   deterioration:
     type: "list"
     list:
@@ -23,6 +24,7 @@ segment:
       - [1.0, 0.0, 0.0, 0.0]
       - [1.0, 0.0, 0.0, 0.0]
       - [1.0, 0.0, 0.0, 0.0]
+  initial_observation: 0
   observation:
     type: "list"
     list:

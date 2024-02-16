@@ -6,145 +6,54 @@ import numpy as np
 class RoadSegment:
     def __init__(
         self,
+        config,
         random_generator,
         position_x=0,
         position_y=0,
         capacity=500.0,
         base_travel_time=50.0,
-        config=None,
     ):
         # state [0-3]
         self.random_generator = random_generator
-        self.initial_observation = 0
-        self.number_of_states = 4
+        self.initial_state = config["initial_damage_state"]
+        self.initial_observation = config["initial_observation"]
+        self.number_of_states = config["deterioration"].shape[1]
 
         self.position_x = position_x
         self.position_y = position_y
 
-        self.capacity = capacity  # trucks per year
-        self.base_travel_time = base_travel_time  # in hours
+        self.capacity = capacity
+        self.base_travel_time = base_travel_time
 
         self.reset()
 
         # base travel time table
         # shape: A x S
         self.base_travel_time_table = (
-            np.array(
-                [
-                    [1.00, 1.10, 1.40, 1.60],
-                    [1.00, 1.10, 1.40, 1.60],
-                    [1.00, 1.05, 1.15, 1.45],
-                    [1.50, 1.50, 1.50, 1.50],
-                ]
-            )
-            * self.base_travel_time
+            config["traffic"]["base_travel_time_factors"] * self.base_travel_time
         )
-
-        if config is not None:
-            self.base_travel_time_table = (
-                config["traffic"]["base_travel_time_factors"] * self.base_travel_time
-            )
 
         # capacity table
         # shape: A x S
-        self.capacity_table = (
-            np.array(
-                [
-                    [1.00, 1.00, 1.00, 1.00],
-                    [1.00, 1.00, 1.00, 1.00],
-                    [0.80, 0.80, 0.80, 0.80],
-                    [0.50, 0.50, 0.50, 0.50],
-                ]
-            )
-            * self.capacity
-        )
-
-        if config is not None:
-            self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
+        self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
 
         # deterioration tables
         # shape: A x S x S
-        self.deterioration_table = np.array(
-            [
-                [  # Action 0: do-nothing
-                    [0.9, 0.1, 0.0, 0.0],
-                    [0.0, 0.9, 0.1, 0.0],
-                    [0.0, 0.0, 0.9, 0.1],
-                    [0.0, 0.0, 0.0, 1.0],
-                ],
-                [  # Action 1: inspect
-                    [0.9, 0.1, 0.0, 0.0],
-                    [0.0, 0.9, 0.1, 0.0],
-                    [0.0, 0.0, 0.9, 0.1],
-                    [0.0, 0.0, 0.0, 1.0],
-                ],
-                [  # Action 2: minor repair
-                    [1.0, 0.0, 0.0, 0.0],
-                    [0.9, 0.1, 0.0, 0.0],
-                    [0.8, 0.2, 0.0, 0.0],
-                    [0.7, 0.2, 0.1, 0.0],
-                ],
-                [  # Action 3: major repair (replacement)
-                    [1.0, 0.0, 0.0, 0.0],
-                    [1.0, 0.0, 0.0, 0.0],
-                    [1.0, 0.0, 0.0, 0.0],
-                    [1.0, 0.0, 0.0, 0.0],
-                ],
-            ]
-        )
+        self.deterioration_table = config["deterioration"]
 
-        if config is not None:
-            self.deterioration_table = config["deterioration"]
-
-        self.observation_tables = np.array(
-            [
-                [  # Action 0: do-nothing
-                    [1 / 3, 1 / 3, 1 / 3, 0.0],
-                    [1 / 3, 1 / 3, 1 / 3, 0.0],
-                    [1 / 3, 1 / 3, 1 / 3, 0.0],
-                    [0.0, 0.0, 0.0, 1.0],
-                ],
-                [  # Action 1: inspect
-                    [0.8, 0.2, 0.0, 0.0],
-                    [0.1, 0.8, 0.1, 0.0],
-                    [0.0, 0.1, 0.9, 0.0],
-                    [0.0, 0.0, 0.0, 1.0],
-                ],
-                [  # Action 2: minor repair
-                    [1 / 3, 1 / 3, 1 / 3, 0.0],
-                    [1 / 3, 1 / 3, 1 / 3, 0.0],
-                    [1 / 3, 1 / 3, 1 / 3, 0.0],
-                    [0.0, 0.0, 0.0, 1.0],
-                ],
-                [  # Action 3: major repair (replacement)
-                    [1 / 3, 1 / 3, 1 / 3, 0.0],
-                    [1 / 3, 1 / 3, 1 / 3, 0.0],
-                    [1 / 3, 1 / 3, 1 / 3, 0.0],
-                    [0.0, 0.0, 0.0, 1.0],
-                ],
-            ]
-        )
-
-        if config is not None:
-            self.observation_tables = config["observation"]
+        # observation tables
+        # shape: A x S x O
+        self.observation_tables = config["observation"]
 
         # Costs (negative rewards)
-        self.state_action_reward = np.array(
-            [
-                [0, -1, -20, -150],
-                [0, -1, -25, -150],
-                [0, -1, -30, -150],
-                [0, -1, -40, -150],
-            ]
-        )
-
-        if config is not None:
-            self.state_action_reward = config["reward"]["state_action_reward"]
+        # shape: S x A
+        self.state_action_reward = config["reward"]["state_action_reward"]
 
     def reset(self):
-        self.state = 0
+        self.state = self.initial_state
         self.observation = self.initial_observation
-        self.belief = np.array([1, 0, 0, 0])
+        self.belief = np.zeros(self.number_of_states)
+        self.belief[self.state] = 1.0
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
