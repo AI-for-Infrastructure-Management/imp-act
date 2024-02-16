@@ -47,14 +47,16 @@ segment:
       - [0.3333333333333333, 0.3333333333333333, 0.3333333333333333, 0.0]
       - [0.3333333333333333, 0.3333333333333333, 0.3333333333333333, 0.0]
       - [0.0,                0.0,                0.0,                1.0]
-  state_action_reward:
-      type: "list"
-      list:
-      # Shape: S x A
-      - [0, -1, -20, -150]
-      - [0, -1, -25, -150]
-      - [0, -1, -30, -150]
-      - [0, -1, -40, -150]
+  reward:
+    state_action_reward:
+        type: "list"
+        list:
+        # Shape: S x A
+        - [0, -1, -20, -150]
+        - [0, -1, -25, -150]
+        - [0, -1, -30, -150]
+        - [0, -1, -40, -150]
+    inspection_campaign_reward: -5
   traffic:
     base_travel_time_factors:
       type: "list"
@@ -72,5 +74,7 @@ segment:
       - [1.00, 1.00, 1.00, 1.00]
       - [0.80, 0.80, 0.80, 0.80]
       - [0.50, 0.50, 0.50, 0.50]
+    bpr_alpha: 0.15
+    bpr_beta: 4.0
 network:
   travel_time_reward_factor: -0.01

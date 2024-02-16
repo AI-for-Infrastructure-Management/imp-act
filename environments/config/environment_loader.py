@@ -102,9 +102,9 @@ class EnvironmentLoader:
                 f"Deterioration type {segment['observation']['type']} not supported"
             )
 
-        if segment["state_action_reward"]["type"] == "list":
-            segment["state_action_reward"] = np.array(
-                segment["state_action_reward"]["list"]
+        if segment["reward"]["state_action_reward"]["type"] == "list":
+            segment["reward"]["state_action_reward"] = np.array(
+                segment["reward"]["state_action_reward"]["list"]
             )
         else:
             raise ValueError(
