@@ -13,7 +13,6 @@ class RoadSegment:
         capacity=500.0,
         base_travel_time=50.0,
     ):
-        # state [0-3]
         self.random_generator = random_generator
         self.initial_state = config["initial_damage_state"]
         self.initial_observation = config["initial_observation"]
@@ -104,17 +103,13 @@ class RoadEdge:
         self.bpr_beta = config["traffic"]["bpr_beta"]
         self.reset()
 
-    # Define a function for calculating BPR travel times based on volume and capacity
-    def calculate_bpr_travel_time(volume, capacity, base_time, alpha, beta):
-        return base_time * (1 + alpha * (volume / capacity) ** beta)
-
     def calculate_bpr_capacity_factor(
         self, base_time_vec: np.array, capacity_vec: np.array
     ) -> np.array:
         return base_time_vec * self.bpr_alpha / (capacity_vec**self.bpr_beta)
 
     def update_edge_travel_time_factors(self) -> None:
-        # extracts the vector of base travel times and capacities from each edge and precomputes the
+        """Updates the edge travel time factors based on the current segment states."""
         btt_vec, cap_vec = np.hsplit(
             np.array([[seg.base_travel_time, seg.capacity] for seg in self.segments]), 2
         )
@@ -127,10 +122,10 @@ class RoadEdge:
         return
 
     def compute_edge_travel_time(self, volume: float) -> float:
+        """Computes the travel time for the edge based on the given current volume and precomputed capacity factor."""
         return self.base_time_factor + self.capacity_factor * (volume**self.bpr_beta)
 
     def step(self, actions):
-
         if len(self.segments) != len(actions):
             raise ValueError("self.segments and actions must have the same length")
 
