@@ -1,7 +1,6 @@
 from typing import Dict, Optional
 
 import numpy as np
-from igraph import Graph
 
 
 class RoadSegment:
@@ -179,9 +178,6 @@ class RoadSegment:
 
         return reward
 
-    def compute_travel_time(self, action):
-        return 0  # travel_time
-
 
 class RoadEdge:
     def __init__(
@@ -341,13 +337,6 @@ class RoadEnvironment:
         for edge in self.graph.es:
             edge["road_segments"].reset()
         return self._get_observation()
-
-    def create_graph(self, num_vertices, edges):
-        self.graph = Graph()
-        self.num_vertices = num_vertices
-        self.edges = edges
-        self.graph.add_vertices(num_vertices)
-        self.graph.add_edges(edges)
 
     def _get_observation(self):
         adjacency_matrix = np.array(self.graph.get_adjacency().data)
