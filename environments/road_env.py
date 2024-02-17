@@ -203,7 +203,7 @@ class RoadEnvironment:
                 )
             road_edge = RoadEdge(
                 segments=segments,
-                config=config["model"]["segment"],
+                config=config["model"]["edge"],
                 random_generator=self.random_generator,
             )
 
