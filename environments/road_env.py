@@ -8,10 +8,10 @@ class RoadSegment:
         self,
         config,
         random_generator,
-        position_x=0,
-        position_y=0,
-        capacity=500.0,
-        base_travel_time=50.0,
+        position_x,
+        position_y,
+        capacity,
+        base_travel_time,
     ):
         self.random_generator = random_generator
         self.initial_state = config["initial_damage_state"]
