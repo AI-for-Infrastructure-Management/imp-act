@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from environment import RoadEnvironment as NumPyRoadEnvironment
 from environment_presets import small_environment_dict
 
-from jax_environment import JaxRoadEnvironment
+from environments.jax_environment import JaxRoadEnvironment
 from params import EnvParams
 
 

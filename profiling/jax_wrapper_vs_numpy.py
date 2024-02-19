@@ -6,9 +6,9 @@ from environment import RoadEnvironment as NumPyRoadEnvironment
 from environment_presets import small_environment_dict
 
 from jax import numpy as jnp
-
-from jax_env_wrapper import JaxRoadEnvironmentWrapper
 from params import EnvParams
+
+from wrappers.jax_env_wrapper import JaxRoadEnvironmentWrapper
 
 
 def do_nothing_policy_numpy(env):

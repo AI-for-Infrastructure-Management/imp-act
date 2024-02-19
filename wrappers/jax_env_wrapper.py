@@ -1,6 +1,6 @@
 import jax
 
-from jax_environment import JaxRoadEnvironment
+from environments.jax_environment import JaxRoadEnvironment
 
 
 class JaxRoadEnvironmentWrapper:

@@ -6,11 +6,11 @@ import pytest
 
 from environment import RoadEnvironment as NumPyRoadEnvironment
 from environment_presets import small_environment_dict
-from igraph import Graph
-from jax_env_wrapper import JaxRoadEnvironmentWrapper
 
-from jax_environment import EnvState, JaxRoadEnvironment
+from environments.jax_environment import EnvState, JaxRoadEnvironment
+from igraph import Graph
 from params import EnvParams
+from wrappers.jax_env_wrapper import JaxRoadEnvironmentWrapper
 
 
 @pytest.fixture
