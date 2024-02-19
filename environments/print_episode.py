@@ -1,11 +1,12 @@
 import numpy as np
 
-from environment import RoadEnvironment
-from environment_presets import small_environment_dict
+from environments.config.environment_loader import EnvironmentLoader
 
 
 def main():
-    env = RoadEnvironment(**small_environment_dict)
+    env = EnvironmentLoader(
+        "environments/config/environment_presets/small_environment.yaml"
+    ).to_numpy()
     env.reset()
     actions = [[1, 1] for _ in range(4)]
     done = False
