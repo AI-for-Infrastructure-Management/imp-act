@@ -6,6 +6,8 @@ import pandas as pd
 import yaml
 from igraph import Graph
 
+from environments.jax_environment import JaxRoadEnvironment
+
 from environments.road_env import RoadEnvironment
 
 
@@ -168,4 +170,4 @@ class EnvironmentLoader:
         return RoadEnvironment(self.config)
 
     def to_jax(self):
-        pass
+        return JaxRoadEnvironment(self.config)

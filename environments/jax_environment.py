@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Tuple
+from typing import Dict, Tuple
 
 import chex
 import jax
@@ -8,7 +8,6 @@ import numpy as np
 from flax import struct
 from gymnax.environments import environment, spaces
 from jax import vmap
-from params import EnvParams
 
 
 @struct.dataclass
@@ -27,59 +26,69 @@ class JaxRoadEnvironment(environment.Environment):
     JAX implementation of the Road Environment.
     """
 
-    def __init__(self, params: EnvParams):
+    def __init__(self, config: Dict):
         super().__init__()
 
-        # Horizon parameters
-        self.max_timesteps = params.max_timesteps
+        # Episode time horizon
+        self.max_timesteps = config["general"]["max_timesteps"]
+
+        # Network geometry
+        graph = config["network"]["graph"]
+        self.num_nodes = graph.vcount()
+        self.num_edges = graph.ecount()
+        # self.edges = params.edges  # TODO
+        # self.edge_segments_numbers = params.edge_segments_numbers  # TODO
+        # self.total_num_segments = int(jnp.sum(self.edge_segments_numbers))
+
+        # Traffic modeling
+        ta_conf = config["network"]["traffic_assignment"]
+        self.traffic_alpha = config["model"]["edge"]["traffic"]["bpr_alpha"]
+        self.traffic_beta = config["model"]["edge"]["traffic"]["bpr_beta"]
+        self.capacity_table = jnp.array(
+            config["model"]["segment"]["traffic"]["capacity_factors"]
+        )
+        # self.initial_capacities = None  # TODO
+        self.btt_table = jnp.array(
+            config["model"]["segment"]["traffic"]["base_travel_time_factors"]
+        )
+        # self.initial_btts = None  # TODO
+        # Traffic assignment parameters
+        self.traffic_assignment_update_weight = ta_conf["update_weight"]
+        self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
+        self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
+        # self.shortest_path_max_iterations = params.shortest_path_max_iterations  # TODO
+        # Network traffic
+        # self.trip_sources, self.trip_destinations = jnp.nonzero(params.trips)  # TODO
+        # self.trips = params.trips  # TODO
+
+        # Inspection and maintenance modeling
+        self.num_damage_states = config["model"]["segment"]["deterioration"].shape[1]
+        self.initial_dam_state = config["model"]["segment"]["initial_damage_state"]
+        self.initial_obs = config["model"]["segment"]["initial_observation"]
+        self.initial_belief = np.zeros(self.num_damage_states)
+        self.initial_belief[self.initial_dam_state] = 1.0
+        self.initial_belief = jnp.array(self.initial_belief)
+        # Deterioration model
+        self.deterioration_table = jnp.array(
+            config["model"]["segment"]["deterioration"]
+        )
+        # Observation model
+        self.observation_table = jnp.array(config["model"]["segment"]["observation"])
 
         # Reward parameters
-        self.travel_time_reward_factor = params.travel_time_reward_factor
-        self.inspection_campaign_reward = params.inspection_campaign_reward
-
-        # Graph parameters
-        self.num_nodes = params.num_vertices
-        self.edges = params.edges
-        self.num_edges = params.num_edges
-        self.edge_segments_numbers = params.edge_segments_numbers
-        self.total_num_segments = int(jnp.sum(self.edge_segments_numbers))
-
-        # Traffic assignment parameters
-        self.shortest_path_max_iterations = params.shortest_path_max_iterations
-        self.traffic_assignment_max_iterations = (
-            params.traffic_assignment_max_iterations
+        self.travel_time_reward_factor = config["model"]["network"][
+            "travel_time_reward_factor"
+        ]
+        self.inspection_campaign_reward = config["model"]["edge"]["reward"][
+            "inspection_campaign_reward"
+        ]
+        self.rewards_table = jnp.array(
+            config["model"]["segment"]["reward"]["state_action_reward"]
         )
-        self.traffic_assignment_convergence_threshold = (
-            params.traffic_assignment_convergence_threshold
-        )
-        self.traffic_assignment_update_weight = params.traffic_assignment_update_weight
-        self.traffic_alpha = params.traffic_alpha
-        self.traffic_beta = params.traffic_beta
-
-        # Road Network parameters
-        self.trip_sources, self.trip_destinations = jnp.nonzero(params.trips)
-        self.trips = params.trips
-
-        self.btt_table = params.btt_table
-        self.capacity_table = params.capacity_table
-
-        # Damage parameters
-        self.num_damage_states = params.num_dam_states
-        self.initial_dam_state = params.initial_dam_state
-        self.initial_obs = params.initial_obs
-        self.initial_belief = params.initial_belief
-
-        self.deterioration_table = params.deterioration_table
-        self.observation_table = params.observation_table
-
-        self.rewards_table = params.rewards_table
 
         self.idxs_map = self._compute_idxs_map()
 
-        # reset
-        _obs, state = self.reset_env()
-
-        # total base travel time
+        _, state = self.reset_env()
         self.total_base_travel_time = self._get_total_travel_time(state)
 
     def _compute_idxs_map(self):
@@ -473,8 +482,12 @@ class JaxRoadEnvironment(environment.Environment):
         # belief update
         belief = self._get_next_belief(state.belief, obs, action)
 
-        base_travel_time = self.btt_table[action, state.damage_state]
-        capacity = self.capacity_table[action, state.damage_state]
+        base_travel_time = (
+            self.btt_table[action, state.damage_state] * self.initial_btts
+        )
+        capacity = (
+            self.capacity_table[action, state.damage_state] * self.initial_capacities
+        )
 
         total_travel_time = self._get_total_travel_time(state)
         travel_time_reward = self.travel_time_reward_factor * (
@@ -508,22 +521,22 @@ class JaxRoadEnvironment(environment.Environment):
     @partial(jax.jit, static_argnums=0)
     def reset_env(self) -> Tuple[chex.Array, EnvState]:
         # initial damage state
-        damage_state = jnp.zeros(self.total_num_segments, dtype=jnp.uint8)
+        damage_state = (
+            jnp.ones(self.total_num_segments, dtype=jnp.uint8) * self.initial_dam_state
+        )
+
+        # initial observation
+        obs = jnp.ones(self.total_num_segments, dtype=jnp.uint8) * self.initial_obs
 
         # initial belief
         belief = jnp.array([self.initial_belief] * self.total_num_segments)
 
-        # initial base travel times
-        initial_btt = jnp.ones(self.total_num_segments) * self.btt_table[0, 0]
-        # initial capacity
-        initial_capacity = jnp.ones(self.total_num_segments) * self.capacity_table[0, 0]
-
         env_state = EnvState(
             damage_state=damage_state,
-            observation=damage_state,
+            observation=obs,
             belief=belief,
-            base_travel_time=initial_btt,
-            capacity=initial_capacity,
+            base_travel_time=self.intial_btts,
+            capacity=self.initial_capacities,
             timestep=0,
         )
         return self.get_obs(env_state), env_state
@@ -598,34 +611,3 @@ class JaxRoadEnvironment(environment.Environment):
         key = keys[-1, :]
 
         return subkeys, key
-
-
-if __name__ == "__main__":
-    params = EnvParams()
-    env = JaxRoadEnvironment(params)
-
-    _action = [{"0": [0, 0]}, {"1": [0, 0]}, {"2": [0, 0]}, {"3": [0, 0]}]
-    __action = jax.tree_util.tree_leaves(_action)
-    action = jnp.array(__action, dtype=jnp.uint8)
-
-    key = jax.random.PRNGKey(442)
-    step_keys, key = env.split_key(key)
-
-    # reset
-    obs, state = env.reset_env()
-
-    total_rewards = 0.0
-
-    # rollout
-    for _ in range(params.max_timesteps):
-        # step
-        obs, reward, done, info, state = env.step_env(step_keys, state, action)
-
-        # generate keys for next timestep
-        step_keys, key = env.split_key(key)
-
-        # update total rewards
-        total_rewards += reward
-
-    print(f"Total rewards: {total_rewards}")
-    print(f"Total travel time: {info['total_travel_time']}")
