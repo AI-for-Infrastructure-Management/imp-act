@@ -1,8 +1,10 @@
 ## Installation
 
-With [poetry](https://python-poetry.org/docs/#installation) (1.7 used)
+With [Anaconda](https://www.anaconda.com/download#downloads) and [poetry](https://python-poetry.org/docs/#installation) (1.7 used):
 ```bash
-poetry install --without test
+conda env create -f conda_environment.yaml
+conda activate imp-rl-competition-env
+poetry install
 ```
 
 With pip on any virtual environment:

@@ -25,3 +25,12 @@ Linting configuration, see [.pre-commit-config.yaml](.pre-commit-config.yaml) :
 - µfmt is a safe, atomic code formatter for Python. It changes your file automatically to make it conform to the PEP 8 style guide.
 - flake8 checks the style and quality of the python code.
 - pydocstyle checks the style of the docstrings in the python code.
+
+## Adding a new dependency:
+
+To add a new dependency with poetry run the following commands in the root of the project:
+
+```bash
+poetry add <package-name>
+poetry lock
+```
