@@ -10,6 +10,8 @@ from environments.jax_environment import JaxRoadEnvironment
 
 from environments.road_env import RoadEnvironment
 
+from wrappers.jax_env_wrapper import JaxRoadEnvironmentWrapper
+
 
 class EnvironmentLoader:
     def __init__(self, filename):
@@ -171,3 +173,6 @@ class EnvironmentLoader:
 
     def to_jax(self):
         return JaxRoadEnvironment(self.config)
+    
+    def to_jax_wrapper(self):
+        return JaxRoadEnvironmentWrapper(self.config)
