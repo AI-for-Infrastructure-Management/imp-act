@@ -5,10 +5,10 @@ import numpy as np
 import pytest
 
 
-def test_observation_keys(toy_environment):
+def test_observation_keys(toy_environment_numpy):
     """Test if the observation dictionary has the correct keys in reset and step functions."""
 
-    env = toy_environment
+    env = toy_environment_numpy
     obs = env.reset()
 
     keys = [
@@ -28,9 +28,9 @@ def test_observation_keys(toy_environment):
         assert key in obs.keys()
 
 
-def test_one_episode(toy_environment):
+def test_one_episode(toy_environment_numpy):
     """Test if the environment can run one episode."""
-    env = toy_environment
+    env = toy_environment_numpy
 
     obs = env.reset()
     actions = [[1] * len(e) for e in obs["edge_observations"]]
@@ -45,7 +45,7 @@ def test_one_episode(toy_environment):
 
 
 @pytest.mark.parametrize(
-    "parameter_fixture", ["small_environment", "large_environment"], indirect=True
+    "parameter_fixture", ["small_environment_numpy", "large_environment_numpy"], indirect=True
 )
 def test_environment(parameter_fixture):
     """Test if the environment can run one episode."""
@@ -71,9 +71,9 @@ def test_environment(parameter_fixture):
     print("Test Result: ", end="")
 
 
-def test_timing(toy_environment):
+def test_timing(toy_environment_numpy):
     "Test if the average time per trajectory is below the threshold"
-    env = toy_environment
+    env = toy_environment_numpy
 
     obs = env.reset()
     actions = [[1] * len(e) for e in obs["edge_observations"]]
