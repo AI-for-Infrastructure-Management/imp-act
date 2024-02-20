@@ -33,12 +33,17 @@ class JaxRoadEnvironment(environment.Environment):
         self.max_timesteps = config["general"]["max_timesteps"]
 
         # Network geometry
-        graph = config["network"]["graph"]
-        self.num_nodes = graph.vcount()
-        self.num_edges = graph.ecount()
-        # self.edges = params.edges  # TODO
-        # self.edge_segments_numbers = params.edge_segments_numbers  # TODO
-        # self.total_num_segments = int(jnp.sum(self.edge_segments_numbers))
+        self.graph = config["network"]["graph"]
+        self.num_nodes = self.graph.vcount()
+        self.num_edges = self.graph.ecount()
+        self.edges = jnp.array(self.graph.get_edgelist())
+        (
+            segments_list,
+            self.initial_btts,
+            self.initial_capacities,
+            self.total_num_segments,
+        ) = self._extract_segments_info(config)
+        self.idxs_map = self._compute_idxs_map(segments_list)
 
         # Traffic modeling
         ta_conf = config["network"]["traffic_assignment"]
@@ -46,20 +51,19 @@ class JaxRoadEnvironment(environment.Environment):
         self.traffic_beta = config["model"]["edge"]["traffic"]["bpr_beta"]
         self.capacity_table = jnp.array(
             config["model"]["segment"]["traffic"]["capacity_factors"]
-        )
-        # self.initial_capacities = None  # TODO
+        )  # fractions of the initial capacities, multiplied by the initial capacities later
         self.btt_table = jnp.array(
             config["model"]["segment"]["traffic"]["base_travel_time_factors"]
-        )
-        # self.initial_btts = None  # TODO
-        # Traffic assignment parameters
+        )  # fractions of the initial btts, multiplied by the initial btts later
+
+        # Traffic assignment
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
         self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
         self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
-        # self.shortest_path_max_iterations = params.shortest_path_max_iterations  # TODO
+        self.shortest_path_max_iterations = 500  # TODO
         # Network traffic
-        # self.trip_sources, self.trip_destinations = jnp.nonzero(params.trips)  # TODO
-        # self.trips = params.trips  # TODO
+        self.trips = self._extract_trip_info(config)
+        self.trip_sources, self.trip_destinations = jnp.nonzero(self.trips)
 
         # Inspection and maintenance modeling
         self.num_damage_states = config["model"]["segment"]["deterioration"].shape[1]
@@ -75,7 +79,7 @@ class JaxRoadEnvironment(environment.Environment):
         # Observation model
         self.observation_table = jnp.array(config["model"]["segment"]["observation"])
 
-        # Reward parameters
+        # Rewards
         self.travel_time_reward_factor = config["model"]["network"][
             "travel_time_reward_factor"
         ]
@@ -86,15 +90,69 @@ class JaxRoadEnvironment(environment.Environment):
             config["model"]["segment"]["reward"]["state_action_reward"]
         )
 
-        self.idxs_map = self._compute_idxs_map()
-
         _, state = self.reset_env()
         self.total_base_travel_time = self._get_total_travel_time(state)
 
-    def _compute_idxs_map(self):
+    @staticmethod
+    def _extract_segments_info(config: Dict):
+        """Extract segments information from the configuration file.
+        Only used in the constructor."""
+
+        segments_idxs_list = []  # list of segment indices for each edge
+        segment_initial_btt = []
+        segment_initial_capacity = []
+        idx = 0
+        for nodes, edge_segments in config["network"]["segments"].items():
+            _seg_idxs = []
+            for segment in edge_segments:
+                segment_initial_btt.append(segment["travel_time"])
+                segment_initial_capacity.append(segment["capacity"])
+                _seg_idxs.append(idx)
+                idx += 1
+
+            segments_idxs_list.append(_seg_idxs)
+
+        total_num_segments = segments_idxs_list[-1][-1] + 1
+
+        return (
+            segments_idxs_list,
+            jnp.array(segment_initial_btt),
+            jnp.array(segment_initial_capacity),
+            total_num_segments,
+        )
+
+    def _extract_trip_info(self, config: Dict):
+        """Store trip information from the config file into a matrix."""
+
+        trips = np.zeros((self.num_nodes, self.num_nodes))
+
+        trips_df = config["network"]["trips"]
+        for index in trips_df.index:
+
+            vertex_1_list = self.graph.vs.select(id_eq=trips_df["origin"][index])
+            vertex_2_list = self.graph.vs.select(id_eq=trips_df["destination"][index])
+
+            if (len(vertex_1_list) == 0) or (len(vertex_2_list) == 0):
+                raise ValueError(
+                    f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}"
+                )
+
+            vertex_1 = vertex_1_list[0].index
+            vertex_2 = vertex_2_list[0].index
+
+            trips[vertex_1, vertex_2] = trips_df["volume"][index]
+
+        return jnp.array(trips)
+
+    def _compute_idxs_map(self, segments_list):
         """
         Compute the idxs_map used to gather the properties of all
         segments belonging to an edge.
+
+        Parameters
+        ----------
+        segments_list : list
+            List of segments indices belonging to each edge.
 
         Returns
         -------
@@ -103,14 +161,21 @@ class JaxRoadEnvironment(environment.Environment):
             segment belonging to the ith edge.
         """
 
-        idxs_map = np.full(
-            (self.num_edges, self.edge_segments_numbers.max()), 1_000_000
-        )
-        idx = 0
-        for i, num_segments in enumerate(self.edge_segments_numbers):
-            idxs_map[i, :num_segments] = np.arange(idx, idx + num_segments)
+        # fill value to ensure that values greater than the total number
+        # of segments return 0 when used as indices in self._gather
+        _fill = 100_000
 
-            idx += num_segments
+        assert (
+            _fill > self.total_num_segments
+        ), "Fill value must be greater than the total number of segments."
+
+        # maximum number of segments per edge
+        max_length = max(len(segment) for segment in segments_list)
+
+        # create a np.array and pad with _fill
+        idxs_map = np.full((self.num_edges, max_length), _fill)
+        for i, segment in enumerate(segments_list):
+            idxs_map[i, : len(segment)] = segment
 
         return idxs_map
 
@@ -146,9 +211,9 @@ class JaxRoadEnvironment(environment.Environment):
         # return 1 if at least one segment was inspected, 0 otherwise
         # max: avoid 2 in case of multiple inspections on the same edge
         # sum: total number of inspections
-        y = jnp.where(_gathered == 1, 1, 0).max(axis=1).sum()
+        total_num_inspections = jnp.where(_gathered == 1, 1, 0).max(axis=1).sum()
 
-        return y * self.inspection_campaign_reward
+        return total_num_inspections * self.inspection_campaign_reward
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_maintenance_reward(
@@ -535,7 +600,7 @@ class JaxRoadEnvironment(environment.Environment):
             damage_state=damage_state,
             observation=obs,
             belief=belief,
-            base_travel_time=self.intial_btts,
+            base_travel_time=self.initial_btts,
             capacity=self.initial_capacities,
             timestep=0,
         )
