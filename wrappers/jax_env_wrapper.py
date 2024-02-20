@@ -1,4 +1,5 @@
 import jax
+from typing import Dict
 
 from environments.jax_environment import JaxRoadEnvironment
 
@@ -6,9 +7,9 @@ from environments.jax_environment import JaxRoadEnvironment
 class JaxRoadEnvironmentWrapper:
     """Wrapper of Jax RoadEnvironment for RL libraries compatibility"""
 
-    def __init__(self, params):
-        self.jax_env = JaxRoadEnvironment(params)
-        self.max_timesteps = params.max_timesteps
+    def __init__(self, config: Dict):
+        self.jax_env = JaxRoadEnvironment(config)
+        self.max_timesteps = self.jax_env.max_timesteps
 
         key = jax.random.PRNGKey(442)
         self.step_keys, self.key = self.jax_env.split_key(key)
