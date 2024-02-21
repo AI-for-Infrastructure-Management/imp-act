@@ -101,7 +101,7 @@ class RoadEdge:
         self.random_generator = random_generator
         self.bpr_alpha = config["traffic"]["bpr_alpha"]
         self.bpr_beta = config["traffic"]["bpr_beta"]
-        self.reset()
+        self.reset(reset_segments=False)
 
     def calculate_bpr_capacity_factor(
         self, base_time_vec: np.array, capacity_vec: np.array
@@ -141,9 +141,10 @@ class RoadEdge:
 
         return reward
 
-    def reset(self):
-        for segment in self.segments:
-            segment.reset()
+    def reset(self, reset_segments=True):
+        if reset_segments:
+            for segment in self.segments:
+                segment.reset()
         self.update_edge_travel_time_factors()
 
     def get_observation(self):
@@ -222,14 +223,15 @@ class RoadEnvironment:
             "travel_time_reward_factor"
         ]
 
-        self.reset()
+        self.reset(reset_edges=False)
 
         self.base_total_travel_time = self._get_total_travel_time()
 
-    def reset(self):
+    def reset(self, reset_edges=True):
         self.timestep = 0
-        for edge in self.graph.es:
-            edge["road_segments"].reset()
+        if reset_edges:
+            for edge in self.graph.es:
+                edge["road_segments"].reset()
         return self._get_observation()
 
     def _get_observation(self):
