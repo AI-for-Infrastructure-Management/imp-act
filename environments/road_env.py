@@ -140,7 +140,7 @@ class RoadSegment:
                     #self.shock_shift_table = self.shocks.get_shift_table_from_det_table(
                     #    det_table = self.deterioration_table[0]
                     #)
-                    self.shock_shift_table = np.zeros((self.deterioration_table[0],)*2)
+                    self.shock_shift_table = np.zeros((self.deterioration_table[0].shape[0]-1,)*2)
                 self.distances = self.calc_distance(
                     loc_a=np.array([self.position_x, self.position_y]),  
                     loc_b=self.shocks.locs
@@ -364,7 +364,6 @@ class RoadEnvironment:
 
         if road_edges is None:
             for edge, number_of_segments in zip(self.graph.es, edge_segments_numbers):
-                print("shock in envs", self.shocks)
                 edge["road_segments"] = RoadEdge(
                     number_of_segments=number_of_segments,
                     random_generator=self.random_generator,
@@ -494,10 +493,11 @@ class RoadEnvironment:
     
 
         # shock as additional deterioration after reward computation
-        if self.timestep in self.shocks.times:
-            index = np.where(self.timestep == self.shocks.times)[0][0]
-            for i, edge in enumerate(self.graph.es):
-                edge["road_segments"].shock_step(index)
+        if self.shocks is not None:
+            if self.timestep in self.shocks.times:
+                index = np.where(self.timestep == self.shocks.times)[0][0]
+                for i, edge in enumerate(self.graph.es):
+                    edge["road_segments"].shock_step(index)
 
 
         observation = self._get_observation()

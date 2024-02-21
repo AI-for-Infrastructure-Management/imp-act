@@ -6,11 +6,14 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from datetime import datetime
 from PIL import Image
 
 import environments.utils_nx_ig as mu
+from environments.config.environment_loader import EnvironmentLoader
 from environments.config.environment_presets import small_environment_dict
 from environments.road_env import RoadEnvironment
+from environments.shock import Shock
 
 # plot dict for visualization with networkx
 standard_dict = {"with_labels": True}
@@ -66,6 +69,12 @@ color_coding = {
     3: "tab:red",
 }  # for maximum over states of the segments per edge
 
+shock_scatter_dict = {
+    "s": 200,
+    "c": "gray",
+    "marker": "X",
+    "edgecolors": "k",
+}
 
 def update_dict(d: dict, my_dict: dict) -> dict:
     new_dict = d.copy()
@@ -226,6 +235,21 @@ def only_volumes(g: nx.Graph, my_edge_dict: dict = {}) -> dict:
     new_edge_dict = update_dict(d=my_edge_dict, my_dict={"width": width_list})
     return new_edge_dict
 
+def only_shocks(shocks: Shock, fig: plt.figure, ax: plt.axis) -> list:
+    # check if there are any shocks to plot
+    N_shocks = len(shocks.times)
+    if N_shocks > 0:
+        # chech plot time flag has been set
+        if hasattr(shocks, "plot_time"):
+            if shocks.plot_time in shocks.times:
+                ind = np.where(shocks.plot_time == shocks.times)[0][0]
+                print(shocks.times, shocks.plot_time, ind)
+                ax.scatter(shocks.locs[ind,0], shocks.locs[ind,1], **shock_scatter_dict)
+        else:
+            # plot all shocks
+            ax.scatter(shocks.locs[:,0], shocks.locs[:,1], **shock_scatter_dict)
+    return fig, ax
+
 
 def general_plot(
     g: nx.Graph,
@@ -235,6 +259,7 @@ def general_plot(
     use_cmap: bool = False,
     with_edge_labels: bool = False,
     with_volumes: bool = False,
+    shocks: object = None,
     my_node_dict: dict = {},
     my_edge_dict: dict = {},
     my_node_label_dict: dict = {},
@@ -277,6 +302,9 @@ def general_plot(
     if new_edge_label_dict["edge_labels"] is not None:
         nx.draw_networkx_edge_labels(G=g, pos=pos, ax=ax, **new_edge_label_dict)
 
+    if shocks is not None:
+        fig, ax = only_shocks(shocks=shocks, fig=fig, ax=ax)
+
     plot_ending(
         title=title, show_plot=show_plot, save_plot=save_plot, filename=filename
     )
@@ -297,7 +325,8 @@ def general_plot(
 
 
 def vis_one_episode(
-    frame_folder: str = "./tmp_pic_folder", frame_type: str = ".png", delete=True
+    frame_folder: str = "./tmp_pic_folder", frame_type: str = ".png", delete: bool = True,
+    assert_shocks: bool = True,
 ):
     if os.path.exists(frame_folder):
         delete_folder = False
@@ -314,18 +343,32 @@ def vis_one_episode(
         digits += 1
 
     # create env
-    env = RoadEnvironment(**small_environment_dict)
+    #env = RoadEnvironment(**small_environment_dict)
+    env = EnvironmentLoader("environments/config/environment_presets/small_environment.yaml").to_numpy()
+    env.random_generator = np.random.default_rng(int(datetime.now().timestamp()))
 
-    obs = env.reset()
+    # if you want to get guaranteed shocks, reset env until you receive them
+    if assert_shocks:
+        if env.shocks is not None:
+            while len(env.shocks.times) == 0:
+                env.reset()
+            
+            print(env.shocks.times, env.shocks.locs)
+
+    #obs = env.reset()
     actions = [[1, 1] for _ in range(4)]
     time = 0
     pic_name = os.path.join(frame_folder, f"pic{time:0{digits}d}" + frame_type)
     path_list.append(pic_name)
+    if env.shocks is not None:
+        env.shocks.plot_time = 0
     general_plot(
         g=env.graph,
+        use_pos=True,
         with_color=True,
         with_edge_labels=True,
         with_volumes=True,
+        shocks=env.shocks,
         title="t: 0",
         show_plot=False,
         save_plot=True,
@@ -337,11 +380,15 @@ def vis_one_episode(
         obs, cost, done, info = env.step(actions)
         pic_name = os.path.join(frame_folder, f"pic{time:0{digits}d}" + frame_type)
         path_list.append(pic_name)
+        if env.shocks is not None:
+            env.shocks.plot_time = time
         general_plot(
             g=env.graph,
+            use_pos=True,
             with_color=True,
             with_edge_labels=True,
             with_volumes=True,
+            shocks=env.shocks,
             title=f"t: {time}",
             show_plot=False,
             save_plot=True,
