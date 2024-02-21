@@ -1,5 +1,6 @@
-import jax
 from typing import Dict
+
+import jax
 
 from environments.jax_environment import JaxRoadEnvironment
 

@@ -45,7 +45,9 @@ def test_one_episode(toy_environment_numpy):
 
 
 @pytest.mark.parametrize(
-    "parameter_fixture", ["small_environment_numpy", "large_environment_numpy"], indirect=True
+    "parameter_fixture",
+    ["small_environment_numpy", "large_environment_numpy"],
+    indirect=True,
 )
 def test_environment(parameter_fixture):
     """Test if the environment can run one episode."""

@@ -6,11 +6,11 @@ import pandas as pd
 import yaml
 from igraph import Graph
 
+from wrappers.jax_env_wrapper import JaxRoadEnvironmentWrapper
+
 from environments.jax_environment import JaxRoadEnvironment
 
 from environments.road_env import RoadEnvironment
-
-from wrappers.jax_env_wrapper import JaxRoadEnvironmentWrapper
 
 
 class EnvironmentLoader:
@@ -173,6 +173,6 @@ class EnvironmentLoader:
 
     def to_jax(self):
         return JaxRoadEnvironment(self.config)
-    
+
     def to_jax_wrapper(self):
         return JaxRoadEnvironmentWrapper(self.config)
