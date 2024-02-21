@@ -30,15 +30,15 @@ network:
         distance: 1
       - id: 1
         source: 1
-        target: 2
+        target: 3
         distance: 1
       - id: 2
         source: 2
-        target: 3
+        target: 0
         distance: 1
       - id: 3
         source: 3
-        target: 0
+        target: 2
         distance: 1
   trips:     
     type: "list"
@@ -60,52 +60,49 @@ network:
     list:
       - source: 0
         target: 1
-        capacity: 100
-        travel_time: 1
+        capacity: 500
+        travel_time: 50
         position_x: 0
         position_y: 0.33
       - source: 0
         target: 1
-        capacity: 100
-        travel_time: 1
+        capacity: 500
+        travel_time: 50
         position_x: 0.66
         position_y: 0
       - source: 1
-        target: 2
-        capacity: 100
-        travel_time: 1
+        target: 3
+        capacity: 500
+        travel_time: 50
         position_x: 0.33
         position_y: 1
       - source: 1
+        target: 3
+        capacity: 500
+        travel_time: 50
+        position_x: 1
+        position_y: 0.66
+      - source: 2
+        target: 0
+        capacity: 500
+        travel_time: 50
+        position_x: 0
+        position_y: 0.33
+      - source: 2
+        target: 0
+        capacity: 500
+        travel_time: 50
+        position_x: 0
+        position_y: 0.66
+      - source: 3
         target: 2
-        capacity: 100
-        travel_time: 1
-        position_x: 1
-        position_y: 0.66
-      - source: 0
-        target: 3
-        capacity: 100
-        travel_time: 1
-        position_x: 0
-        position_y: 0.33
-      - source: 0
-        target: 3
-        capacity: 100
-        travel_time: 1
-        position_x: 0
-        position_y: 0.66
-      - source: 2
-        target: 3
-        capacity: 100
-        travel_time: 1
+        capacity: 500
+        travel_time: 50
         position_x: 1
         position_y: 0.33
-      - source: 2
-        target: 3
-        capacity: 100
-        travel_time: 1
+      - source: 3
+        target: 2
+        capacity: 500
+        travel_time: 50
         position_x: 0.66
         position_y: 1
-
-
-  
