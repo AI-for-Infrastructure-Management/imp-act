@@ -2,15 +2,12 @@ import itertools
 
 import jax
 import jax.numpy as jnp
-import pytest
 
-from environments.jax_environment import EnvState, JaxRoadEnvironment
+from environments.jax_environment import EnvState
 from igraph import Graph
-from wrappers.jax_env_wrapper import JaxRoadEnvironmentWrapper
 
 
 def test_total_base_travel_time(toy_environment_numpy, toy_environment_jax):
-    _, _ = toy_environment_jax.reset_env()
     _jax = toy_environment_jax.total_base_travel_time
 
     _numpy = toy_environment_numpy.base_total_travel_time
@@ -22,9 +19,7 @@ def test_shortest_path_computation(toy_environment_jax):
     """Test shortest path computation."""
 
     _num_vertices = 4
-    edges_list = jnp.array(
-        [(0, 1), (1, 2), (2, 3), (3, 0)]
-    )
+    edges_list = jnp.array([(0, 1), (1, 2), (2, 3), (3, 0)])
 
     weights_list = [2, 6, 5, 8]
 
@@ -49,7 +44,9 @@ def test_shortest_path_computation(toy_environment_jax):
         print(cost_1)
 
         # get cost to travel from source to target
-        weights_matrix = toy_environment_jax._get_weight_matrix(weights_list, edges_list, target)
+        weights_matrix = toy_environment_jax._get_weight_matrix(
+            weights_list, edges_list, target
+        )
         print(weights_matrix)
         cost_2 = toy_environment_jax._get_cost_to_go(weights_matrix, 100)[source]
         print(cost_2)
@@ -59,9 +56,7 @@ def test_shortest_path_computation(toy_environment_jax):
 
 def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
     "Test total travel time is the same for jax and numpy env"
-    actions = [
-        [1, 1] for edge in toy_environment_numpy.graph.es
-    ]
+    actions = [[1, 1] for edge in toy_environment_numpy.graph.es]
     timestep = 0
     done = False
 
@@ -137,9 +132,7 @@ def test_jax_wrapper_keys(toy_environment_jax_wrapper):
 
 
 def test_belief_computation(toy_environment_jax, toy_environment_numpy):
-    action_np = [
-        [1, 1] for edge in toy_environment_numpy.graph.es
-    ]
+    action_np = [[1, 1] for edge in toy_environment_numpy.graph.es]
     action_jax = [{"0": [1, 1]}, {"1": [1, 1]}, {"2": [1, 1]}, {"3": [1, 1]}]
     action_jax = jax.tree_util.tree_leaves(action_jax)
     action_jax = jnp.array(action_jax, dtype=jnp.uint8)
@@ -158,68 +151,47 @@ def test_belief_computation(toy_environment_jax, toy_environment_numpy):
         assert jnp.allclose(belief, belief_jax, atol=1e-3)
 
 
-def test_idxs_map(toy_environment_jax): # TODO: hardcoded for graph param, rewrite for toy_environment_jax
-    compute_idxs_map = toy_environment_jax._compute_idxs_map()
+def test_idxs_map(small_environment_jax):
 
-    f = 1_000_000
+    computed_idxs_map = small_environment_jax.idxs_map
+
+    f = 100_000  # fill value when padding
 
     true_idxs_map = jnp.array(
         [
-            [0, f, f, f],
-            [1, 2, f, f],
-            [3, 4, 5, f],
-            [6, 7, 8, 9],
-            [10, f, f, f],
-            [11, 12, f, f],
-            [13, 14, 15, f],
-            [16, 17, 18, 19],
+            [0, 1, 2, 3, 4, f, f, f, f, f, f, f, f, f, f, f, f],
+            [5, 6, 7, 8, 9, 10, 11, f, f, f, f, f, f, f, f, f, f],
+            [12, 13, 14, 15, 16, 17, 18, 19, f, f, f, f, f, f, f, f, f],
+            [20, 21, 22, 23, 24, 25, 26, 27, 28, f, f, f, f, f, f, f, f],
+            [29, 30, 31, 32, 33, 34, f, f, f, f, f, f, f, f, f, f, f],
+            [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+            [52, 53, 54, f, f, f, f, f, f, f, f, f, f, f, f, f, f],
         ]
     )
 
-    assert jnp.allclose(true_idxs_map, compute_idxs_map)
+    assert jnp.allclose(true_idxs_map, computed_idxs_map)
 
 
-def test_gather(toy_environment_jax): # TODO: hardcoded for graph param, rewrite for toy_environment_jax
+def test_gather(small_environment_jax):
 
-    edge_values = jnp.array(
-        [
-            101,
-            102,
-            103,
-            104,
-            105,
-            106,
-            107,
-            108,
-            109,
-            110,
-            111,
-            112,
-            113,
-            114,
-            115,
-            116,
-            117,
-            118,
-            119,
-            120,
-        ]
-    )
+    edge_values = jnp.arange(55)
+    computed_values = small_environment_jax._gather(edge_values)
 
-    computed_values = toy_environment_jax._gather(edge_values)
-
-    true_values = jnp.array(
-        [
-            [101, 0.0, 0.0, 0.0],
-            [102, 103, 0.0, 0.0],
-            [104, 105, 106, 0.0],
-            [107, 108, 109, 110],
-            [111, 0.0, 0.0, 0.0],
-            [112, 113, 0.0, 0.0],
-            [114, 115, 116, 0.0],
-            [117, 118, 119, 120],
-        ]
-    )
+    true_values = [
+        [0, 1, 2, 3, 4],
+        [5, 6, 7, 8, 9, 10, 11],
+        [12, 13, 14, 15, 16, 17, 18, 19],
+        [20, 21, 22, 23, 24, 25, 26, 27, 28],
+        [29, 30, 31, 32, 33, 34],
+        [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+        [52, 53, 54],
+    ]
+    # append 0.0 to each segment to make them of equal length and convert to jnp array
+    max_length = max(len(segment) for segment in true_values)
+    true_values = [
+        values + [0.0] * (max_length - len(values)) for values in true_values
+    ]
+    true_values = jnp.array(true_values)
 
     assert jnp.allclose(true_values, computed_values)
 
