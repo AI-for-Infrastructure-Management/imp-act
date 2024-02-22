@@ -7,10 +7,26 @@ from environments.jax_environment import EnvState
 from igraph import Graph
 
 
-def test_total_base_travel_time(toy_environment_numpy, toy_environment_jax):
+def test_total_base_travel_time_toy(toy_environment_numpy, toy_environment_jax):
     _jax = toy_environment_jax.total_base_travel_time
 
     _numpy = toy_environment_numpy.base_total_travel_time
+
+    assert _jax == _numpy
+
+
+def test_total_base_travel_time_small(small_environment_numpy, small_environment_jax):
+    _jax = small_environment_jax.total_base_travel_time
+
+    _numpy = small_environment_numpy.base_total_travel_time
+
+    assert _jax == _numpy
+
+
+def test_total_base_travel_time_large(large_environment_numpy, large_environment_jax):
+    _jax = large_environment_jax.total_base_travel_time
+
+    _numpy = large_environment_numpy.base_total_travel_time
 
     assert _jax == _numpy
 
