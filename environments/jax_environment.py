@@ -63,9 +63,9 @@ class JaxRoadEnvironment(environment.Environment):
 
         # Traffic assignment
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
-        self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
-        # self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
-        self.traffic_assignment_convergence_threshold = 1000  # TODO: fix this
+        #self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
+        self.traffic_assignment_max_iterations = 1000  # TODO
+        self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
         self.shortest_path_max_iterations = 500  # TODO
         # Network traffic
         self.trips = self._extract_trip_info(config)
