@@ -37,6 +37,11 @@ class JaxRoadEnvironment(environment.Environment):
         self.num_nodes = self.graph.vcount()
         self.num_edges = self.graph.ecount()
         self.edges = jnp.array(self.graph.get_edgelist())
+        # adjacency matrix (with edge indices)
+        adjacency_matrix = np.ones((self.num_nodes, self.num_nodes)) * -1
+        adjacency_matrix[self.edges[:, 0], self.edges[:, 1]] = np.arange(self.num_edges)
+        adjacency_matrix[self.edges[:, 1], self.edges[:, 0]] = np.arange(self.num_edges)
+        self.adjacency_matrix = jnp.array(adjacency_matrix, dtype=jnp.int32)
         (
             segments_list,
             self.initial_btts,
@@ -402,13 +407,8 @@ class JaxRoadEnvironment(environment.Environment):
 
             # TODO: ties: usually returns the first index, should we randomize?
             next_node = jnp.argmin(weights_matrix[current_node, :] + J)
-
             # find edge index given current_node and next_node
-            edge_index = (
-                jnp.asarray(edges == jnp.array([current_node, next_node]))
-                .all(axis=1)
-                .nonzero(size=1)[0]
-            )
+            edge_index = self.adjacency_matrix[current_node, next_node]
             trip = trips[source][destination]
             volumes = volumes.at[edge_index].set(volumes[edge_index] + trip)
             return step + 1, next_node, volumes, destination != next_node
