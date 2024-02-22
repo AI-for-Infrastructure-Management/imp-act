@@ -64,7 +64,8 @@ class JaxRoadEnvironment(environment.Environment):
         # Traffic assignment
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
         self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
-        self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
+        # self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
+        self.traffic_assignment_convergence_threshold = 1000  # TODO: fix this
         self.shortest_path_max_iterations = 500  # TODO
         # Network traffic
         self.trips = self._extract_trip_info(config)
@@ -475,7 +476,7 @@ class JaxRoadEnvironment(environment.Environment):
 
         # repeat until convergence
         def body_fun(val):
-            edge_volumes, _ = val
+            edge_volumes, _, i = val
 
             # 1. Recalculate travel times with current volumes
             edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
@@ -496,14 +497,16 @@ class JaxRoadEnvironment(environment.Environment):
                 + (1 - self.traffic_assignment_update_weight) * edge_volumes
             )
 
-            return edge_volumes, max_volume_change
+            return edge_volumes, max_volume_change, i + 1
 
         def cond_fun(val):
-            _, max_volume_change = val
-            return max_volume_change > self.traffic_assignment_convergence_threshold
+            _, max_volume_change, i = val
+            return (
+                max_volume_change > self.traffic_assignment_convergence_threshold
+            ) & (i < self.traffic_assignment_max_iterations)
 
-        edge_volumes, _ = jax.lax.while_loop(
-            cond_fun, body_fun, init_val=(edge_volumes, jnp.inf)
+        edge_volumes, _, i = jax.lax.while_loop(
+            cond_fun, body_fun, init_val=(edge_volumes, jnp.inf, 0)
         )
 
         edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
