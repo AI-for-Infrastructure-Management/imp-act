@@ -137,10 +137,16 @@ class RoadSegment:
             times_len = len(self.shocks.times)
             if times_len > 0:
                 if not hasattr(self, "shock_shift_table"):
+                    ####################################################################
+                    # Shock Option 1: additional det table -> shift is 0
+                    ####################################################################
+                    self.shock_shift_table = np.zeros((self.deterioration_table[0].shape[0]-1,)*2)
+                    #####################################################################
+                    # Shock Option 2: existing deterioration matrix changed
+                    #####################################################################
                     #self.shock_shift_table = self.shocks.get_shift_table_from_det_table(
                     #    det_table = self.deterioration_table[0]
                     #)
-                    self.shock_shift_table = np.zeros((self.deterioration_table[0].shape[0]-1,)*2)
                 self.distances = self.calc_distance(
                     loc_a=np.array([self.position_x, self.position_y]),  
                     loc_b=self.shocks.locs
@@ -156,33 +162,36 @@ class RoadSegment:
                     fragility_dict=self.shocks.fragility_dict,
                 )
 
-                """
-                self.pgas = list()
-                self.fragilities = list()
-                for k in range(len(self.shocks.times)):
-                    self.pgas.append(
-                        self.shocks.get_pga_from_distance(
-                            magn=self.shocks.magni[k],
-                            dist=self.distances[k],
-                            **self.shocks.pga_dict
-                        )
-                    )
-                    print("pga", self.pgas[-1])
-                    self.fragilities.append(
-                        self.shocks.get_fragilities(
-                            shift=self.shock_shift_table,
-                            pga=self.pgas[k],
-                            **self.shocks.fragility_dict
-                        )
-                    )
-
-                print("\n")
-                print("pgas", self.pgas)
-                print("shock tables", self.shock_tables)
-                """
-
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
+
+        ####################################################################
+        # Shock Option 2: use self.shock_tables instead of self.deterioration_table
+        # for computing the next det state, belief update and observations
+        # -> has to be implemented still
+        # -> could follow structure in Env.step with
+        """ 
+        if self.shocks is not None:
+            if self.timestep in self.shocks.times:
+                index = np.where(self.timestep == self.shocks.times)[0][0]
+                next_deterioration_state = self.random_generator.choice(
+                    np.arange(self.number_of_states),
+                    p=self.shock_tables[index][self.state],
+                )
+
+                self.state = next_deterioration_state
+                # Belief state computation
+                self.belief = self.shock_tables[index].T @ self.belief
+        else:
+            ... the usual step function
+        """
+        # -> either self.timestep is passed to each segment at init so that
+        # each segment can check for shocks themselves; or in segment.step
+        # get passed an additional flag from outside indicating a shock 
+        # occurrence, which I think is better, because then at least the
+        # self.shock check can be ommitted in every segment
+        ####################################################################
+
 
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
@@ -213,6 +222,9 @@ class RoadSegment:
 
         return reward
     
+    ##################################################################
+    # Shock Option 1: additional shock_step after deterioration
+    ##################################################################
     def shock_step(self, index):
         # another deterioration after reward computation (earthquake happens at 31st of Dec.)
         next_deterioration_state = self.random_generator.choice(
@@ -491,8 +503,10 @@ class RoadEnvironment:
 
         reward = maintenance_reward + travel_time_reward
     
-
+        #############################################################
+        # Shock Option 1: 
         # shock as additional deterioration after reward computation
+        ############################################################
         if self.shocks is not None:
             if self.timestep in self.shocks.times:
                 index = np.where(self.timestep == self.shocks.times)[0][0]

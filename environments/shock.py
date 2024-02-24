@@ -210,7 +210,7 @@ class Shock:
 
     def get_shock_t(
         self, max_timesteps: int, lambda_t: float, random_generator=None
-    ) -> [int, float]:
+    ) -> list[int, float]:
         times = list()
         t = 0
         # loop until end of trajectory is reached
@@ -263,42 +263,3 @@ class Shock:
         )
         return
     
-    """
-    def add_equal_shock_to_deterioration_table(
-        self, magn: float, det_table: np.array
-    ) -> np.array:
-        addition = 10 ** (magn - 6)
-        # trans_table is for now sxs, where s is the number of states
-        # in future, this should be nxsxs where n is the number of segments to perform the update for all segments at the same time
-        if len(det_table.shape) == 2:
-            # increase the probability of the state next to the current state upper (off-diagonal)
-            x = np.arange(det_table.shape[0])
-            det_table[
-                x, np.clip(x + 1, a_min=None, a_max=det_table.shape[0] - 1)
-            ] += addition
-            det_table /= np.sum(det_table, axis=1, keepdims=True)
-        elif len(det_table.shape) == 3:
-            x = np.arange(det_table.shape[0])
-            y = np.arange(det_table.shape[1])
-            det_table[x, y, np.clip(y + 1, a_max=det_table.shape[1])] += addition
-            det_table /= np.sum(det_table, axis=2, keepdims=True)
-        return det_table
-    """
-
-
-    """
-    def save_det_tables(self, graph: Graph) -> None:
-        self.copied_graph = copy.deepcopy(graph.es["road_segments"])
-        return
-
-    def restore_det_tables(self, graph: Graph) -> Graph:
-        # for i, edge in enumerate(graph.es["road_segments"]):
-        #    pass
-
-        # print(graph.es['road_segments'][0].segments[0].deterioration_table)
-        for o, n in zip(graph.es["road_segments"], self.copied_graph):
-            for so, sn in zip(o.segments, n.segments):
-                so.deterioration_table = copy.deepcopy(sn.deterioration_table)
-        # print(graph.es['road_segments'][0].segments[0].deterioration_table)
-        return graph
-    """
