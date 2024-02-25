@@ -70,6 +70,30 @@ def test_shortest_path_computation(toy_environment_jax):
         assert cost_1 == cost_2
 
 
+def test_compute_edge_travel_time(toy_environment_numpy, toy_environment_jax):
+    """Compare edge travel time computation for different volumes."""
+
+    for volume in [0, 100, 250]:
+
+        # Numpy environment
+        toy_environment_numpy.graph.es["volume"] = volume
+        numpy_edge_travel_times = [
+            edge["road_segments"].compute_edge_travel_time(edge["volume"])
+            for edge in toy_environment_numpy.graph.es
+        ]
+        numpy_edge_travel_times = jnp.array(numpy_edge_travel_times)
+
+        # Jax environment
+        _, state = toy_environment_jax.reset_env()
+        num_edges = len(toy_environment_jax.edges)
+        edge_volumes = jnp.full((num_edges), volume)
+        edge_travel_times = toy_environment_jax.compute_edge_travel_time(
+            state, edge_volumes
+        )
+
+        assert jnp.allclose(edge_travel_times, numpy_edge_travel_times, atol=1e-3)
+
+
 def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
     "Test total travel time is the same for jax and numpy env"
     actions = [[1, 1] for edge in toy_environment_numpy.graph.es]
