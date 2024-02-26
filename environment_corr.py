@@ -703,3 +703,4 @@ class RoadEnvironment:
 #     hotspots=hotspots
 # )
 
+#Next step is to define correlation using gamma processes hyper parameters. 
