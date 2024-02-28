@@ -2,6 +2,7 @@ import itertools
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from environments.jax_environment import EnvState
 from igraph import Graph
@@ -109,19 +110,24 @@ def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
     actions = [[1, 1] for edge in toy_environment_numpy.graph.es]
     timestep = 0
     done = False
+    total_num_segments = sum(
+        [len(edge.segments) for edge in toy_environment_numpy.graph.es["road_segments"]]
+    )
 
     while not done:
         timestep += 1
-        obs, cost, done, info = toy_environment_numpy.step(actions)
+        obs, _, done, info = toy_environment_numpy.step(actions)
         dam_state = jnp.array(toy_environment_numpy._get_states()).flatten()
         belief = jnp.array(obs["edge_beliefs"]).flatten()
         total_travel_time_np = info["total_travel_time"]
-        base_travel_times = []
-        capacities = []
+        base_travel_times = np.empty(total_num_segments)
+        capacities = np.empty(total_num_segments)
+        # TODO: ensure segments are ordered correctly!
         for edge in toy_environment_numpy.graph.es["road_segments"]:
             for segment in edge.segments:
-                base_travel_times.append(segment.base_travel_time)
-                capacities.append(segment.capacity)
+                idx = None  # TODO: get index of segment
+                base_travel_times[idx] = segment.base_travel_time
+                capacities[idx] = segment.capacity
         jax_state = EnvState(
             damage_state=dam_state,
             observation=jnp.array(obs["edge_observations"]).flatten(),
@@ -132,6 +138,7 @@ def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
         )
         total_travel_time_jax = toy_environment_jax._get_total_travel_time(jax_state)
         print(total_travel_time_np, total_travel_time_jax)
+        assert jnp.allclose(total_travel_time_np, total_travel_time_jax, rtol=1e-2)
 
 
 def test_belief_computation(toy_environment_jax, toy_environment_numpy):
