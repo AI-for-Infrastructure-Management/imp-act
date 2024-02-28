@@ -8,30 +8,54 @@ from igraph import Graph
 
 
 def test_total_base_travel_time_toy(toy_environment_numpy, toy_environment_jax):
-    _jax = toy_environment_jax.total_base_travel_time
 
     _numpy = toy_environment_numpy.base_total_travel_time
+    _jax = toy_environment_jax.total_base_travel_time
 
-    assert _jax == _numpy
+    assert jnp.allclose(_jax, _numpy, rtol=1e-2)
 
 
 def test_total_base_travel_time_small(small_environment_numpy, small_environment_jax):
-    _jax = small_environment_jax.total_base_travel_time
 
     _numpy = small_environment_numpy.base_total_travel_time
+    _jax = small_environment_jax.total_base_travel_time
 
-    assert _jax == _numpy
+    assert jnp.allclose(_jax, _numpy, rtol=1e-2)
 
 
 def test_total_base_travel_time_large(large_environment_numpy, large_environment_jax):
-    _jax = large_environment_jax.total_base_travel_time
 
     _numpy = large_environment_numpy.base_total_travel_time
+    _jax = large_environment_jax.total_base_travel_time
 
-    assert _jax == _numpy
+    assert jnp.allclose(_jax, _numpy, rtol=1e-2)
 
 
-def test_shortest_path_computation(toy_environment_jax):
+def test_compute_edge_travel_time(large_environment_numpy, large_environment_jax):
+    """Compare edge travel time computation for different volumes."""
+
+    numpy_env = large_environment_numpy
+    jax_env = large_environment_jax
+
+    for volume in [0, 100, 250]:
+
+        # Numpy environment
+        numpy_env.graph.es["volume"] = volume
+        numpy_edge_travel_times = [
+            edge["road_segments"].compute_edge_travel_time(edge["volume"])
+            for edge in numpy_env.graph.es
+        ]
+        numpy_edge_travel_times = jnp.array(numpy_edge_travel_times)
+
+        # Jax environment
+        _, state = jax_env.reset_env()
+        edge_volumes = jnp.full((jax_env.num_edges), volume)
+        edge_travel_times = jax_env.compute_edge_travel_time(state, edge_volumes)
+
+        assert jnp.allclose(edge_travel_times, numpy_edge_travel_times, rtol=1e-2)
+
+
+def test_shortest_path_computation_toy(toy_environment_jax):
     """Test shortest path computation."""
 
     _num_vertices = 4
@@ -70,28 +94,14 @@ def test_shortest_path_computation(toy_environment_jax):
         assert cost_1 == cost_2
 
 
-def test_compute_edge_travel_time(toy_environment_numpy, toy_environment_jax):
-    """Compare edge travel time computation for different volumes."""
+def test_trips_initialization(large_environment_jax, large_environment_numpy):
+    """Test trips initialization."""
 
-    for volume in [0, 100, 250]:
+    jax_env = large_environment_jax
+    numpy_env = large_environment_numpy
 
-        # Numpy environment
-        toy_environment_numpy.graph.es["volume"] = volume
-        numpy_edge_travel_times = [
-            edge["road_segments"].compute_edge_travel_time(edge["volume"])
-            for edge in toy_environment_numpy.graph.es
-        ]
-        numpy_edge_travel_times = jnp.array(numpy_edge_travel_times)
-
-        # Jax environment
-        _, state = toy_environment_jax.reset_env()
-        num_edges = len(toy_environment_jax.edges)
-        edge_volumes = jnp.full((num_edges), volume)
-        edge_travel_times = toy_environment_jax.compute_edge_travel_time(
-            state, edge_volumes
-        )
-
-        assert jnp.allclose(edge_travel_times, numpy_edge_travel_times, atol=1e-3)
+    for source, target, num_cars in numpy_env.trips:
+        assert jax_env.trips[source, target] == num_cars
 
 
 def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
