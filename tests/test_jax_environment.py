@@ -105,6 +105,117 @@ def test_trips_initialization(large_environment_jax, large_environment_numpy):
         assert jax_env.trips[source, target] == num_cars
 
 
+def test_shortest_path_cost_equivalence_large(
+    large_environment_jax, large_environment_numpy
+):
+    """
+    When computing the cost to travel from source to target using the
+    shortest path, are the costs the same for jax and numpy env?
+    In general, the shortest path is not unique, so we compare the cost.
+    """
+
+    jax_env = large_environment_jax
+    numpy_env = large_environment_numpy
+
+    trips = numpy_env.trips
+
+    # Numpy environment
+    numpy_env.graph.es["volume"] = 0
+    numpy_env.graph.es["travel_time"] = [
+        edge["road_segments"].compute_edge_travel_time(edge["volume"])
+        for edge in numpy_env.graph.es
+    ]
+
+    # Jax environment
+    _, state = jax_env.reset_env()
+    edge_volumes = jnp.full((jax_env.num_edges), 0)
+    edge_travel_times = jax_env.compute_edge_travel_time(state, edge_volumes)
+
+    for source, target, _ in trips:
+
+        shortest_path = numpy_env.graph.get_shortest_paths(
+            source, target, weights="travel_time", mode="out", output="epath"
+        )[0]
+
+        # get cost to travel from source to target using shortest path
+        cost_numpy = float(
+            sum([numpy_env.graph.es["travel_time"][i] for i in shortest_path])
+        )
+
+        # Jax environment
+        weights_matrix = jax_env._get_weight_matrix(
+            edge_travel_times, jax_env.edges, target
+        )
+        cost_jax = jax_env._get_cost_to_go(
+            weights_matrix, jax_env.shortest_path_max_iterations
+        )[source]
+
+        assert jnp.allclose(cost_numpy, cost_jax, rtol=1e-3)
+
+
+def test_shortest_paths_large(large_environment_jax, large_environment_numpy):
+    """
+    Does shortest path compute by jax environment match the shortest path(s)
+    computed by numpy environment?
+
+    Use the same trips for both environments, get all shortest paths for
+    each trip. Check if JAX finds at least one of the numpy paths.
+    """
+    jax_env = large_environment_jax
+    numpy_env = large_environment_numpy
+
+    trips = numpy_env.trips
+
+    # Numpy environment
+    numpy_env.graph.es["volume"] = 0
+    numpy_env.graph.es["travel_time"] = [
+        edge["road_segments"].compute_edge_travel_time(edge["volume"])
+        for edge in numpy_env.graph.es
+    ]
+
+    # Jax environment
+    _, state = jax_env.reset_env()
+    edge_volumes = jnp.full((jax_env.num_edges), 0)
+    edge_travel_times = jax_env.compute_edge_travel_time(state, edge_volumes)
+
+    for source, target, _ in trips:
+
+        # Numpy environment
+
+        # list of nodes in the shortest paths
+        # length of the list is the number of unique shortest paths
+        # and each element is a list of nodes in the shortest path
+        all_shortest_paths_nodes = numpy_env.graph.get_all_shortest_paths(
+            source,
+            target,
+            weights="travel_time",
+            mode="out",
+        )
+
+        # get edge ids of the shortest path
+        all_shortest_paths_numpy = [
+            [
+                numpy_env.graph.get_eid(path[i], path[i + 1])
+                for i in range(len(path) - 1)
+            ]
+            for path in all_shortest_paths_nodes
+        ]
+
+        # Jax environment
+        weights_matrix = jax_env._get_weight_matrix(
+            edge_travel_times, jax_env.edges, target
+        )
+        cost_jax = jax_env._get_cost_to_go(
+            weights_matrix, jax_env.shortest_path_max_iterations
+        )
+
+        shortest_path_jax = jax_env._get_shortest_path(
+            source, target, weights_matrix, cost_jax
+        ).tolist()
+
+        assert shortest_path_jax in all_shortest_paths_numpy
+
+
 def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
     "Test total travel time is the same for jax and numpy env"
     actions = [[1, 1] for edge in toy_environment_numpy.graph.es]
