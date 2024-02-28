@@ -8,6 +8,6 @@ trips:
   path: ./traffic.csv
   type: file
 traffic_assignment:
-  max_iterations: 5
+  max_iterations: 100
   convergence_threshold: 0.01
   update_weight: 0.5
