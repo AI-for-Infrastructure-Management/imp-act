@@ -63,8 +63,8 @@ class JaxRoadEnvironment(environment.Environment):
 
         # Traffic assignment
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
-        #self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
-        self.traffic_assignment_max_iterations = 1000  # TODO
+        # self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
+        self.traffic_assignment_max_iterations = 500  # TODO
         self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
         self.shortest_path_max_iterations = 500  # TODO
         # Network traffic
@@ -99,26 +99,38 @@ class JaxRoadEnvironment(environment.Environment):
         _, state = self.reset_env()
         self.total_base_travel_time = self._get_total_travel_time(state)
 
-    @staticmethod
-    def _extract_segments_info(config: Dict):
+    def _extract_segments_info(self, config: Dict):
         """Extract segments information from the configuration file.
         Only used in the constructor."""
 
-        segments_idxs_list = []  # list of segment indices for each edge
-        segment_initial_btt = []
-        segment_initial_capacity = []
+        # get all edge ids from the graph
+        igraph_edge_ids = self.graph.es["id"]
+
+        total_num_segments = 0
+        for edge_segments in config["network"]["segments"].values():
+            total_num_segments += len(edge_segments)
+
+        segments_idxs_list = [
+            []
+        ] * self.num_edges  # list of segment indices for each edge
+        segment_initial_btt = np.empty(total_num_segments)
+        segment_initial_capacity = np.empty(total_num_segments)
         idx = 0
         for nodes, edge_segments in config["network"]["segments"].items():
-            _seg_idxs = []
+            _indices = []
             for segment in edge_segments:
-                segment_initial_btt.append(segment["travel_time"])
-                segment_initial_capacity.append(segment["capacity"])
-                _seg_idxs.append(idx)
+                # get edge index from graph using nodes
+                vertex_1 = self.graph.vs.select(id_eq=nodes[0])
+                vertex_2 = self.graph.vs.select(id_eq=nodes[1])
+                graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))[0]
+                # get equivalent JAX edge index
+                edge_id = igraph_edge_ids.index(graph_edge["id"])
+                _indices.append(idx)
+                segment_initial_btt[idx] = segment["travel_time"]
+                segment_initial_capacity[idx] = segment["capacity"]
                 idx += 1
 
-            segments_idxs_list.append(_seg_idxs)
-
-        total_num_segments = segments_idxs_list[-1][-1] + 1
+            segments_idxs_list[edge_id] = _indices
 
         return (
             segments_idxs_list,
@@ -128,7 +140,10 @@ class JaxRoadEnvironment(environment.Environment):
         )
 
     def _extract_trip_info(self, config: Dict):
-        """Store trip information from the config file into a matrix."""
+        """
+        Store trip information from the config file into the trips matrix.
+        trips[i, j] is the volume of trips from node i to node j.
+        """
 
         trips = np.zeros((self.num_nodes, self.num_nodes))
 
@@ -476,7 +491,7 @@ class JaxRoadEnvironment(environment.Environment):
 
         # repeat until convergence
         def body_fun(val):
-            edge_volumes, _, i = val
+            edge_volumes, _, i, _ = val
 
             # 1. Recalculate travel times with current volumes
             edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
@@ -497,19 +512,17 @@ class JaxRoadEnvironment(environment.Environment):
                 + (1 - self.traffic_assignment_update_weight) * edge_volumes
             )
 
-            return edge_volumes, max_volume_change, i + 1
+            return edge_volumes, max_volume_change, i + 1, edge_travel_times
 
         def cond_fun(val):
-            _, max_volume_change, i = val
+            _, max_volume_change, i, _ = val
             return (
                 max_volume_change > self.traffic_assignment_convergence_threshold
             ) & (i < self.traffic_assignment_max_iterations)
 
-        edge_volumes, _, i = jax.lax.while_loop(
-            cond_fun, body_fun, init_val=(edge_volumes, jnp.inf, 0)
+        edge_volumes, _, _, edge_travel_times = jax.lax.while_loop(
+            cond_fun, body_fun, init_val=(edge_volumes, jnp.inf, 0, edge_travel_times)
         )
-
-        edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
 
         # 5. Calculate total travel time
         return jnp.sum(edge_travel_times * edge_volumes)
