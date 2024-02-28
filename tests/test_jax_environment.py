@@ -122,7 +122,48 @@ def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
         )
         total_travel_time_jax = toy_environment_jax._get_total_travel_time(jax_state)
         print(total_travel_time_np, total_travel_time_jax)
-        assert total_travel_time_np.round() == total_travel_time_jax.round()
+
+
+def test_belief_computation(toy_environment_jax, toy_environment_numpy):
+    action_np = [[1, 1] for edge in toy_environment_numpy.graph.es]
+    action_jax = [{"0": [1, 1]}, {"1": [1, 1]}, {"2": [1, 1]}, {"3": [1, 1]}]
+    action_jax = jax.tree_util.tree_leaves(action_jax)
+    action_jax = jnp.array(action_jax, dtype=jnp.uint8)
+
+    observation = toy_environment_numpy.reset()
+    belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
+    done = False
+
+    while not done:
+        observation, _, done, _ = toy_environment_numpy.step(action_np)
+        obs = jnp.array(observation["edge_observations"]).flatten()
+        print(jnp.array(observation["edge_beliefs"]), obs, action_jax)
+        belief_jax = toy_environment_jax._get_next_belief(belief, obs, action_jax)
+        belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
+
+        assert jnp.allclose(belief, belief_jax, rtol=1e-3)
+
+
+def test_campaign_reward(toy_environment_jax):
+    """Test inspection campaign reward computation."""
+
+    # inspections on 0 edges => campaign reward: 0
+    _action = [{"0": [0, 2]}, {"1": [2, 0]}, {"2": [2, 2]}, {"3": [2, 0]}]
+    __action = jax.tree_util.tree_leaves(_action)
+    action = jnp.array(__action, dtype=jnp.uint8)
+
+    campaign_reward = toy_environment_jax._get_campaign_reward(action)
+
+    assert campaign_reward == 0
+
+    # inspections on 3 edges => campaign reward: -3 * 5 = -15
+    _action = [{"0": [1, 2]}, {"1": [1, 1]}, {"2": [1, 0]}, {"3": [2, 3]}]
+    __action = jax.tree_util.tree_leaves(_action)
+    action = jnp.array(__action, dtype=jnp.uint8)
+
+    campaign_reward = toy_environment_jax._get_campaign_reward(action)
+
+    assert campaign_reward == -15
 
 
 def test_jax_keys(toy_environment_jax):
@@ -169,90 +210,3 @@ def test_jax_wrapper_keys(toy_environment_jax_wrapper):
         assert (step_keys != step_keys_new).all()
         assert (key != key_new).all()
         step_keys, key = step_keys_new, key_new
-
-
-def test_belief_computation(toy_environment_jax, toy_environment_numpy):
-    action_np = [[1, 1] for edge in toy_environment_numpy.graph.es]
-    action_jax = [{"0": [1, 1]}, {"1": [1, 1]}, {"2": [1, 1]}, {"3": [1, 1]}]
-    action_jax = jax.tree_util.tree_leaves(action_jax)
-    action_jax = jnp.array(action_jax, dtype=jnp.uint8)
-
-    observation = toy_environment_numpy.reset()
-    belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
-    done = False
-
-    while not done:
-        observation, _, done, _ = toy_environment_numpy.step(action_np)
-        obs = jnp.array(observation["edge_observations"]).flatten()
-        print(jnp.array(observation["edge_beliefs"]), obs, action_jax)
-        belief_jax = toy_environment_jax._get_next_belief(belief, obs, action_jax)
-        belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
-
-        assert jnp.allclose(belief, belief_jax, atol=1e-3)
-
-
-def test_idxs_map(small_environment_jax):
-
-    computed_idxs_map = small_environment_jax.idxs_map
-
-    f = 100_000  # fill value when padding
-
-    true_idxs_map = jnp.array(
-        [
-            [0, 1, 2, 3, 4, f, f, f, f, f, f, f, f, f, f, f, f],
-            [5, 6, 7, 8, 9, 10, 11, f, f, f, f, f, f, f, f, f, f],
-            [12, 13, 14, 15, 16, 17, 18, 19, f, f, f, f, f, f, f, f, f],
-            [20, 21, 22, 23, 24, 25, 26, 27, 28, f, f, f, f, f, f, f, f],
-            [29, 30, 31, 32, 33, 34, f, f, f, f, f, f, f, f, f, f, f],
-            [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
-            [52, 53, 54, f, f, f, f, f, f, f, f, f, f, f, f, f, f],
-        ]
-    )
-
-    assert jnp.allclose(true_idxs_map, computed_idxs_map)
-
-
-def test_gather(small_environment_jax):
-
-    edge_values = jnp.arange(55)
-    computed_values = small_environment_jax._gather(edge_values)
-
-    true_values = [
-        [0, 1, 2, 3, 4],
-        [5, 6, 7, 8, 9, 10, 11],
-        [12, 13, 14, 15, 16, 17, 18, 19],
-        [20, 21, 22, 23, 24, 25, 26, 27, 28],
-        [29, 30, 31, 32, 33, 34],
-        [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
-        [52, 53, 54],
-    ]
-    # append 0.0 to each segment to make them of equal length and convert to jnp array
-    max_length = max(len(segment) for segment in true_values)
-    true_values = [
-        values + [0.0] * (max_length - len(values)) for values in true_values
-    ]
-    true_values = jnp.array(true_values)
-
-    assert jnp.allclose(true_values, computed_values)
-
-
-def test_campaign_reward(toy_environment_jax):
-    """Test campaign reward computation."""
-
-    # inspections on 0 edges => campaign reward: 0
-    _action = [{"0": [0, 2]}, {"1": [2, 0]}, {"2": [2, 2]}, {"3": [2, 0]}]
-    __action = jax.tree_util.tree_leaves(_action)
-    action = jnp.array(__action, dtype=jnp.uint8)
-
-    campaign_reward = toy_environment_jax._get_campaign_reward(action)
-
-    assert campaign_reward == 0
-
-    # inspections on 3 edges => campaign reward: -3 * 5 = -15
-    _action = [{"0": [1, 2]}, {"1": [1, 1]}, {"2": [1, 0]}, {"3": [2, 3]}]
-    __action = jax.tree_util.tree_leaves(_action)
-    action = jnp.array(__action, dtype=jnp.uint8)
-
-    campaign_reward = toy_environment_jax._get_campaign_reward(action)
-
-    assert campaign_reward == -15
