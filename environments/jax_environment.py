@@ -692,3 +692,35 @@ class JaxRoadEnvironment(environment.Environment):
         key = keys[-1, :]
 
         return subkeys, key
+
+    def _get_shortest_path(
+        self, source: int, destination: int, weights_matrix: jnp.array, J: jnp.array
+    ) -> list:
+        """
+        #! only used in tests (cannot jit since output can have variable size)
+        Get the shortest path from the source to the destination.
+
+        Parameters
+        ----------
+        source : int
+            Source node
+        destination : int
+            Destination node
+
+        Returns
+        -------
+        shortest_path : List of tuples
+            List of tuples representing the nodes of the shortest path
+            from the source to the destination.
+        """
+
+        current_node = source
+        edges_path = []
+
+        while current_node != destination:
+            next_node = jnp.argmin(weights_matrix[current_node, :] + J)
+            edge_index = self.adjacency_matrix[current_node, next_node]
+            edges_path.append(edge_index)
+            current_node = next_node
+
+        return jnp.array(edges_path)
