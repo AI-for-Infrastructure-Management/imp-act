@@ -6,6 +6,7 @@ import numpy as np
 class RoadSegment:
     def __init__(
         self,
+        id,
         config,
         random_generator,
         position_x,
@@ -20,6 +21,7 @@ class RoadSegment:
 
         self.position_x = position_x
         self.position_y = position_y
+        self.id = id
 
         self.capacity = capacity
         self.base_travel_time = base_travel_time
@@ -187,12 +189,14 @@ class RoadEnvironment:
 
         self.trips = trips
 
+        segment_id = 0
         # Add road segments to graph edges
         for nodes, edge_segments in config["network"]["segments"].items():
             segments = []
             for segment in edge_segments:
                 segments.append(
                     RoadSegment(
+                        id=segment_id,
                         random_generator=self.random_generator,
                         position_x=segment["position_x"],
                         position_y=segment["position_y"],
@@ -201,6 +205,8 @@ class RoadEnvironment:
                         config=config["model"]["segment"],
                     )
                 )
+                segment_id += 1
+
             road_edge = RoadEdge(
                 segments=segments,
                 config=config["model"]["edge"],

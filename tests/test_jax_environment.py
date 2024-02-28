@@ -233,12 +233,11 @@ def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
         total_travel_time_np = info["total_travel_time"]
         base_travel_times = np.empty(total_num_segments)
         capacities = np.empty(total_num_segments)
-        # TODO: ensure segments are ordered correctly!
         for edge in toy_environment_numpy.graph.es["road_segments"]:
             for segment in edge.segments:
-                idx = None  # TODO: get index of segment
-                base_travel_times[idx] = segment.base_travel_time
-                capacities[idx] = segment.capacity
+                id = segment.id
+                base_travel_times[id] = segment.base_travel_time
+                capacities[id] = segment.capacity
         jax_state = EnvState(
             damage_state=dam_state,
             observation=jnp.array(obs["edge_observations"]).flatten(),
