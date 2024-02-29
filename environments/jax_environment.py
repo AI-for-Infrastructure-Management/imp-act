@@ -43,12 +43,12 @@ class JaxRoadEnvironment(environment.Environment):
         adjacency_matrix[self.edges[:, 1], self.edges[:, 0]] = np.arange(self.num_edges)
         self.adjacency_matrix = jnp.array(adjacency_matrix, dtype=jnp.int32)
         (
-            segments_list,
+            self.segments_list,
             self.initial_btts,
             self.initial_capacities,
             self.total_num_segments,
         ) = self._extract_segments_info(config)
-        self.idxs_map = self._compute_idxs_map(segments_list)
+        self.idxs_map = self._compute_idxs_map(self.segments_list)
 
         # Traffic modeling
         ta_conf = config["network"]["traffic_assignment"]
@@ -63,8 +63,8 @@ class JaxRoadEnvironment(environment.Environment):
 
         # Traffic assignment
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
-        # self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
-        self.traffic_assignment_max_iterations = 500  # TODO
+        self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
+        # self.traffic_assignment_max_iterations = 500  # TODO
         self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
         self.shortest_path_max_iterations = 500  # TODO
         # Network traffic
