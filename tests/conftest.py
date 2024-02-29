@@ -1,5 +1,6 @@
 import pytest
 from environments.config.environment_loader import EnvironmentLoader
+from wrappers.jax_env_wrapper import JaxRoadEnvironmentWrapper
 
 
 @pytest.fixture
@@ -29,9 +30,9 @@ def toy_environment_jax(toy_environment_loader):
 
 
 @pytest.fixture
-def toy_environment_jax_wrapper(toy_environment_loader):
+def toy_environment_jax_wrapper(toy_environment_path):
     """Create a toy environment loader for testing."""
-    env = toy_environment_loader.to_jax_wrapper()
+    env = JaxRoadEnvironmentWrapper(toy_environment_path)
     return env
 
 

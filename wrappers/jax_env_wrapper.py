@@ -1,15 +1,13 @@
-from typing import Dict
-
 import jax
 
-from environments.jax_environment import JaxRoadEnvironment
+from environments.config.environment_loader import EnvironmentLoader
 
 
 class JaxRoadEnvironmentWrapper:
     """Wrapper of Jax RoadEnvironment for RL libraries compatibility"""
 
-    def __init__(self, config: Dict):
-        self.jax_env = JaxRoadEnvironment(config)
+    def __init__(self, filename):
+        self.jax_env = EnvironmentLoader(filename).to_jax()
         self.max_timesteps = self.jax_env.max_timesteps
 
         key = jax.random.PRNGKey(442)
