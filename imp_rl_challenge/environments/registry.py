@@ -14,6 +14,8 @@ class Registry():
         return self._registry.get(name)
 
     def make(self, name):
+        if name not in self._registry:
+            raise ValueError(f"Unknown environment: {name}")
         cls, parameters = self.get(name)
         return cls(**parameters)
 
