@@ -6,9 +6,9 @@ authors = ["Pascal Leroy <pjr.leroy@gmail.com>"]
 license = "TBD"
 readme = "README.md"
 packages = [
-    {include = "environments"},
-    {include = "policies"},
-    {include = "wrappers"}
+    {include = "imp_rl_challenge/environments"},
+    {include = "imp_rl_challenge/policies"},
+    {include = "imp_rl_challenge/wrappers"}
 ]
 
 [tool.poetry.dependencies]
