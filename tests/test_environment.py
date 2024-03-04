@@ -343,8 +343,10 @@ def test_seeding_function(toy_environment_loader, test_seed_1, test_seed_2):
     assert np.array_equal(reward_all, reward_same_all)
     assert not np.array_equal(reward_all, reward_different_all)
 
+
 def test_registry_unknown():
     from imp_rl_challenge.environments.registry import Registry
+
     registry = Registry()
     with pytest.raises(ValueError):
         registry.make("unknown_environment")

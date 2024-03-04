@@ -1,4 +1,4 @@
-class Registry():
+class Registry:
     _instance = None
 
     def __new__(cls):
