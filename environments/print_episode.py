@@ -5,7 +5,7 @@ from environments.config.environment_loader import EnvironmentLoader
 
 def main():
     env = EnvironmentLoader(
-        "environments/config/environment_presets/small_environment.yaml"
+        "environments/config/environment_presets/toy_environment.yaml"
     ).to_numpy()
     env.reset()
     actions = [[1, 1] for _ in range(4)]
