@@ -1,12 +1,12 @@
 import glob
 import os
+from datetime import datetime
 
 import igraph as ig
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-from datetime import datetime
 from PIL import Image
 
 import environments.utils_nx_ig as mu
@@ -75,6 +75,7 @@ shock_scatter_dict = {
     "marker": "X",
     "edgecolors": "k",
 }
+
 
 def update_dict(d: dict, my_dict: dict) -> dict:
     new_dict = d.copy()
@@ -235,6 +236,7 @@ def only_volumes(g: nx.Graph, my_edge_dict: dict = {}) -> dict:
     new_edge_dict = update_dict(d=my_edge_dict, my_dict={"width": width_list})
     return new_edge_dict
 
+
 def only_shocks(shocks: Shock, fig: plt.figure, ax: plt.axis) -> list:
     # check if there are any shocks to plot
     N_shocks = len(shocks.times)
@@ -244,10 +246,12 @@ def only_shocks(shocks: Shock, fig: plt.figure, ax: plt.axis) -> list:
             if shocks.plot_time in shocks.times:
                 ind = np.where(shocks.plot_time == shocks.times)[0][0]
                 print(shocks.times, shocks.plot_time, ind)
-                ax.scatter(shocks.locs[ind,0], shocks.locs[ind,1], **shock_scatter_dict)
+                ax.scatter(
+                    shocks.locs[ind, 0], shocks.locs[ind, 1], **shock_scatter_dict
+                )
         else:
             # plot all shocks
-            ax.scatter(shocks.locs[:,0], shocks.locs[:,1], **shock_scatter_dict)
+            ax.scatter(shocks.locs[:, 0], shocks.locs[:, 1], **shock_scatter_dict)
     return fig, ax
 
 
@@ -325,7 +329,9 @@ def general_plot(
 
 
 def vis_one_episode(
-    frame_folder: str = "./tmp_pic_folder", frame_type: str = ".png", delete: bool = True,
+    frame_folder: str = "./tmp_pic_folder",
+    frame_type: str = ".png",
+    delete: bool = True,
     assert_shocks: bool = True,
 ):
     if os.path.exists(frame_folder):
@@ -343,8 +349,10 @@ def vis_one_episode(
         digits += 1
 
     # create env
-    #env = RoadEnvironment(**small_environment_dict)
-    env = EnvironmentLoader("environments/config/environment_presets/small_environment.yaml").to_numpy()
+    # env = RoadEnvironment(**small_environment_dict)
+    env = EnvironmentLoader(
+        "environments/config/environment_presets/small_environment.yaml"
+    ).to_numpy()
     env.random_generator = np.random.default_rng(int(datetime.now().timestamp()))
 
     # if you want to get guaranteed shocks, reset env until you receive them
@@ -352,10 +360,10 @@ def vis_one_episode(
         if env.shocks is not None:
             while len(env.shocks.times) == 0:
                 env.reset()
-            
+
             print(env.shocks.times, env.shocks.locs)
 
-    #obs = env.reset()
+    # obs = env.reset()
     actions = [[1, 1] for _ in range(4)]
     time = 0
     pic_name = os.path.join(frame_folder, f"pic{time:0{digits}d}" + frame_type)
@@ -559,7 +567,7 @@ def plot_only_volumes(
 def plot_states_labels_and_volumes(
     g: nx.Graph,
     layout: str = "planar",
-    use_pos: bool = False, 
+    use_pos: bool = False,
     with_color: bool = True,
     use_cmap: bool = False,
     with_edge_labels: bool = True,

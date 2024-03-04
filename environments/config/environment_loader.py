@@ -79,10 +79,10 @@ class EnvironmentLoader:
             self.segments = pd.DataFrame(segments_config["list"])
         else:
             raise ValueError(f"Segments type {segments_config['type']} not supported")
-        
+
         # potential x_min, x_max, y_min, y_max for shock boundaries
-        x_min, y_min = self.segments.loc[:, ['position_x', 'position_y']].min(axis=0)
-        x_max, y_max = self.segments.loc[:, ['position_x', 'position_y']].max(axis=0)
+        x_min, y_min = self.segments.loc[:, ["position_x", "position_y"]].min(axis=0)
+        x_max, y_max = self.segments.loc[:, ["position_x", "position_y"]].max(axis=0)
 
         # group segments by origin, destination
         segments = {}
@@ -99,14 +99,14 @@ class EnvironmentLoader:
                 x_dist = x_max - x_min
                 y_dist = y_max - y_min
                 self.shocks["locations"] = {
-                    "x_min": x_min - x_dist*shock_config["factor"], 
-                    "x_max": x_max + x_dist*shock_config["factor"], 
-                    "y_min": y_min - y_dist*shock_config["factor"], 
-                    "y_max": y_max + y_dist*shock_config["factor"],
+                    "x_min": x_min - x_dist * shock_config["factor"],
+                    "x_max": x_max + x_dist * shock_config["factor"],
+                    "y_min": y_min - y_dist * shock_config["factor"],
+                    "y_max": y_max + y_dist * shock_config["factor"],
                 }
         else:
-            self.shocks = None        
-    
+            self.shocks = None
+
         # load model
         # TODO: load model data
 

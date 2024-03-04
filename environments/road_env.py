@@ -1,6 +1,8 @@
+import os
+
 import numpy as np
 from igraph import Graph
-import os
+
 from environments.shock import Shock
 
 
@@ -125,7 +127,7 @@ class RoadSegment:
         )
 
         self.reset()
-    
+
     def calc_distance(self, loc_a: np.array, loc_b: np.array) -> float:
         return np.linalg.norm(loc_a - loc_b, axis=1)
 
@@ -140,24 +142,30 @@ class RoadSegment:
                     ####################################################################
                     # Shock Option 1: additional det table -> shift is 0
                     ####################################################################
-                    self.shock_shift_table = np.zeros((self.deterioration_table[0].shape[0]-1,)*2)
+                    self.shock_shift_table = np.zeros(
+                        (self.deterioration_table[0].shape[0] - 1,) * 2
+                    )
                     #####################################################################
                     # Shock Option 2: existing deterioration matrix changed
                     #####################################################################
-                    #self.shock_shift_table = self.shocks.get_shift_table_from_det_table(
+                    # self.shock_shift_table = self.shocks.get_shift_table_from_det_table(
                     #    det_table = self.deterioration_table[0]
-                    #)
+                    # )
                 self.distances = self.calc_distance(
-                    loc_a=np.array([self.position_x, self.position_y]),  
-                    loc_b=self.shocks.locs
-                ) 
-                self.pgas, self.shock_tables = self.shocks.loc_based_det_table_transform(
+                    loc_a=np.array([self.position_x, self.position_y]),
+                    loc_b=self.shocks.locs,
+                )
+                (
+                    self.pgas,
+                    self.shock_tables,
+                ) = self.shocks.loc_based_det_table_transform(
                     magn=self.shocks.magni,
                     dist=self.distances,
                     shift_list=[self.shock_shift_table] * times_len,
-                    det_table_append_list=[np.expand_dims(
-                        self.deterioration_table[0,-1,:], axis=0
-                        )] * times_len,
+                    det_table_append_list=[
+                        np.expand_dims(self.deterioration_table[0, -1, :], axis=0)
+                    ]
+                    * times_len,
                     pga_dict=self.shocks.pga_dict,
                     fragility_dict=self.shocks.fragility_dict,
                 )
@@ -170,7 +178,7 @@ class RoadSegment:
         # for computing the next det state, belief update and observations
         # -> has to be implemented still
         # -> could follow structure in Env.step with
-        """ 
+        """
         if self.shocks is not None:
             if self.timestep in self.shocks.times:
                 index = np.where(self.timestep == self.shocks.times)[0][0]
@@ -187,11 +195,10 @@ class RoadSegment:
         """
         # -> either self.timestep is passed to each segment at init so that
         # each segment can check for shocks themselves; or in segment.step
-        # get passed an additional flag from outside indicating a shock 
+        # get passed an additional flag from outside indicating a shock
         # occurrence, which I think is better, because then at least the
         # self.shock check can be ommitted in every segment
         ####################################################################
-
 
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
@@ -221,7 +228,7 @@ class RoadSegment:
         self.belief /= np.sum(self.belief)  # normalize
 
         return reward
-    
+
     ##################################################################
     # Shock Option 1: additional shock_step after deterioration
     ##################################################################
@@ -326,7 +333,7 @@ class RoadEdge:
         self.update_edge_travel_time_factors()
 
         return reward
-    
+
     def shock_step(self, index):
         for segment in self.segments:
             segment.shock_step(index)
@@ -502,9 +509,9 @@ class RoadEnvironment:
         )
 
         reward = maintenance_reward + travel_time_reward
-    
+
         #############################################################
-        # Shock Option 1: 
+        # Shock Option 1:
         # shock as additional deterioration after reward computation
         ############################################################
         if self.shocks is not None:
@@ -512,7 +519,6 @@ class RoadEnvironment:
                 index = np.where(self.timestep == self.shocks.times)[0][0]
                 for i, edge in enumerate(self.graph.es):
                     edge["road_segments"].shock_step(index)
-
 
         observation = self._get_observation()
 
@@ -575,9 +581,10 @@ class RoadEnvironment:
 
         if config.shocks is not None:
             shocks = Shock(
-                max_timesteps=max_timesteps, 
+                max_timesteps=max_timesteps,
                 random_generator=random_generator,
-                **config.shocks)
+                **config.shocks,
+            )
         else:
             shocks = None
 
@@ -592,14 +599,14 @@ class RoadEnvironment:
                         position_y=segment["position_y"],
                         capacity=segment["capacity"],
                         base_travel_time=segment["travel_time"],
-                        shocks=shocks
+                        shocks=shocks,
                     )
                 )
             road_edges[nodes] = RoadEdge(
                 number_of_segments=None,
                 random_generator=random_generator,
                 segments=segments,
-                shocks=shocks
+                shocks=shocks,
             )
 
         env = RoadEnvironment(

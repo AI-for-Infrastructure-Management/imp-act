@@ -74,7 +74,9 @@ class Shock:
         # -> implementation: delete the second fragility curve from the top
         if type(theta_mat) == list:
             if type(theta_mat[0]) == list:
-                theta_mat = np.array([[np.nan if (x=='None') else x for x in row] for row in theta_mat])
+                theta_mat = np.array(
+                    [[np.nan if (x == "None") else x for x in row] for row in theta_mat]
+                )
             else:
                 theta_mat = np.array(theta_mat)
         if len(theta_mat.shape) > 1:
@@ -111,7 +113,11 @@ class Shock:
         random_generator: int = None,
     ) -> float:
         return stats.truncexpon.rvs(
-            b=m_max, loc=m_min, scale=1 / beta_m, size=size, random_state=random_generator
+            b=m_max,
+            loc=m_min,
+            scale=1 / beta_m,
+            size=size,
+            random_state=random_generator,
         )
 
     # function that draws N 2D-uniformly distributed random locations from a specified grid [xmin, xmax] x [ymin, ymax]
@@ -141,19 +147,24 @@ class Shock:
         b5: float,
         h: float,
     ) -> np.array:
-        return np.exp(b1_hat + b2 * (magn - 6) + b5 * np.log(np.sqrt(dist**2 + h**2)))
+        return np.exp(
+            b1_hat + b2 * (magn - 6) + b5 * np.log(np.sqrt(dist**2 + h**2))
+        )
 
     # function that returns a fragility values parametrized by a vector of local pgas, a vector of medians (theta) and a single std parameters
     # -> the standard deviation has to be same for all states, otherwise the curves cross
     def get_fragilities(
         self, shift: np.array, pga: float, theta_mat: np.array, sigma: float
     ) -> np.array:
-        #print(type(pga), pga)
-        #print(type(theta_mat), theta_mat)
-        #print(type(shift), shift)
-        #print(type(sigma), sigma)
-        #print(type(self.eps), self.eps)
-        return stats.norm.cdf(x=np.log(pga/theta_mat + np.exp(stats.norm.ppf(shift)*sigma + self.eps)) / sigma)
+        # print(type(pga), pga)
+        # print(type(theta_mat), theta_mat)
+        # print(type(shift), shift)
+        # print(type(sigma), sigma)
+        # print(type(self.eps), self.eps)
+        return stats.norm.cdf(
+            x=np.log(pga / theta_mat + np.exp(stats.norm.ppf(shift) * sigma + self.eps))
+            / sigma
+        )
 
     def get_det_probs_from_fragility_matrix(self, frag_mat: np.array) -> np.array:
         f2 = np.tril(np.ones_like(frag_mat), k=-1) + np.triu(frag_mat)
@@ -191,19 +202,19 @@ class Shock:
         pga_dict: dict,
         fragility_dict: dict,
     ) -> list:
-        
+
         assert len(magn) == len(dist) == len(shift_list) == len(det_table_append_list)
         shock_table_list = list()
         pga_list = list()
         for k in range(len(magn)):
             pga, shock_table = self.single_loc_based_det_table_transform(
-                    magn=magn[k],
-                    dist=dist[k],
-                    shift=shift_list[k],
-                    det_table_append=det_table_append_list[k],
-                    pga_dict=pga_dict,
-                    fragility_dict=fragility_dict,
-                )
+                magn=magn[k],
+                dist=dist[k],
+                shift=shift_list[k],
+                det_table_append=det_table_append_list[k],
+                pga_dict=pga_dict,
+                fragility_dict=fragility_dict,
+            )
             pga_list.append(pga)
             shock_table_list.append(shock_table)
         return np.array(pga_list).squeeze(), shock_table_list
@@ -238,7 +249,9 @@ class Shock:
         random_generator: int,
     ) -> list:
         times = self.get_shock_t(
-            max_timesteps=max_timesteps, lambda_t=lambda_t, random_generator=random_generator
+            max_timesteps=max_timesteps,
+            lambda_t=lambda_t,
+            random_generator=random_generator,
         )
         magni = np.array([])
         locs = np.array([])
@@ -253,7 +266,9 @@ class Shock:
 
     def reset(self) -> None:
         if not hasattr(self, "theta_mat"):
-            self.fragility_dict["theta_mat"] = self.get_theta_mat_from_vec(theta_mat=self.fragility_dict.get("theta_mat"))
+            self.fragility_dict["theta_mat"] = self.get_theta_mat_from_vec(
+                theta_mat=self.fragility_dict.get("theta_mat")
+            )
         self.times, self.magni, self.locs = self.get_shocks(
             max_timesteps=self.max_timesteps,
             lambda_t=self.lambda_t,
@@ -262,4 +277,3 @@ class Shock:
             random_generator=self.random_generator,
         )
         return
-    
