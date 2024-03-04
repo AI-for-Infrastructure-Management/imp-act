@@ -1,6 +1,6 @@
 import pytest
-from environments.config.environment_loader import EnvironmentLoader
-from environments.registry import Registry
+from imp_rl_challenge.environments.config.environment_loader import EnvironmentLoader
+from imp_rl_challenge.environments.registry import Registry
 
 
 @pytest.fixture

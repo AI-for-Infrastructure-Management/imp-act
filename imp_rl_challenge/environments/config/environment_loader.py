@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from environments.road_env import RoadEnvironment
+from ..road_env import RoadEnvironment
 from igraph import Graph
 
 
