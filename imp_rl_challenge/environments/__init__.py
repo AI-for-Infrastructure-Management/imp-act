@@ -16,7 +16,7 @@ Registry().register(
     name="toy_environment_numpy",
     cls=numpy_environment_loader,
     parameters={
-        "filename": "environments/config/environment_presets/toy_environment.yaml"
+        "filename": "imp_rl_challenge/environments/config/environment_presets/toy_environment.yaml"
     },
 )
 
@@ -24,7 +24,7 @@ Registry().register(
     name="small_environment_numpy",
     cls=numpy_environment_loader,
     parameters={
-        "filename": "environments/config/environment_presets/small_environment.yaml"
+        "filename": "imp_rl_challenge/environments/config/environment_presets/small_environment.yaml"
     },
 )
 
@@ -32,7 +32,7 @@ Registry().register(
     name="large_environment_numpy",
     cls=numpy_environment_loader,
     parameters={
-        "filename": "environments/config/environment_presets/large_environment.yaml"
+        "filename": "imp_rl_challenge/environments/config/environment_presets/large_environment.yaml"
     },
 )
 
@@ -41,7 +41,7 @@ Registry().register(
     name="toy_environment_jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": "environments/config/environment_presets/toy_environment.yaml"
+        "filename": "imp_rl_challenge/environments/config/environment_presets/toy_environment.yaml"
     },
 )
 
@@ -49,7 +49,7 @@ Registry().register(
     name="small_environment_jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": "environments/config/environment_presets/small_environment.yaml"
+        "filename": "imp_rl_challenge/environments/config/environment_presets/small_environment.yaml"
     },
 )
 
@@ -57,6 +57,6 @@ Registry().register(
     name="large_environment_jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": "environments/config/environment_presets/large_environment.yaml"
+        "filename": "imp_rl_challenge/environments/config/environment_presets/large_environment.yaml"
     },
 )
