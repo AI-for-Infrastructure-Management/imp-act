@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import utils_nx_ig as mu
-from PIL import Image
 
 from environments.config.environment_presets import small_environment_dict
 from environments.road_env import RoadEnvironment
+from PIL import Image
 
 # plot dict for visualization with networkx
 standard_dict = {"with_labels": True}
