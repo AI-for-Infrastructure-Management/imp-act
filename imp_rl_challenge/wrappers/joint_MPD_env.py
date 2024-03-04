@@ -1,6 +1,5 @@
 import itertools
 
-
 class JointMDPEnv:
     def __init__(self, env):
         self.base_env = env

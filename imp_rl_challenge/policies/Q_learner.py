@@ -34,6 +34,7 @@ class Q_learner:
     def epsilon_greedy_policy(self, state, epsilon):
         if random.uniform(0, 1) < epsilon:
             return np.random.choice(self.env.num_joint_actions)
+
         else:
             return self.greedy_policy(state)
 
