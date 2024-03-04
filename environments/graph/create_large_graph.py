@@ -7,8 +7,8 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import yaml
+from pyproj import Transformer
 from tqdm import tqdm
-
 
 paper_url = "https://publica-rest.fraunhofer.de/server/api/core/bitstreams/d4913d12-4cd1-473c-97cd-ed467ad19273/content"
 data_url = "https://data.mendeley.com/datasets/py2zkrb65h/1"
@@ -29,6 +29,30 @@ def plot_network(G, pos, title, path):
     plt.grid(True)
     plt.savefig(Path(path, f"{title}.png"))
     plt.close()
+
+
+def project_coordinates(
+    lats: list | float, longs: list | float, country: str, inkm: bool = True
+) -> tuple:
+    """
+    # transforms points from one coordinate system to another, whatever projections included
+    # as default the inputs are interpreted as latitude / longitude
+    """
+    if country == "BE":
+        coord_sys_to = "EPSG:31370"
+    elif country == "ME":
+        coord_sys_to = "EPSG:6316"
+    else:
+        coord_sys_to = "EPSG:4326"
+
+    coord_sys_from = "EPSG:4326"
+
+    transformer = Transformer.from_crs(coord_sys_from, coord_sys_to)
+    x, y = transformer.transform(lats, longs)
+    if inkm:
+        x /= 1000
+        y /= 1000
+    return x, y
 
 
 def remove_nodes_with_degree_one_below_threshold(graph, threshold):
@@ -198,6 +222,13 @@ def export_country(args):
         id: {"position_x": pos[0], "position_y": pos[1]}
         for id, pos in pos_filtered.items()
     }
+
+    for id, pos in position_dict.items():
+        (
+            position_dict[id]["position_x"],
+            position_dict[id]["position_y"],
+        ) = project_coordinates(pos["position_x"], pos["position_y"], args.country)
+
     nx.set_node_attributes(G_reduced_3, position_dict)
 
     # Plotting the network
