@@ -82,15 +82,10 @@ def test_shortest_path_computation_toy(toy_environment_jax):
         )
         # get cost to travel from source to target using shortest path
         cost_1 = float(sum([weights_list[i] for i in shortest_path[0]]))
-        print(cost_1)
 
         # get cost to travel from source to target
-        weights_matrix = toy_environment_jax._get_weight_matrix(
-            weights_list, edges_list, target
-        )
-        print(weights_matrix)
-        cost_2 = toy_environment_jax._get_cost_to_go(weights_matrix, 100)[source]
-        print(cost_2)
+        weights_matrix = toy_environment_jax._get_weight_matrix(weights_list)
+        cost_2 = toy_environment_jax._get_cost_to_go(weights_matrix)[source][target]
 
         assert cost_1 == cost_2
 
@@ -143,12 +138,8 @@ def test_shortest_path_cost_equivalence_large(
         )
 
         # Jax environment
-        weights_matrix = jax_env._get_weight_matrix(
-            edge_travel_times, jax_env.edges, target
-        )
-        cost_jax = jax_env._get_cost_to_go(
-            weights_matrix, jax_env.shortest_path_max_iterations
-        )[source]
+        weights_matrix = jax_env._get_weight_matrix(edge_travel_times)
+        cost_jax = jax_env._get_cost_to_go(weights_matrix)[source][target]
 
         assert jnp.allclose(cost_numpy, cost_jax, rtol=1e-3)
 
@@ -202,16 +193,16 @@ def test_shortest_paths_large(large_environment_jax, large_environment_numpy):
         ]
 
         # Jax environment
-        weights_matrix = jax_env._get_weight_matrix(
-            edge_travel_times, jax_env.edges, target
-        )
-        cost_jax = jax_env._get_cost_to_go(
-            weights_matrix, jax_env.shortest_path_max_iterations
-        )
+        weights_matrix = jax_env._get_weight_matrix(edge_travel_times)
+        cost_to_go_matrix = jax_env._get_cost_to_go(weights_matrix)
+
+        weights_matrix = weights_matrix.at[
+            jnp.arange(jax_env.num_nodes), jnp.arange(jax_env.num_nodes)
+        ].set(jnp.inf)
 
         shortest_path_jax = jax_env._get_shortest_path(
-            source, target, weights_matrix, cost_jax
-        ).tolist()
+            source, target, weights_matrix, cost_to_go_matrix
+        )
 
         assert shortest_path_jax in all_shortest_paths_numpy
 
