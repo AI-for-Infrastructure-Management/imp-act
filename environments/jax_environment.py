@@ -681,7 +681,11 @@ class JaxRoadEnvironment(environment.Environment):
         return subkeys, key
 
     def _get_shortest_path(
-        self, source: int, destination: int, weights_matrix: jnp.array, J: jnp.array
+        self,
+        source: int,
+        destination: int,
+        weights_matrix: jnp.array,
+        cost_to_go_matrix: jnp.array,
     ) -> list:
         """
         #! only used in tests (cannot jit since output can have variable size)
@@ -691,23 +695,36 @@ class JaxRoadEnvironment(environment.Environment):
         ----------
         source : int
             Source node
+
         destination : int
             Destination node
 
+        weights_matrix : jnp.array
+            Matrix of weights (example: travel time) between each pair
+            of nodes. The weights_matrix[i,j] is the weight of the edge
+            from node i to node j. If there is no edge between node i and
+            node j, then weights_matrix[i,j] = jnp.inf
+
+        cost_to_go_matrix : jnp.array
+            Matrix of cost-to-go from all nodes to all nodes.
+            The cost_to_go_matrix[i,j] is the cost-to-go from node i to
+            node j using the shortest available path.
+
         Returns
         -------
-        shortest_path : List of tuples
-            List of tuples representing the nodes of the shortest path
-            from the source to the destination.
+        shortest_path : List edge ids of the shortest path from the
+                        source to the destination.
         """
 
         current_node = source
         edges_path = []
 
         while current_node != destination:
-            next_node = jnp.argmin(weights_matrix[current_node, :] + J)
+            next_node = jnp.argmin(
+                weights_matrix[current_node, :] + cost_to_go_matrix[:, destination]
+            )
             edge_index = self.adjacency_matrix[current_node, next_node]
             edges_path.append(edge_index)
             current_node = next_node
 
-        return jnp.array(edges_path)
+        return edges_path
