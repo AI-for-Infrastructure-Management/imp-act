@@ -5,6 +5,7 @@
         <intro image>
 
 - What is the problem and its significance?
+
 #### Challenges
 - Stochastic deterioration
 - Scalability
@@ -13,15 +14,16 @@
 - Large variance in returns
 
 # Getting Started
+
 ## Installation
-- 
+
+
 ## Quickstart
 - Load the toy environment and show a rollout with a basic policy.
 - Basic post-processing: visualisation, summary statistics
 
 ## Tutorials
-- Train a DQN/PPO agent using CleanRL (with WandB?)
-- Train a MARL agent using EPyMARL
+- Train QMIX agent with EpyMARL
 - Implement a heuristic
 
 # Environment
