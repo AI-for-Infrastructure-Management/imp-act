@@ -299,8 +299,8 @@ class JaxRoadEnvironment(environment.Environment):
         # calculate travel time on each edge
         return btt_factor + capacity_factor * edge_volumes**self.traffic_beta
 
-    @partial(jax.jit, static_argnums=0)
-    def _get_weight_matrix(self, weights: jnp.array, edges: jnp.array):
+    @partial(jax.jit, static_argnums=(0,))
+    def _get_weight_matrix(self, weights: jnp.array):
         """
         Get the weight matrix for the shortest path algorithm from all
         nodes to the given destination node.
@@ -308,12 +308,6 @@ class JaxRoadEnvironment(environment.Environment):
         Parameters
         -------
         weights: Vector of weights (example: travel time) for each edge
-
-        num_nodes: Number of nodes in the graph
-
-        edges: Vector of tuples (example: [(0, 1), (1,3)]) representing the
-            nodes of each edge.
-
 
         Returns
         -------
@@ -323,7 +317,7 @@ class JaxRoadEnvironment(environment.Environment):
             from node i to node j. If there is no edge between node i and
             node j, then weights_matrix[i,j] = jnp.inf
         """
-
+        edges = self.edges
         weights_matrix = jnp.full((self.num_nodes, self.num_nodes), jnp.inf)
 
         # set diagonal to 0
@@ -337,10 +331,11 @@ class JaxRoadEnvironment(environment.Environment):
 
         return weights_matrix
 
-    @partial(jax.jit, static_argnums=(0, 2))
-    def _get_cost_to_go(self, weights_matrix: jnp.array, num_nodes: int):
+    @partial(jax.jit, static_argnums=(0,))
+    def _get_cost_to_go(self, weights_matrix: jnp.array):
         """
-        Get the cost-to-go from all nodes to all nodes using the floyd warshall algorithm.
+        Get the cost-to-go from all nodes to all nodes using the
+        Floyd-Warshall algorithm.
 
         Parameters
         ----------
@@ -350,8 +345,6 @@ class JaxRoadEnvironment(environment.Environment):
             from node i to node j. If there is no edge between node i and
             node j, then weights_matrix[i,j] = jnp.inf
             The diagonal of the matrix is set to 0.
-
-        num_nodes : Number of nodes in the graph
 
         Returns
         -------
@@ -363,17 +356,19 @@ class JaxRoadEnvironment(environment.Environment):
         def body_fun(k, cost_to_go_matrix):
             # Dynamically slice the k-th column and row
             kth_col = jax.lax.dynamic_slice(
-                cost_to_go_matrix, (0, k), (num_nodes, 1)
+                cost_to_go_matrix, (0, k), (self.num_nodes, 1)
             )  # Slice the k-th column
             kth_row = jax.lax.dynamic_slice(
-                cost_to_go_matrix, (k, 0), (1, num_nodes)
+                cost_to_go_matrix, (k, 0), (1, self.num_nodes)
             )  # Slice the k-th row
 
             # Update dist using the current intermediate vertex k
             cost_to_go_matrix = jnp.minimum(cost_to_go_matrix, kth_col + kth_row)
             return cost_to_go_matrix
 
-        return jax.lax.fori_loop(0, num_nodes, body_fun, init_val=(cost_to_go_matrix))
+        return jax.lax.fori_loop(
+            0, self.num_nodes, body_fun, init_val=(cost_to_go_matrix)
+        )
 
     @partial(jax.jit, static_argnums=0)
     @partial(vmap, in_axes=(None, 0, 0, None, None))
@@ -408,12 +403,9 @@ class JaxRoadEnvironment(environment.Environment):
 
         """
 
-        edges = self.edges
-        trips = self.trips
-        trip = trips[source][destination]
+        trip = self.trips[source][destination]
 
-        num_edges = len(edges)
-        volumes = jnp.full((num_edges,), 0.0)
+        volumes = jnp.zeros(self.num_edges)
 
         def body_fun(val):
             step, current_node, volumes, _ = val
@@ -436,9 +428,7 @@ class JaxRoadEnvironment(environment.Environment):
         )[2]
 
     @partial(jax.jit, static_argnums=0)
-    def _get_volumes_shortest_path(
-        self, sources: int, destinations: int, weights: jnp.array
-    ):
+    def _get_volumes_shortest_path(self, weights: jnp.array):
         """
         Compute the volumes of each edge in the shortest path from the
         given source to the given destination.
@@ -447,26 +437,17 @@ class JaxRoadEnvironment(environment.Environment):
 
         Parameters
         ----------
-        source : source node
-
-        destination : destination node
-
         weights : Vector of weights (example: travel time) for each edge
-
-        params : Environment parameters
 
         Returns
         -------
         volumes : Vector of volumes of each edge in the shortest path
                   from the given source to the given destination.
-                  shape: (trips, num_edges)"""
+                  shape: (trips, num_edges)
+        """
 
-        edges = self.edges
-
-        weight_matrix = self._get_weight_matrix(weights, edges)
-        cost_to_go_matrix = self._get_cost_to_go(
-            weight_matrix, num_nodes=self.num_nodes
-        )
+        weight_matrix = self._get_weight_matrix(weights)
+        cost_to_go_matrix = self._get_cost_to_go(weight_matrix)
 
         # for volumes set diagonal to jnp.inf
         weight_matrix = weight_matrix.at[
@@ -474,7 +455,10 @@ class JaxRoadEnvironment(environment.Environment):
         ].set(jnp.inf)
 
         volumes = self._get_volumes(
-            sources, destinations, weight_matrix, cost_to_go_matrix
+            self.trip_sources,
+            self.trip_destinations,
+            weight_matrix,
+            cost_to_go_matrix,
         )
 
         return volumes
@@ -490,9 +474,7 @@ class JaxRoadEnvironment(environment.Environment):
         edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
 
         # 0.3 Find the shortest paths using all-or-nothing assignment
-        edge_volumes = self._get_volumes_shortest_path(
-            self.trip_sources, self.trip_destinations, edge_travel_times
-        ).sum(axis=0)
+        edge_volumes = self._get_volumes_shortest_path(edge_travel_times).sum(axis=0)
 
         # repeat until convergence
         def body_fun(val):
@@ -503,9 +485,9 @@ class JaxRoadEnvironment(environment.Environment):
 
             # 2. Find the shortest paths using updated travel times
             #    (recalculates edge volumes)
-            new_edge_volumes = self._get_volumes_shortest_path(
-                self.trip_sources, self.trip_destinations, edge_travel_times
-            ).sum(axis=0)
+            new_edge_volumes = self._get_volumes_shortest_path(edge_travel_times).sum(
+                axis=0
+            )
 
             # 3. Check for convergence by comparing volume changes
             volume_changes = jnp.abs(edge_volumes - new_edge_volumes)
