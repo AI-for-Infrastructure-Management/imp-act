@@ -64,9 +64,7 @@ class JaxRoadEnvironment(environment.Environment):
         # Traffic assignment
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
         self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
-        # self.traffic_assignment_max_iterations = 500  # TODO
         self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
-        self.shortest_path_max_iterations = 500  # TODO
         # Network traffic
         self.trips = self._extract_trip_info(config)
         self.trip_sources, self.trip_destinations = jnp.nonzero(self.trips)
@@ -101,7 +99,8 @@ class JaxRoadEnvironment(environment.Environment):
 
     def _extract_segments_info(self, config: Dict):
         """Extract segments information from the configuration file.
-        Only used in the constructor."""
+        (Only used in the constructor)
+        """
 
         # get all edge ids from the graph
         igraph_edge_ids = self.graph.es["id"]
@@ -143,6 +142,7 @@ class JaxRoadEnvironment(environment.Environment):
         """
         Store trip information from the config file into the trips matrix.
         trips[i, j] is the volume of trips from node i to node j.
+        (Only used in the constructor)
         """
 
         trips = np.zeros((self.num_nodes, self.num_nodes))
@@ -276,8 +276,6 @@ class JaxRoadEnvironment(environment.Environment):
         edge_volumes : Vector of volumes of each edge
                        shape: (num_edges)
 
-        params : Environment parameters
-
         Returns
         -------
         edge_travel_times : Vector of travel times of each edge
@@ -383,8 +381,6 @@ class JaxRoadEnvironment(environment.Environment):
         Get a vector containing the volume of each edge in the shortest
         path from the given source to the given destination.
 
-        Access this function through _get_volumes_shortest_path
-
         Parameters
         ----------
         source : Source node
@@ -410,7 +406,7 @@ class JaxRoadEnvironment(environment.Environment):
         def body_fun(val):
             step, current_node, volumes, _ = val
 
-            # TODO: ties: usually returns the first index, should we randomize?
+            # reminder: returns the first index
             next_node = jnp.argmin(
                 weights_matrix[current_node, :] + cost_to_go_matrix[:, destination]
             )
