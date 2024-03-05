@@ -21,15 +21,13 @@ def do_nothing_policy_jax(edge_segments_numbers):
 
 
 def numpy_rollout(env, edge_segments_numbers, actions):
-    obs = env.reset()
+    _ = env.reset()
     done = False
 
     total_reward = 0
 
     while not done:
-        next_obs, reward, done, _ = env.step(actions)
-
-        obs = next_obs
+        _, reward, done, _ = env.step(actions)
         total_reward += reward
 
     return total_reward
@@ -50,7 +48,7 @@ def compute_edge_segments_numbers_jax(env):
 
 
 def main(filename):
-    experiments = [1, 10, 100, 1_000, 10_000]
+    experiments = [1, 10, 100, 1000]
 
     store_returns_for = experiments[-1]
 
@@ -97,16 +95,14 @@ def main(filename):
         # rollout
         for _ in range(NUM_EPISODES):
             # reset
-            obs, state = jax_env.reset_env()
+            _, state = jax_env.reset_env()
 
             total_reward = 0
 
             # rollout
             for _ in range(jax_env.max_timesteps):
                 # step
-                obs, reward, done, info, state = jax_env.step_env(
-                    step_keys, state, action_jax
-                )
+                _, reward, _, _, state = jax_env.step_env(step_keys, state, action_jax)
 
                 step_keys, key = jax_env.split_key(key)
 
@@ -145,13 +141,14 @@ def main(filename):
     ax[1].legend()
 
     plt.show()
+    plt.savefig(f"profiling/{filename.split('/')[-1].split('.')[0]}_jax_vs_numpy.png")
 
 
 if __name__ == "__main__":
     paths = [
         "environments/config/environment_presets/toy_environment.yaml",
-        # "environments/config/environment_presets/small_environment.yaml",
-        # "environments/config/environment_presets/large_environment.yaml"
+        "environments/config/environment_presets/small_environment.yaml",
+        "environments/config/environment_presets/large_environment.yaml",
     ]
     for filename in paths:
         print(filename)

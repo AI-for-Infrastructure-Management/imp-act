@@ -300,9 +300,7 @@ class JaxRoadEnvironment(environment.Environment):
         return btt_factor + capacity_factor * edge_volumes**self.traffic_beta
 
     @partial(jax.jit, static_argnums=0)
-    def _get_weight_matrix(
-        self, weights: jnp.array, edges: jnp.array, destination: int
-    ):
+    def _get_weight_matrix(self, weights: jnp.array, edges: jnp.array):
         """
         Get the weight matrix for the shortest path algorithm from all
         nodes to the given destination node.
@@ -316,7 +314,6 @@ class JaxRoadEnvironment(environment.Environment):
         edges: Vector of tuples (example: [(0, 1), (1,3)]) representing the
             nodes of each edge.
 
-        destination: Destination node
 
         Returns
         -------
@@ -328,8 +325,11 @@ class JaxRoadEnvironment(environment.Environment):
         """
 
         weights_matrix = jnp.full((self.num_nodes, self.num_nodes), jnp.inf)
-        # set destination node to 0
-        weights_matrix = weights_matrix.at[destination, destination].set(0)
+
+        # set diagonal to 0
+        weights_matrix = weights_matrix.at[
+            jnp.arange(self.num_nodes), jnp.arange(self.num_nodes)
+        ].set(0)
 
         # set weights (uses jax.lax.scatter behind the scenes)
         weights_matrix = weights_matrix.at[edges[:, 0], edges[:, 1]].set(weights)
@@ -338,9 +338,9 @@ class JaxRoadEnvironment(environment.Environment):
         return weights_matrix
 
     @partial(jax.jit, static_argnums=(0, 2))
-    def _get_cost_to_go(self, weights_matrix: jnp.array, max_iter: int):
+    def _get_cost_to_go(self, weights_matrix: jnp.array, num_nodes: int):
         """
-        Get the cost-to-go from all nodes to the given destination node.
+        Get the cost-to-go from all nodes to all nodes using the floyd warshall algorithm.
 
         Parameters
         ----------
@@ -349,42 +349,40 @@ class JaxRoadEnvironment(environment.Environment):
             of nodes. The weights_matrix[i,j] is the weight of the edge
             from node i to node j. If there is no edge between node i and
             node j, then weights_matrix[i,j] = jnp.inf
+            The diagonal of the matrix is set to 0.
 
         num_nodes : Number of nodes in the graph
-        max_iter : Maximum number of iterations for the while loop
 
         Returns
         -------
-        J : Vector of cost-to-go from all nodes to the given destination
-            node. J[i] is the cost from node i to the destination node.
+        cost_to_go_matrix : Matrix of cost-to-go from all nodes to all nodes
         """
 
-        J = jnp.zeros(self.num_nodes)  # Initial guess
+        cost_to_go_matrix = jnp.copy(weights_matrix)
 
-        def body_fun(values):
-            # Define the body function of while loop
-            i, J, _ = values
+        def body_fun(k, cost_to_go_matrix):
+            # Dynamically slice the k-th column and row
+            kth_col = jax.lax.dynamic_slice(
+                cost_to_go_matrix, (0, k), (num_nodes, 1)
+            )  # Slice the k-th column
+            kth_row = jax.lax.dynamic_slice(
+                cost_to_go_matrix, (k, 0), (1, num_nodes)
+            )  # Slice the k-th row
 
-            # Update J and break condition
-            next_J = jnp.min(weights_matrix + J, axis=1)
-            break_condition = jnp.allclose(next_J, J, 0.01, 0.01)
+            # Update dist using the current intermediate vertex k
+            cost_to_go_matrix = jnp.minimum(cost_to_go_matrix, kth_col + kth_row)
+            return cost_to_go_matrix
 
-            # Return next iteration values
-            return i + 1, next_J, break_condition
-
-        def cond_fun(values):
-            i, _, break_condition = values
-            return ~break_condition & (i < max_iter)
-
-        return jax.lax.while_loop(cond_fun, body_fun, init_val=(0, J, False))[1]
+        return jax.lax.fori_loop(0, num_nodes, body_fun, init_val=(cost_to_go_matrix))
 
     @partial(jax.jit, static_argnums=0)
+    @partial(vmap, in_axes=(None, 0, 0, None, None))
     def _get_volumes(
         self,
         source: int,
         destination: int,
         weights_matrix: jnp.array,
-        J: jnp.array,
+        cost_to_go_matrix: jnp.array,
     ):
         """
         Get a vector containing the volume of each edge in the shortest
@@ -404,32 +402,32 @@ class JaxRoadEnvironment(environment.Environment):
             from node i to node j. If there is no edge between node i and
             node j, then weights_matrix[i,j] = jnp.inf
 
-        J : Vector of cost-to-go from all nodes to the given destination
-            node. J[i] is the cost from node i to the destination node.
-
-        params : Environment parameters
+        cost_to_go_matrix : jnp.array
+            Matrix of cost-to-go from all nodes to all nodes. The cost_to_go_matrix[i,j]
+            is the cost-to-go from node i to node j using the shortest available path.
 
         """
+
         edges = self.edges
         trips = self.trips
+        trip = trips[source][destination]
+
         num_edges = len(edges)
-        # this need to be float32 since we multiply by
-        # params.traffic_assignment_update_weight (float) in the traffic
-        # assignment loop
         volumes = jnp.full((num_edges,), 0.0)
 
         def body_fun(val):
             step, current_node, volumes, _ = val
 
             # TODO: ties: usually returns the first index, should we randomize?
-            next_node = jnp.argmin(weights_matrix[current_node, :] + J)
+            next_node = jnp.argmin(
+                weights_matrix[current_node, :] + cost_to_go_matrix[:, destination]
+            )
             # find edge index given current_node and next_node
             edge_index = self.adjacency_matrix[current_node, next_node]
-            trip = trips[source][destination]
             volumes = volumes.at[edge_index].set(volumes[edge_index] + trip)
             return step + 1, next_node, volumes, destination != next_node
 
-        def cond_fun(val):  # we might want to add a max_depth condition if too slow
+        def cond_fun(val):
             _, _, _, break_cond = val
             return break_cond
 
@@ -438,9 +436,8 @@ class JaxRoadEnvironment(environment.Environment):
         )[2]
 
     @partial(jax.jit, static_argnums=0)
-    @partial(vmap, in_axes=(None, 0, 0, None))
     def _get_volumes_shortest_path(
-        self, source: int, destination: int, weights: jnp.array
+        self, sources: int, destinations: int, weights: jnp.array
     ):
         """
         Compute the volumes of each edge in the shortest path from the
@@ -462,16 +459,24 @@ class JaxRoadEnvironment(environment.Environment):
         -------
         volumes : Vector of volumes of each edge in the shortest path
                   from the given source to the given destination.
-                  shape: (num_edges,)
-        """
+                  shape: (trips, num_edges)"""
 
         edges = self.edges
 
-        weight_matrix = self._get_weight_matrix(weights, edges, destination)
-        cost_to_go = self._get_cost_to_go(
-            weight_matrix, max_iter=self.shortest_path_max_iterations
+        weight_matrix = self._get_weight_matrix(weights, edges)
+        cost_to_go_matrix = self._get_cost_to_go(
+            weight_matrix, num_nodes=self.num_nodes
         )
-        volumes = self._get_volumes(source, destination, weight_matrix, cost_to_go)
+
+        # for volumes set diagonal to jnp.inf
+        weight_matrix = weight_matrix.at[
+            jnp.arange(self.num_nodes), jnp.arange(self.num_nodes)
+        ].set(jnp.inf)
+
+        volumes = self._get_volumes(
+            sources, destinations, weight_matrix, cost_to_go_matrix
+        )
+
         return volumes
 
     @partial(jax.jit, static_argnums=0)
