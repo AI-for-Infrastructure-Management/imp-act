@@ -4,5 +4,5 @@ channels:
   - conda-forge
 dependencies:
   - poetry=1.7.1
-  - python=3.10.12
+  - python=3.9.18
   - lockfile=0.12.2
