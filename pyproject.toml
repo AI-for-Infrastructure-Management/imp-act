@@ -3,9 +3,10 @@ name = "imp-rl-challenge"
 version = "0.1.0"
 description = "Environments for the imp-rl-challenge"
 authors = ["Pascal Leroy <pjr.leroy@gmail.com>"]
-license = "TBD"
+license = "Apache-2.0"
 readme = "README.md"
 packages = [
+    {include = "imp_rl_challenge"},
     {include = "imp_rl_challenge/environments"},
     {include = "imp_rl_challenge/policies"},
     {include = "imp_rl_challenge/wrappers"}
@@ -21,7 +22,7 @@ scipy="1.11.4"
 Pillow="10.1.0"
 tqdm="4.66.1"
 pandas="2.1.4"
-pyyaml = "6.0.1"
+pyyaml="6.0.1"
 
 
 [tool.poetry.group.dev]
