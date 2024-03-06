@@ -14,22 +14,24 @@ packages = [
 
 [tool.poetry.dependencies]
 python=">=3.9"
-igraph="0.11.3"
-numpy="1.26.2"
-matplotlib="3.8.2"
-networkx="3.2.1"
-scipy="1.11.4"
-Pillow="10.1.0"
-tqdm="4.66.1"
-pandas="2.1.4"
-pyyaml="6.0.1"
-
+igraph="~0.11.3"
+numpy="~1.26.2"
+pandas="~2.1.4"
+pyyaml="~6.0.1"
+tqdm="~4.66.1"
 
 [tool.poetry.group.dev]
-optional = false
+optional = true
 [tool.poetry.group.dev.dependencies]
 pytest="8.0.1"
 pre-commit = "3.6.2"
+
+[tool.poetry.group.vis]
+optional = true
+[tool.poetry.group.vis.dependencies]
+matplotlib="~3.8.2"
+networkx="~3.2.1"
+Pillow="~10.1.0"
 
 [build-system]
 requires = ["poetry-core"]
