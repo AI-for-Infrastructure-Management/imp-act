@@ -1,48 +1,29 @@
 import pytest
-from environments.config.environment_loader import EnvironmentLoader
+from imp_rl_challenge.environments.config.environment_loader import EnvironmentLoader
+from imp_rl_challenge.environments.registry import Registry
 
 
 @pytest.fixture
-def toy_environment_path():
-    """Path to toy environment file"""
-    return "environments/config/environment_presets/toy_environment.yaml"
-
-
-@pytest.fixture
-def toy_environment_loader(toy_environment_path):
+def toy_environment_loader():
     """Create a toy environment loader for testing."""
+    toy_environment_path = Registry().get("toy_environment_numpy")[1]["filename"]
     return EnvironmentLoader(toy_environment_path)
 
 
 @pytest.fixture
-def toy_environment(toy_environment_loader):
+def toy_environment():
     """Create a toy environment loader for testing."""
-    env = toy_environment_loader.to_numpy()
-    return env
+    return Registry().make("toy_environment_numpy")
 
 
 @pytest.fixture
-def small_environment_path():
-    """Path to small environment file"""
-    return "environments/config/environment_presets/small_environment.yaml"
+def small_environment():
+    return Registry().make("small_environment_numpy")
 
 
 @pytest.fixture
-def small_environment(small_environment_path):
-    loader = EnvironmentLoader(small_environment_path)
-    return loader.to_numpy()
-
-
-@pytest.fixture
-def large_environment_path():
-    """Path to large environment file"""
-    return "environments/config/environment_presets/large_environment.yaml"
-
-
-@pytest.fixture
-def large_environment(large_environment_path):
-    loader = EnvironmentLoader(large_environment_path)
-    return loader.to_numpy()
+def large_environment():
+    return Registry().make("large_environment_numpy")
 
 
 @pytest.fixture

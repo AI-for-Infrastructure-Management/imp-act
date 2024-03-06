@@ -1,12 +1,10 @@
 import numpy as np
 
-from environments.config.environment_loader import EnvironmentLoader
+from imp_rl_challenge import get_environment
 
 
 def main():
-    env = EnvironmentLoader(
-        "environments/config/environment_presets/small_environment.yaml"
-    ).to_numpy()
+    env = get_environment("toy_environment_numpy")
     env.reset()
     actions = [[1, 1] for _ in range(4)]
     done = False

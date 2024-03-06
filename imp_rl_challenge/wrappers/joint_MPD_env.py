@@ -1,9 +1,7 @@
 import itertools
 
-import gymnasium as gym
 
-
-class JointMDPEnv(gym.Env):
+class JointMDPEnv:
     def __init__(self, env):
         self.base_env = env
         self.num_components = sum(env.edge_segments_numbers)
@@ -30,10 +28,6 @@ class JointMDPEnv(gym.Env):
             num_damage_states**self.num_components * self.time_horizon
         )
         self.num_joint_actions = num_component_actions**self.num_components
-
-        # create joint state and action spaces
-        self.state_space = gym.spaces.Discrete(self.num_joint_states)
-        self.action_space = gym.spaces.Discrete(self.num_joint_actions)
 
         # print some joint state and action space info
         print(f"num_joint_states: {self.num_joint_states}")

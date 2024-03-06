@@ -1,13 +1,23 @@
 ## Installation
+
+Option 1 (recommended): [Anaconda](https://www.anaconda.com/download#downloads) and [Poetry](https://python-poetry.org/docs/#installation) (v1.7.1),
 ```bash
-$ pip install -r requirements.txt
-$ pip install -e .
+conda env create -f conda_environment.yaml
+conda activate imp-rl-competition-env
+poetry install
 ```
 
-## Running tests
+Option 2: pip on any virtual environment,
 ```bash
-$ pytest
+pip install -r requirements/requirements.txt
+pip install -e .
 ```
 
-## Checkout contribution guidelines
-Guidelines are available in [CONTRIBUTING README](CONTRIBUTING.md).
+(Optional) Verify your installation by running tests using this terminal command:
+
+```bash
+pytest
+```
+
+## Contribution guidelines
+Guidelines are outlined in the [CONTRIBUTING README](CONTRIBUTING.md).

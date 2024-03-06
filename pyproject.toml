@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "imp-rl-challenge"
+version = "0.1.0"
+description = "Environments for the imp-rl-challenge"
+authors = ["Pascal Leroy <pjr.leroy@gmail.com>"]
+license = "TBD"
+readme = "README.md"
+packages = [
+    {include = "imp_rl_challenge/environments"},
+    {include = "imp_rl_challenge/policies"},
+    {include = "imp_rl_challenge/wrappers"}
+]
+
+[tool.poetry.dependencies]
+python=">=3.9"
+igraph="0.11.3"
+numpy="1.26.2"
+matplotlib="3.8.2"
+networkx="3.2.1"
+scipy="1.11.4"
+Pillow="10.1.0"
+tqdm="4.66.1"
+pandas="2.1.4"
+pyyaml = "6.0.1"
+
+
+[tool.poetry.group.dev]
+optional = false
+[tool.poetry.group.dev.dependencies]
+pytest="8.0.1"
+pre-commit = "3.6.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -23,7 +23,7 @@ class Q_learner:
         self.epsilon_end = epsilon_end
         self.epsilon_decay = (epsilon_start - epsilon_end) / num_episodes
         self.num_episodes = num_episodes
-        self.Q = np.ones((env.state_space.n, env.action_space.n))
+        self.Q = np.ones((env.num_joint_actions, env.num_joint_actions))
 
     def greedy_policy(self, state):
         q_values = self.Q[state, :]
@@ -33,7 +33,8 @@ class Q_learner:
 
     def epsilon_greedy_policy(self, state, epsilon):
         if random.uniform(0, 1) < epsilon:
-            return self.env.action_space.sample()
+            return np.random.choice(self.env.num_joint_actions)
+
         else:
             return self.greedy_policy(state)
 
