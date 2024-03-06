@@ -6,7 +6,7 @@ Prerequisites:
 
 Installation via *Poetry*
 ```bash
-poetry install --with dev,vis
+poetry install --with dev,vis,docs
 ```
 
 Installation via *pip requirements*

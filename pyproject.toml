@@ -33,6 +33,12 @@ matplotlib="~3.8.2"
 networkx="~3.2.1"
 Pillow="~10.1.0"
 
+[tool.poetry.group.docs]
+optional = true
+[tool.poetry.group.docs.dependencies]
+sphinx="~7.2.6"
+furo="~2024.1.29"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
