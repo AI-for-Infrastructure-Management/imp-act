@@ -31,6 +31,14 @@ Registry().register(
 )
 
 Registry().register(
+    name="medium_environment_numpy",
+    cls=numpy_environment_loader,
+    parameters={
+        "filename": f"{environment_path}/config/environment_presets/medium_environment.yaml"
+    },
+)
+
+Registry().register(
     name="large_environment_numpy",
     cls=numpy_environment_loader,
     parameters={
@@ -52,6 +60,14 @@ Registry().register(
     cls=jax_environment_loader,
     parameters={
         "filename": f"{environment_path}/config/environment_presets/small_environment.yaml"
+    },
+)
+
+Registry().register(
+    name="medium_environment_jax",
+    cls=jax_environment_loader,
+    parameters={
+        "filename": f"{environment_path}/config/environment_presets/medium_environment.yaml"
     },
 )
 
