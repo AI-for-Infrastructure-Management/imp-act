@@ -1,8 +1,9 @@
 import pytest
 
-from test_environment import small_environment  # noqa: F401;
-
-from .heuristics import SimpleHeuristicAgent, TCBMHeuristicAgent
+from imp_rl_challenge.policies.heuristics import (
+    SimpleHeuristicAgent,
+    TCBMHeuristicAgent,
+)
 
 
 @pytest.fixture

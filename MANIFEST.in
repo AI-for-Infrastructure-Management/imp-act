@@ -1,0 +1,2 @@
+recursive-include imp_rl_challenge *.yaml
+prune tests
