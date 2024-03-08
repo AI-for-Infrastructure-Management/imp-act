@@ -22,6 +22,11 @@ def small_environment():
 
 
 @pytest.fixture
+def medium_environment():
+    return Registry().make("medium_environment_numpy")
+
+
+@pytest.fixture
 def large_environment():
     return Registry().make("large_environment_numpy")
 
