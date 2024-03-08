@@ -1,6 +1,6 @@
 import numpy as np
 
-from imp_rl_challenge import get_environment
+from imp_act import get_environment
 
 
 def main():
