@@ -27,13 +27,13 @@ class RoadSegment:
         self.reset()
 
         # base travel time table
-        # shape: A x S
+        # shape: A
         self.base_travel_time_table = (
             config["traffic"]["base_travel_time_factors"] * self.base_travel_time
         )
 
         # capacity table
-        # shape: A x S
+        # shape: A
         self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
 
         # deterioration tables
@@ -62,10 +62,10 @@ class RoadSegment:
             p=self.deterioration_table[action][self.state],
         )
 
-        self.base_travel_time = self.base_travel_time_table[action][self.state]
-        self.capacity = self.capacity_table[action][self.state]
+        self.base_travel_time = self.base_travel_time_table[action]
+        self.capacity = self.capacity_table[action]
 
-        reward = self.state_action_reward[self.state][action]
+        reward = self.state_action_reward[action]
         self.state = next_deterioration_state
 
         self.observation = self.random_generator.choice(
