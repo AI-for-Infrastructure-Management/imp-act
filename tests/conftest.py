@@ -1,34 +1,35 @@
 import pytest
 from imp_act.environments.config.environment_loader import EnvironmentLoader
 from imp_act.environments.registry import Registry
+from imp_act import make
 
 
 @pytest.fixture
 def toy_environment_loader():
     """Create a toy environment loader for testing."""
-    toy_environment_path = Registry().get("toy_environment_numpy")[1]["filename"]
-    return EnvironmentLoader(toy_environment_path)
+    toy_example_path = Registry().get("ToyExample-v1")[1]["filename"]
+    return EnvironmentLoader(toy_example_path)
 
 
 @pytest.fixture
 def toy_environment():
     """Create a toy environment loader for testing."""
-    return Registry().make("toy_environment_numpy")
+    return make("ToyExample-v1")
 
 
 @pytest.fixture
 def small_environment():
-    return Registry().make("small_environment_numpy")
+    return make("Montenegro-v1")
 
 
 @pytest.fixture
 def medium_environment():
-    return Registry().make("medium_environment_numpy")
+    return make("Denmark-v1")
 
 
 @pytest.fixture
 def large_environment():
-    return Registry().make("large_environment_numpy")
+    return make("Belgium-v1")
 
 
 @pytest.fixture

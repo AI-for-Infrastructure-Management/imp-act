@@ -4,7 +4,7 @@ from imp_act import make
 
 
 def main():
-    env = make("toy_environment_numpy")
+    env = make("ToyExample-v1")
     env.reset()
     actions = [[1, 1] for _ in range(4)]
     done = False
