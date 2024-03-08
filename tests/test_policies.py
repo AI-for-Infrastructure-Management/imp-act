@@ -1,6 +1,6 @@
 import pytest
 
-from imp_rl_challenge.policies.heuristics import (
+from imp_act.policies.heuristics import (
     SimpleHeuristicAgent,
     TCBMHeuristicAgent,
 )

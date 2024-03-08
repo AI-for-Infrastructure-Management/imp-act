@@ -1,2 +1,2 @@
-recursive-include imp_rl_challenge *.yaml
+recursive-include imp_act *.yaml
 prune tests

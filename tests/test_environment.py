@@ -347,7 +347,7 @@ def test_seeding_function(toy_environment_loader, test_seed_1, test_seed_2):
 
 
 def test_registry_unknown():
-    from imp_rl_challenge.environments.registry import Registry
+    from imp_act.environments.registry import Registry
 
     registry = Registry()
     with pytest.raises(ValueError):
