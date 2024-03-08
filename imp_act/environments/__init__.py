@@ -15,66 +15,66 @@ def jax_environment_loader(filename):
 environment_path = __path__[0]
 
 Registry().register(
-    name="toy_environment_numpy",
+    name="ToyExample-v1",
     cls=numpy_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/toy_environment.yaml"
+        "filename": f"{environment_path}/config/environment_presets/ToyExample-v1.yaml"
     },
 )
 
 Registry().register(
-    name="small_environment_numpy",
+    name="Montenegro-v1",
     cls=numpy_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/small_environment.yaml"
+        "filename": f"{environment_path}/config/environment_presets/Montenegro-v1.yaml"
     },
 )
 
 Registry().register(
-    name="medium_environment_numpy",
+    name="Denmark-v1",
     cls=numpy_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/medium_environment.yaml"
+        "filename": f"{environment_path}/config/environment_presets/Denmark-v1.yaml"
     },
 )
 
 Registry().register(
-    name="large_environment_numpy",
+    name="Belgium-v1",
     cls=numpy_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/large_environment.yaml"
+        "filename": f"{environment_path}/config/environment_presets/Belgium-v1.yaml"
     },
 )
 
 
 Registry().register(
-    name="toy_environment_jax",
+    name="ToyExample-v1-jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/toy_environment.yaml"
+        "filename": f"{environment_path}/config/environment_presets/ToyExample-v1.yaml"
     },
 )
 
 Registry().register(
-    name="small_environment_jax",
+    name="Montenegro-v1-jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/small_environment.yaml"
+        "filename": f"{environment_path}/config/environment_presets/Montenegro-v1.yaml"
     },
 )
 
 Registry().register(
-    name="medium_environment_jax",
+    name="Denmark-v1-jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/medium_environment.yaml"
+        "filename": f"{environment_path}/config/environment_presets/Denmark-v1.yaml"
     },
 )
 
 Registry().register(
-    name="large_environment_jax",
+    name="Belgium-v1-jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/large_environment.yaml"
+        "filename": f"{environment_path}/config/environment_presets/Belgium-v1.yaml"
     },
 )
