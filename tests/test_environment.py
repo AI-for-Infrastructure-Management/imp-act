@@ -45,7 +45,9 @@ def test_one_episode(toy_environment):
 
 
 @pytest.mark.parametrize(
-    "parameter_fixture", ["small_environment", "large_environment"], indirect=True
+    "parameter_fixture",
+    ["small_environment", "medium_environment", "large_environment"],
+    indirect=True,
 )
 def test_environment(parameter_fixture):
     """Test if the environment can run one episode."""
@@ -345,7 +347,7 @@ def test_seeding_function(toy_environment_loader, test_seed_1, test_seed_2):
 
 
 def test_registry_unknown():
-    from imp_rl_challenge.environments.registry import Registry
+    from imp_act.environments.registry import Registry
 
     registry = Registry()
     with pytest.raises(ValueError):
