@@ -240,7 +240,7 @@ class RoadEnvironment:
             "travel_time_reward_factor"
         ]
 
-        # self.reset(reset_edges=False)
+        self.reset(reset_edges=False)
 
         self.base_total_travel_time = self._get_total_travel_time()
 
