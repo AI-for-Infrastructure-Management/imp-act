@@ -96,9 +96,10 @@ class RoadSegment:
             np.arange(self.number_of_states),
             p=initial_state_prob,
         )
+        self.state = self.initial_state
         self.observation = self.random_generator.choice(
             np.arange(self.number_of_states),
-            p=self.observation_tables[0][self.initial_state],
+            p=self.observation_tables[0][self.state],
         )
 
 
