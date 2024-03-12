@@ -3,6 +3,7 @@ general:
 model:
   include:
     path: "./model/model_defaults.yaml"
+  initial_damage_state_proxy: 0.8
 network:
   traffic_assignment:
     max_iterations: 15
