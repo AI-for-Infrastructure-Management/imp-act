@@ -15,22 +15,14 @@ class RoadSegment:
         base_travel_time,
     ):
         self.random_generator = random_generator
-        self.initial_observation = config["initial_observation"]
         self.number_of_states = config["deterioration"].shape[1]
-        self.initial_state_proxy = initial_damage_state_proxy
-        self.initial_state = (
-            [self.initial_state_proxy] + 
-            [(1 - self.initial_state_proxy) / (self.number_of_states - 2)] * (self.number_of_states - 2) +
-            [0]
-        )
+        self.initial_damage_state_proxy = initial_damage_state_proxy
 
         self.position_x = position_x
         self.position_y = position_y
 
         self.capacity = capacity
         self.base_travel_time = base_travel_time
-
-        # self.reset()
 
         # base travel time table
         # shape: A
@@ -54,11 +46,11 @@ class RoadSegment:
         # shape: S x A
         self.state_action_reward = config["reward"]["state_action_reward"]
 
+        self.reset()
+
+
     def reset(self):
-        self.state = self.initial_state
-        self.observation = self.initial_observation
-        self.belief = np.zeros(self.number_of_states)
-        self.belief[self.state] = 1.0
+        self.get_initial_state()
 
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
@@ -92,7 +84,22 @@ class RoadSegment:
 
         return reward
     
-    
+    def get_initial_state(self):
+        # Computing initial state, observation, and belief
+        initial_state_prob = (
+            [self.initial_damage_state_proxy] + 
+            [(1 - self.initial_damage_state_proxy) / (self.number_of_states - 2)] * (self.number_of_states - 2) +
+            [0]
+        )
+        self.belief = np.array(initial_state_prob)
+        self.initial_state = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            p=initial_state_prob,
+        )
+        self.observation = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            p=self.observation_tables[0][self.initial_state],
+        )
 
 
 class RoadEdge:
