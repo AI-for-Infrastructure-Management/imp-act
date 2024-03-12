@@ -7,6 +7,7 @@ class RoadSegment:
     def __init__(
         self,
         config,
+        initial_damage_state_proxy,
         random_generator,
         position_x,
         position_y,
@@ -14,9 +15,14 @@ class RoadSegment:
         base_travel_time,
     ):
         self.random_generator = random_generator
-        self.initial_state = config["initial_damage_state"]
         self.initial_observation = config["initial_observation"]
         self.number_of_states = config["deterioration"].shape[1]
+        self.initial_state_proxy = initial_damage_state_proxy
+        self.initial_state = (
+            [self.initial_state_proxy] + 
+            [(1 - self.initial_state_proxy) / (self.number_of_states - 2)] * (self.number_of_states - 2) +
+            [0]
+        )
 
         self.position_x = position_x
         self.position_y = position_y
@@ -24,7 +30,7 @@ class RoadSegment:
         self.capacity = capacity
         self.base_travel_time = base_travel_time
 
-        self.reset()
+        # self.reset()
 
         # base travel time table
         # shape: A
@@ -85,6 +91,8 @@ class RoadSegment:
         self.belief /= np.sum(self.belief)  # normalize
 
         return reward
+    
+    
 
 
 class RoadEdge:
@@ -200,6 +208,7 @@ class RoadEnvironment:
                         capacity=segment["capacity"],
                         base_travel_time=segment["travel_time"],
                         config=config["model"]["segment"],
+                        initial_damage_state_proxy=config["model"]["initial_damage_state_proxy"],
                     )
                 )
             road_edge = RoadEdge(
@@ -223,7 +232,7 @@ class RoadEnvironment:
             "travel_time_reward_factor"
         ]
 
-        self.reset(reset_edges=False)
+        # self.reset(reset_edges=False)
 
         self.base_total_travel_time = self._get_total_travel_time()
 

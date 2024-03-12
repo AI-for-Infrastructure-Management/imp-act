@@ -1,5 +1,4 @@
 segment:
-  initial_damage_state: 0
   deterioration:
     type: "list"
     list:

@@ -3,6 +3,7 @@ general:
 model:
   include:
     path: "./model/model_defaults.yaml"
+  initial_damage_state_proxy: 0.6
 network:
   include:
     path: "./countries/BE/network.yaml"
