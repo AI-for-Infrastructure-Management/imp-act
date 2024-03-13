@@ -367,7 +367,7 @@ def seeded_episode_rollout(environment, seed, actions):
         rewards.append(reward)
         dones.append(done)
         infos.append(info)
-    return observations, rewards, dones, infos 
+    return observations, rewards, dones, infos
 
 
 @pytest.mark.parametrize(
@@ -376,28 +376,32 @@ def seeded_episode_rollout(environment, seed, actions):
     indirect=True,
 )
 def test_only_negative_rewards(parameter_fixture, test_seed_1, random_time_seed):
-    """ Test to ensure that the environment only returns negative rewards (or zero). """
+    """Test to ensure that the environment only returns negative rewards (or zero)."""
     env = parameter_fixture
     obs = env.reset()
     actions = [[0] * len(e) for e in obs["edge_observations"]]
-    _, rewards, _, _  = seeded_episode_rollout(env, test_seed_1, actions)
+    _, rewards, _, _ = seeded_episode_rollout(env, test_seed_1, actions)
     check = [reward <= 0 for reward in rewards]
     assert all(check)
 
-    _, rewards, _, _  = seeded_episode_rollout(env, random_time_seed, actions)
+    _, rewards, _, _ = seeded_episode_rollout(env, random_time_seed, actions)
     check = [reward <= 0 for reward in rewards]
     assert all(check)
 
 
 WARN_LIMIT_RATIO = 2
 FAIL_LIMIT_RATIO = 3
+
+
 @pytest.mark.parametrize(
     "parameter_fixture",
     ["toy_environment", "small_environment", "medium_environment", "large_environment"],
     indirect=True,
 )
-def test_segment_volume_to_capacity_ratio_within_resonable_limits(parameter_fixture, test_seed_1, random_time_seed):
-    """ Test if the segment volume to capacity ratio is within reasonable limits. """
+def test_segment_volume_to_capacity_ratio_within_resonable_limits(
+    parameter_fixture, test_seed_1, random_time_seed
+):
+    """Test if the segment volume to capacity ratio is within reasonable limits."""
     env = parameter_fixture
     obs = env.reset()
     actions = [[0] * len(e) for e in obs["edge_observations"]]
@@ -411,8 +415,9 @@ def test_segment_volume_to_capacity_ratio_within_resonable_limits(parameter_fixt
                 capacity = segment.capacity
                 if capacity == 0:
                     continue
-                assert (volume / capacity <= FAIL_LIMIT_RATIO)
+                assert volume / capacity <= FAIL_LIMIT_RATIO
                 if not warned_once and volume / capacity > WARN_LIMIT_RATIO:
                     warned_once = True
-                    print(f"Warning: Volume to capacity ratio is {volume / capacity} ({volume} / {capacity})")
-
+                    print(
+                        f"Warning: Volume to capacity ratio is {volume / capacity} ({volume} / {capacity})"
+                    )
