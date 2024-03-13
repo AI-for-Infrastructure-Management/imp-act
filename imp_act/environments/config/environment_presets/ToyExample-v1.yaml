@@ -10,7 +10,7 @@ network:
   traffic_assignment:
     max_iterations: 15
     convergence_threshold: 0.01
-    update_weight: 0.5
+    update_weight: 0.1
   graph:
     type: "list"
     nodes:
@@ -48,16 +48,16 @@ network:
     list:
       - origin: 0
         destination: 1
-        volume: 200
+        volume: 75
       - origin: 1
         destination: 3
-        volume: 200
+        volume: 75
       - origin: 2
         destination: 0
-        volume: 200
+        volume: 75
       - origin: 3
         destination: 2
-        volume: 200
+        volume: 75
   segments: 
     type: "list"
     list:
