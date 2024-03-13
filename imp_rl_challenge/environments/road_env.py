@@ -17,6 +17,7 @@ class RoadSegment:
         self.initial_state = config["initial_damage_state"]
         self.initial_observation = config["initial_observation"]
         self.number_of_states = config["deterioration"].shape[1]
+        self.last_action = None 
 
         self.position_x = position_x
         self.position_y = position_y
@@ -53,10 +54,14 @@ class RoadSegment:
         self.observation = self.initial_observation
         self.belief = np.zeros(self.number_of_states)
         self.belief[self.state] = 1.0
+        self.last_action = None 
 
     def step(self, action):
-        # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
-
+        # actions: [Do-nothing, High-fidelity inspection, Minor-repair, Major-repair ,Reconstruction ] = [0, 1, 2, 3,4]
+        if self.state == self.number_of_states - 1: 
+            action = 4
+        if self.last_action == 4:
+            action = 0
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
             p=self.deterioration_table[action][self.state],
