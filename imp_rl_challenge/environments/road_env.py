@@ -7,7 +7,7 @@ class RoadSegment:
     def __init__(
         self,
         config,
-        initial_damage_state_proxy,
+        initial_damage_prob,
         random_generator,
         position_x,
         position_y,
@@ -16,7 +16,7 @@ class RoadSegment:
     ):
         self.random_generator = random_generator
         self.number_of_states = config["deterioration"].shape[1]
-        self.initial_damage_state_proxy = initial_damage_state_proxy
+        self.initial_damage_prob = initial_damage_prob
 
         self.position_x = position_x
         self.position_y = position_y
@@ -86,15 +86,11 @@ class RoadSegment:
     
     def get_initial_state(self):
         # Computing initial state, observation, and belief
-        initial_state_prob = (
-            [self.initial_damage_state_proxy] + 
-            [(1 - self.initial_damage_state_proxy) / (self.number_of_states - 2)] * (self.number_of_states - 2) +
-            [0]
-        )
-        self.belief = np.array(initial_state_prob)
+
+        self.belief = np.array(self.initial_damage_prob)
         self.initial_state = self.random_generator.choice(
             np.arange(self.number_of_states),
-            p=initial_state_prob,
+            p=self.initial_damage_prob,
         )
         self.state = self.initial_state
         self.observation = self.random_generator.choice(
@@ -216,7 +212,7 @@ class RoadEnvironment:
                         capacity=segment["capacity"],
                         base_travel_time=segment["travel_time"],
                         config=config["model"]["segment"],
-                        initial_damage_state_proxy=config["model"]["initial_damage_state_proxy"],
+                        initial_damage_prob=config["model"]["initial_damage_prob"],
                     )
                 )
             road_edge = RoadEdge(
