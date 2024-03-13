@@ -87,6 +87,7 @@ segment:
       # Shape: A 
       # [do-nothing, inspect, minor-repair, major-repair, replacement]
       list: [1.0000, 1.0000, 0.9969, 0.9884, 0.8849]
+  initial_damage_distribution: [1, 0, 0, 0, 0]
 
 edge:
   traffic:

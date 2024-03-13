@@ -7,7 +7,6 @@ class RoadSegment:
     def __init__(
         self,
         config,
-        initial_damage_prob,
         random_generator,
         position_x,
         position_y,
@@ -16,7 +15,7 @@ class RoadSegment:
     ):
         self.random_generator = random_generator
         self.number_of_states = config["deterioration"].shape[1]
-        self.initial_damage_prob = initial_damage_prob
+        self.initial_damage_prob = config["initial_damage_distribution"]
 
         self.position_x = position_x
         self.position_y = position_y
@@ -212,7 +211,6 @@ class RoadEnvironment:
                         capacity=segment["capacity"],
                         base_travel_time=segment["travel_time"],
                         config=config["model"]["segment"],
-                        initial_damage_prob=config["model"]["initial_damage_prob"],
                     )
                 )
             road_edge = RoadEdge(
