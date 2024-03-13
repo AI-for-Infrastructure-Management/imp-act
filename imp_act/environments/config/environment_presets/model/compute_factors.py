@@ -1,6 +1,3 @@
-import numpy as np
-
-
 # CAPACITY FACTORS
 def get_capacity_factor(_days, _reduction):
     """Get the capacity factor for a given number of days and reduction.
