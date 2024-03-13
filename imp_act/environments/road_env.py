@@ -7,7 +7,7 @@ class RoadSegment:
     def __init__(
         self,
         config,
-        initial_damage_state_proxy,
+        initial_damage_prob,
         random_generator,
         position_x,
         position_y,
@@ -216,7 +216,7 @@ class RoadEnvironment:
                         capacity=segment["capacity"],
                         base_travel_time=segment["travel_time"],
                         config=config["model"]["segment"],
-                        initial_damage_state_proxy=config["model"]["initial_damage_state_proxy"],
+                        initial_damage_prob=config["model"]["initial_damage_prob"],
                     )
                 )
             road_edge = RoadEdge(
