@@ -321,6 +321,10 @@ class RoadEnvironment:
                 + new_volumes * self.traffic_assignment_update_weight
             )
 
+        self.graph.es["travel_time"] = [
+            edge["road_segments"].compute_edge_travel_time(edge["volume"])
+            for edge in self.graph.es
+        ]
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
