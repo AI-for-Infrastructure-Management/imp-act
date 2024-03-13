@@ -16,7 +16,6 @@ class RoadSegment:
         self.random_generator = random_generator
         self.number_of_states = config["deterioration"].shape[1]
         self.initial_damage_prob = config["initial_damage_distribution"]
-
         self.position_x = position_x
         self.position_y = position_y
 
@@ -86,7 +85,8 @@ class RoadSegment:
         self.belief /= np.sum(self.belief)  # normalize
 
         return reward
-    
+
+
     def get_initial_state(self):
         # Computing initial state, observation, and belief
 
