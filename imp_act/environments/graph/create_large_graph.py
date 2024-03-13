@@ -652,9 +652,14 @@ if __name__ == "__main__":
         default=10.0,
         help="Threshold for pruning edges in km",
     )
-    parser.add_argument("--data-dir", "-d", type=str, default="environments/graph/data")
     parser.add_argument(
-        "--output-dir", "-o", type=str, default="environments/graph/output"
+        "--data-dir", "-d", type=str, default="imp_act/environments/graph/data"
+    )
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        type=str,
+        default="imp_act/environments/graph/output",
     )
 
     parser.add_argument("--skip-traffic", action="store_true", default=False)

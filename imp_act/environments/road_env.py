@@ -57,6 +57,10 @@ class RoadSegment:
     def step(self, action):
         # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
 
+        # Corrective repair action if the worst condition is reached
+        if self.state == self.number_of_states - 1:
+            action = 3
+        
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
             p=self.deterioration_table[action][self.state],

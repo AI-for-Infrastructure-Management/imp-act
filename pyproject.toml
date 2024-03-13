@@ -1,15 +1,15 @@
 [tool.poetry]
-name = "imp-rl-challenge"
+name = "imp-act"
 version = "0.1.0"
-description = "Environments for the imp-rl-challenge"
+description = "Environments for the imp-act challenge"
 authors = ["Pascal Leroy <pjr.leroy@gmail.com>"]
 license = "Apache-2.0"
 readme = "README.md"
 packages = [
-    {include = "imp_rl_challenge"},
-    {include = "imp_rl_challenge/environments"},
-    {include = "imp_rl_challenge/policies"},
-    {include = "imp_rl_challenge/wrappers"}
+    {include = "imp_act"},
+    {include = "imp_act/environments"},
+    {include = "imp_act/policies"},
+    {include = "imp_act/wrappers"}
 ]
 
 [tool.poetry.dependencies]
