@@ -1,10 +1,10 @@
 import numpy as np
 
-from imp_rl_challenge import get_environment
+from imp_act import make
 
 
 def main():
-    env = get_environment("toy_environment_numpy")
+    env = make("ToyExample-v1")
     env.reset()
     actions = [[1, 1] for _ in range(4)]
     done = False
