@@ -1,9 +1,6 @@
 import pytest
 
-from imp_act.policies.heuristics import (
-    SimpleHeuristicAgent,
-    TCBMHeuristicAgent,
-)
+from imp_act.policies.heuristics import SimpleHeuristicAgent, TCBMHeuristicAgent
 
 
 @pytest.fixture

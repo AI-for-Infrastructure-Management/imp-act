@@ -46,7 +46,6 @@ class RoadSegment:
 
         self.reset()
 
-
     def reset(self):
         self.get_initial_state()
 
@@ -56,7 +55,7 @@ class RoadSegment:
         # Corrective repair action if the worst condition is reached
         if self.state == self.number_of_states - 1:
             action = 3
-        
+
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
             p=self.deterioration_table[action][self.state],
@@ -85,7 +84,6 @@ class RoadSegment:
         self.belief /= np.sum(self.belief)  # normalize
 
         return reward
-
 
     def get_initial_state(self):
         # Computing initial state, observation, and belief

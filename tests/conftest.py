@@ -1,7 +1,7 @@
 import pytest
+from imp_act import make
 from imp_act.environments.config.environment_loader import EnvironmentLoader
 from imp_act.environments.registry import Registry
-from imp_act import make
 
 
 @pytest.fixture
