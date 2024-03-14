@@ -1,4 +1,7 @@
+from time import time
+
 import pytest
+
 from imp_act import make
 from imp_act.environments.config.environment_loader import EnvironmentLoader
 from imp_act.environments.registry import Registry
@@ -30,6 +33,11 @@ def medium_environment():
 @pytest.fixture
 def large_environment():
     return make("Belgium-v1")
+
+
+@pytest.fixture
+def random_time_seed():
+    return int(time())
 
 
 @pytest.fixture
