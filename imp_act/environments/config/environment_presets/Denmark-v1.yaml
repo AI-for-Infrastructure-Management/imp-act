@@ -3,6 +3,9 @@ general:
 model:
   include:
     path: "./model/model_defaults.yaml"
+    override: False
+  segment:
+    initial_damage_distribution: [0.72, 0.094, 0.093, 0.093, 0]
 network:
   include:
     path: "./countries/DK/network.yaml"
