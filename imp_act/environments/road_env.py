@@ -64,7 +64,7 @@ class RoadSegment:
         self.base_travel_time = self.base_travel_time_table[action]
         self.capacity = self.capacity_table[action]
 
-        reward = self.state_action_reward[action]
+        reward = self.state_action_reward[action][self.state]
         self.state = next_deterioration_state
 
         self.observation = self.random_generator.choice(
