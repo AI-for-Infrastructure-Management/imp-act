@@ -81,13 +81,13 @@ segment:
       type: "list"
       # Shape: A 
       # [do-nothing, inspect, minor-repair, major-repair, replacement]
-      list: [1.0000, 1.0000, 1.0015, 1.0059, 1.1300]
+      list: [1.0000, 1.0000, 1.0000, 1.0000, 1.3333]
 
     capacity_factors:
       type: "list"
       # Shape: A 
       # [do-nothing, inspect, minor-repair, major-repair, replacement]
-      list: [1.0000, 1.0000, 0.9969, 0.9884, 0.8849]
+      list: [1.0000, 1.0000, 0.9807, 0.9272, 0.4717]
   initial_damage_distribution: [1, 0, 0, 0, 0]
 edge:
   traffic:
