@@ -50,7 +50,7 @@ class RoadSegment:
         self.get_initial_state()
 
     def step(self, action):
-        # actions: [do_nothing, inspect, minor repair, replacement] = [0, 1, 2, 3]
+        # actions: [do-nothing, inspect, minor-repair, major-repair, replacement] = [0, 1, 2, 3, 4]
 
         # Corrective replace action if the worst condition is reached
         if self.state == self.number_of_states - 1:
