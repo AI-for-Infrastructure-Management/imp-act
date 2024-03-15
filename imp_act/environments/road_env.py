@@ -52,8 +52,8 @@ class RoadSegment:
     def step(self, action):
         # actions: [do-nothing, inspect, minor-repair, major-repair, replacement] = [0, 1, 2, 3, 4]
 
-        # Corrective replace action if the worst condition is reached
-        if self.state == self.number_of_states - 1:
+        # Corrective replace action if the worst condition is observed
+        if self.observation == self.number_of_states - 1:
             action = 4
 
         next_deterioration_state = self.random_generator.choice(
