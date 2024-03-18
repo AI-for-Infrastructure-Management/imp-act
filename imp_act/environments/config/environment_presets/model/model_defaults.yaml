@@ -100,4 +100,4 @@ edge:
   reward:
     inspection_campaign_reward: 0
 network:
-  travel_time_reward_factor: -0.01
+  travel_time_reward_factor: -50000000
