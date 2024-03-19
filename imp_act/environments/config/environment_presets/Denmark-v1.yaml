@@ -6,6 +6,8 @@ model:
     override: False
   segment:
     initial_damage_distribution: [0.72, 0.094, 0.093, 0.093, 0]
+  network:
+    travel_time_reward_factor: -500.0
 network:
   include:
     path: "./countries/DK/network.yaml"
