@@ -391,6 +391,8 @@ def test_only_negative_rewards(parameter_fixture, test_seed_1, random_time_seed)
 
 WARN_LIMIT_RATIO = 2
 FAIL_LIMIT_RATIO = 3
+
+
 @pytest.mark.skip(reason="Waiting for final calibration of the environment")
 @pytest.mark.parametrize(
     "parameter_fixture",
@@ -402,7 +404,7 @@ def test_segment_volume_to_capacity_ratio_within_resonable_limits(
 ):
     """Test if the segment volume to capacity ratio is within reasonable limits."""
     env = parameter_fixture
-    
+
     def test_capacity_ratio(env, seed):
         obs = env.reset()
         env.seed(seed)
