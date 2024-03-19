@@ -10,7 +10,7 @@ lastpage:
   <img src="_static/img/logov37.png" width="400" />
 </p>
 
-The IMP-act challenge is a competition to accelerate the development of algorithms 
+The IMP-act challenge aims to accelerate the development of algorithms 
 for inspection and maintenance planning (IMP) of deteriorating engineering systems, such as bridges, aircraft, wind farms, etc. In this competition, we focus on inspection and maintenance planning of road networks in Europe. 
 
 ```{admonition} **Goal**
@@ -23,6 +23,18 @@ for inspection and maintenance planning (IMP) of deteriorating engineering syste
  - **Scalabilty**:
  - **Cooperation**:
  - **Partial Observability**:
+ - **Stochasticity**:
+
+
+```{toctree}
+:maxdepth: 3
+:caption: Challenge
+:hidden:
+
+challenge/general
+challenge/rules_and_prizes
+challenge/submission
+```
 
 
 ```{toctree}
@@ -43,11 +55,20 @@ tutorials/epymarl
 tutorials/heuristic
 ```
 
-<!-- ```{toctree}
-:maxdepth: 1
+```{toctree}
+:maxdepth: 3
 :caption: Environment
 :hidden:
 
-env/concept
-env/software
-``` -->
+environment/concept
+environment/software
+```
+
+```{toctree}
+:maxdepth: 3
+:caption: Baselines
+:hidden:
+
+baselines/heuristics
+baselines/RL_agents
+```

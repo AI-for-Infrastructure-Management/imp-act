@@ -11,7 +11,6 @@
 - Scalability
 - Partial Observability
 - Risk/Budget Constraints
-- Large variance in returns
 
 # Getting Started
 
