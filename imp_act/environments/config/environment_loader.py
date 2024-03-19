@@ -128,6 +128,8 @@ class EnvironmentLoader:
                 f"Deterioration type {traffic['capacity_factors']['type']} not supported"
             )
 
+        self._check_model_values(config)
+
         return config
 
     def _handle_includes(self, config, root_path):
@@ -138,11 +140,25 @@ class EnvironmentLoader:
             include_root_path = Path(include_path).parent
             include_config = yaml.load(open(include_path, "r"), Loader=yaml.FullLoader)
             include_config = self._handle_includes(include_config, include_root_path)
-            config.update(include_config)
+            override = config["include"].get("override", True)
+            self._recursive_update(config, include_config, override)
         for key in config.keys():
             if isinstance(config[key], dict):
                 config[key] = self._handle_includes(config[key], root_path)
         return config
+
+    def _recursive_update(self, first_dict, update_dict, override=True):
+        """Recursively update the first_dict with the update_dict"""
+        for key, value in update_dict.items():
+            if key in first_dict:
+                if isinstance(value, dict):
+                    self._recursive_update(first_dict[key], value, override)
+                else:
+                    if override:
+                        first_dict[key] = value
+            else:
+                first_dict[key] = value
+        return first_dict
 
     def _handle_relative_paths(self, config, root_path):
         """
@@ -163,6 +179,48 @@ class EnvironmentLoader:
             if param not in config.keys():
                 raise ValueError("Missing required parameter: {}".format(param))
         return config
+
+    def _check_model_values(self, config):
+        # Ensure transition matrix values sum to 1
+        # Shape: A x S x S
+        deterioration_table = config["model"]["segment"]["deterioration"]
+        if not np.allclose(deterioration_table.sum(axis=2), 1):
+            raise ValueError("Transition matrix rows do not sum to 1")
+
+        # Ensure do-nothing matrix is upper triangular
+        # Shape: S x S
+        if not np.allclose(np.triu(deterioration_table[0]), deterioration_table[0]):
+            raise ValueError("Transition matrix is not upper triangular")
+        if not np.allclose(deterioration_table[0], deterioration_table[1]):
+            raise ValueError(
+                "Transition for inspection and do-nothing are not the same"
+            )
+
+        # Ensure observation matrix values sum to 1
+        # Shape: A x S x S
+        observation_table = config["model"]["segment"]["observation"]
+        if not np.allclose(observation_table.sum(axis=2), 1):
+            raise ValueError("Observation matrix rows do not sum to 1")
+
+        # Ensure reward matrix is valid
+        # Shape: A
+        reward_table = config["model"]["segment"]["reward"]["state_action_reward"]
+        if np.any(reward_table > 0):
+            raise ValueError("Reward matrix has values greater than 0")
+
+        # Ensure base_travel_time_factors matrix is valid
+        # Shape: A
+        base_travel_time_factors = config["model"]["segment"]["traffic"][
+            "base_travel_time_factors"
+        ]
+        if np.any(base_travel_time_factors < 1):
+            raise ValueError("base_travel_time_factors vector has values less than 1")
+
+        # Ensure traffic capacity_factors matrix is valid
+        # Shape: A
+        capacity_factors = config["model"]["segment"]["traffic"]["capacity_factors"]
+        if np.any(capacity_factors > 1):
+            raise ValueError("capacity_factors vector has values greater than 1")
 
     def to_numpy(self):
         return RoadEnvironment(self.config)
