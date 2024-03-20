@@ -1,29 +1,46 @@
-(each main title will be a separate webpage)
+<!-- 
+- This is an outline for the documentation and is not built.
+- Each main title will be a separate webpage
 
-# Introduction
+ -->
+
+# Homepage
 
         <intro image>
 
 - What is the problem and its significance?
 
-#### Challenges
-- Stochastic deterioration
-- Scalability
-- Partial Observability
-- Risk/Budget Constraints
+- Challenges
+    - Cooperation
+    - Scalability
+    - Partial Observability
+    - Stochastic Deterioration
+
+# Challenge
+
+## General
+
+## Rules & Prizes
+
+## Submission
+
 
 # Getting Started
 
 ## Installation
 
+- Outline common ways to install package
+- Split into two parts, installing environment and user packages. This helps isolate issues, and ensuring that user can atlest install the environment without conflicts.
+- Provide a test script that checks installtion
 
 ## Quickstart
 - Load the toy environment and show a rollout with a basic policy.
 - Basic post-processing: visualisation, summary statistics
 
-## Tutorials
+# Tutorials
 - Train QMIX agent with EpyMARL
 - Implement a heuristic
+- JAX wrapper?
 
 # Environment
 
@@ -43,20 +60,17 @@
 #### Reward model
 #### Observation model
 
-## Code
+## Software Architecture
 
     <overview illustration>
 
-### RL Wrappers
-
-### JAX 🚀
+## JAX 🚀
 
 
 # Baselines
 
+### Overview
+
 ### RL Agents
 
 ### Heuristics
-
-
-# API Reference

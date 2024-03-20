@@ -10,8 +10,9 @@ lastpage:
   <img src="_static/img/logov37.png" width="400" />
 </p>
 
-The IMP-act challenge aims to accelerate the development of algorithms 
-for inspection and maintenance planning (IMP) of deteriorating engineering systems, such as bridges, aircraft, wind farms, etc. In this competition, we focus on inspection and maintenance planning of road networks in Europe. 
+The IMP-act challenge aims to accelerate the development of inspection and maintenance planning (IMP) of deteriorating engineering systems, such as bridges, aircraft, wind farms, etc. These systems form the fundamental infrastructure on which modern society relies, and adept IMP are quintessential to maximizing the utility we can derive from these systems. This utility summarizes our multifaceted societal, economic, and environmental preferences and values.
+
+In this competition, we focus on inspection and maintenance planning of road networks in Europe. 
 
 ```{admonition} **Goal**
 **Maximize the overall network performance while minimizing the total cost of inspection and maintenance.**
