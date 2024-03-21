@@ -258,7 +258,9 @@ class RoadEnvironment:
             edge_beliefs.append(edge["road_segments"].get_beliefs())
             edge_nodes.append([edge.source, edge.target])
             volume = edge["volume"]
-            utilization = [volume / segment.capacity for segment in edge["road_segments"].segments]
+            utilization = [
+                volume / segment.capacity for segment in edge["road_segments"].segments
+            ]
             edge_traffic_utilization.append(utilization)
 
         observations = {
