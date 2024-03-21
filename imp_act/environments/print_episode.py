@@ -1,10 +1,9 @@
-import numpy as np
-
 from imp_act import make
 
 
 def do_nothing_policy(observation):
     return [[0] * len(e) for e in observation["edge_observations"]]
+
 
 def fail_replace_policy(observation):
     actions = []
@@ -15,8 +14,9 @@ def fail_replace_policy(observation):
                 edge_action.append(3)
             else:
                 edge_action.append(0)
-        actions.append(edge_action) 
+        actions.append(edge_action)
     return actions
+
 
 def heuristic_policy(observation):
     actions = []
@@ -34,8 +34,9 @@ def heuristic_policy(observation):
                 edge_actions.append(1)  # Inspection
             else:
                 edge_actions.append(0)  # Do nothing
-        actions.append(edge_actions) 
+        actions.append(edge_actions)
     return actions
+
 
 def main():
     env = make("Denmark-v1")
@@ -49,7 +50,7 @@ def main():
         actions = policy(obs)
         observation, reward, done, info = env.step(actions)
         total_reward += reward
-        
+
         print(f"timestep: {timestep}")
         print(f"reward: {reward:.2e}")
         print(f"travel_time_reward: {info['reward_elements'][0]:.2e}")
@@ -71,7 +72,7 @@ def main():
         print("=" * 50)
 
     print(f"total reward: {total_reward:.3e}")
-    
+
 
 if __name__ == "__main__":
     main()

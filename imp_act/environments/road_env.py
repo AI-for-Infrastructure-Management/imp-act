@@ -232,18 +232,17 @@ class RoadEnvironment:
         self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
 
-        self.travel_time_reward_factor = config["model"]["network"][
-            "travel_time"]["reward_factor"
+        self.travel_time_reward_factor = config["model"]["network"]["travel_time"][
+            "reward_factor"
         ]
 
-        self.travel_time_exponential = config["model"]["network"][
-            "travel_time"]["exponential_factor"
+        self.travel_time_exponential = config["model"]["network"]["travel_time"][
+            "exponential_factor"
         ]
 
         self.base_total_travel_time = self._get_total_travel_time()
 
         self.reset(reset_edges=False)
-
 
     def reset(self, reset_edges=True):
         self.timestep = 0
@@ -332,13 +331,12 @@ class RoadEnvironment:
         ]
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
-    def get_travel_time_reward(self, total_travel_time):        
-        normalized_delay = (total_travel_time / self.base_total_travel_time)
-        exponential_delay = normalized_delay ** self.travel_time_exponential
-        clipped_relative_exponential_delay = np.max((exponential_delay - 1),0)
-    
-        return  self.travel_time_reward_factor * clipped_relative_exponential_delay
+    def get_travel_time_reward(self, total_travel_time):
+        normalized_delay = total_travel_time / self.base_total_travel_time
+        exponential_delay = normalized_delay**self.travel_time_exponential
+        clipped_relative_exponential_delay = np.max((exponential_delay - 1), 0)
 
+        return self.travel_time_reward_factor * clipped_relative_exponential_delay
 
     def step(self, actions):
         maintenance_reward = 0
