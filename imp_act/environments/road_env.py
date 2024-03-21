@@ -354,7 +354,10 @@ class RoadEnvironment:
 
         self.tot_expenses += np.abs(maintenance_reward)
         if self.tot_expenses > self.budget:
-            maintenance_reward *= self.budget_penalty
+            budget_excess = self.tot_expenses - self.budget
+            penalty = budget_excess * self.budget_penalty
+            maintenance_reward -= penalty
+            self.tot_expenses = self.budget
         self.count_budget_horizon += 1
         if self.count_budget_horizon == self.budget_horizon:
             self.count_budget_horizon = 0
