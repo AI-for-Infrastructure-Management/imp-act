@@ -85,7 +85,7 @@ segment:
       type: "list"
       # Shape: A 
       # [do-nothing, inspect, minor-repair, major-repair, replacement]
-      list: [1.0000, 1.0000, 1.0000, 1.0000, 1.3333]
+      list: [1.0000, 1.0000, 1.1616, 1.1616, 1.3333]
 
     capacity_factors:
       type: "list"
