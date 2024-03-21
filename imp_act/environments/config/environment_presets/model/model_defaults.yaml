@@ -98,4 +98,4 @@ edge:
     bpr_alpha: 0.15
     bpr_beta: 4.0
   reward:
-    inspection_campaign_reward: 0
+    campaign_reward: [0, -2_000, -20_030, -75_030, -350_000]
