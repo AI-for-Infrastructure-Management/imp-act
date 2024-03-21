@@ -30,7 +30,7 @@ def heuristic_policy(observation):
                 edge_actions.append(3)  # Major repair
             elif segment >= 1:
                 edge_actions.append(2)  # Minor repair
-            elif current_time % 1 and current_time > 0:
+            elif current_time % 1 == 0:
                 edge_actions.append(1)  # Inspection
             else:
                 edge_actions.append(0)  # Do nothing
@@ -48,7 +48,7 @@ def main():
     while not done:
         timestep += 1
         actions = policy(obs)
-        observation, reward, done, info = env.step(actions)
+        obs, reward, done, info = env.step(actions)
         total_reward += reward
 
         print(f"timestep: {timestep}")
