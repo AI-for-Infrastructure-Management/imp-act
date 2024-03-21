@@ -236,9 +236,10 @@ class RoadEnvironment:
             "travel_time_reward_factor"
         ]
 
-        self.reset(reset_edges=False)
-
         self.base_total_travel_time = self._get_total_travel_time()
+
+        self.reset(reset_edges=False)
+        
 
     def reset(self, reset_edges=True):
         self.timestep = 0
