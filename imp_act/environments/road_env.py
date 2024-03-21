@@ -201,6 +201,8 @@ class RoadEnvironment:
 
         self.trips = trips
 
+        self.tot_number_segments = 0
+
         # Add road segments to graph edges
         for nodes, edge_segments in config["network"]["segments"].items():
             segments = []
@@ -215,6 +217,7 @@ class RoadEnvironment:
                         config=config["model"]["segment"],
                     )
                 )
+                self.tot_number_segments += 1
             road_edge = RoadEdge(
                 segments=segments,
                 config=config["model"]["edge"],
@@ -235,6 +238,17 @@ class RoadEnvironment:
         self.travel_time_reward_factor = config["model"]["network"][
             "travel_time_reward_factor"
         ]
+
+        budget_year_per_segment = config["model"]["segment"]["reward"][
+            "budget_year_per_segment"
+        ]
+        self.budget_penalty = config["model"]["segment"]["reward"]["budget_penalty"]
+        self.budget_horizon = config["model"]["segment"]["reward"]["budget_horizon"]
+        self.budget = (
+            budget_year_per_segment * self.tot_number_segments * self.budget_horizon
+        )
+        self.count_budget_horizon = 0
+        self.tot_expenses = 0
 
         self.reset(reset_edges=False)
 
@@ -263,6 +277,8 @@ class RoadEnvironment:
             "edge_beliefs": edge_beliefs,
             "edge_nodes": edge_nodes,
             "time_step": self.timestep,
+            "remaining_budget": self.budget - self.tot_expenses,
+            "remaining_budget_years": self.budget_horizon - self.count_budget_horizon,
         }
 
         return observations
@@ -337,6 +353,17 @@ class RoadEnvironment:
         travel_time_reward = self.travel_time_reward_factor * (
             total_travel_time - self.base_total_travel_time
         )
+
+        self.tot_expenses += np.abs(maintenance_reward)
+        if self.tot_expenses > self.budget:
+            budget_excess = self.tot_expenses - self.budget
+            penalty = budget_excess * self.budget_penalty
+            maintenance_reward -= penalty
+            self.tot_expenses = self.budget
+        self.count_budget_horizon += 1
+        if self.count_budget_horizon == self.budget_horizon:
+            self.count_budget_horizon = 0
+            self.tot_expenses = 0
 
         reward = maintenance_reward + travel_time_reward
 
