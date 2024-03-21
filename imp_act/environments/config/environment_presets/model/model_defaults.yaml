@@ -99,3 +99,7 @@ edge:
     bpr_beta: 4.0
   reward:
     inspection_campaign_reward: 0
+network:
+  travel_time:
+    reward_factor: -1.0
+    exponential_factor: 4.0
