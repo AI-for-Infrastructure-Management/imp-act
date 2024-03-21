@@ -277,6 +277,8 @@ class RoadEnvironment:
             "edge_beliefs": edge_beliefs,
             "edge_nodes": edge_nodes,
             "time_step": self.timestep,
+            "remaining_budget": self.budget - self.tot_expenses,
+            "remaining_budget_years": self.budget_horizon - self.count_budget_horizon,
         }
 
         return observations
