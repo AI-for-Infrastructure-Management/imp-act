@@ -239,10 +239,14 @@ class RoadEnvironment:
             "travel_time_reward_factor"
         ]
 
-        budget_year_per_segment = config["model"]["segment"]["reward"]["budget_year_per_segment"]
+        budget_year_per_segment = config["model"]["segment"]["reward"][
+            "budget_year_per_segment"
+        ]
         self.budget_penalty = config["model"]["segment"]["reward"]["budget_penalty"]
         self.budget_horizon = config["model"]["segment"]["reward"]["budget_horizon"]
-        self.budget = budget_year_per_segment*self.tot_number_segments*self.budget_horizon
+        self.budget = (
+            budget_year_per_segment * self.tot_number_segments * self.budget_horizon
+        )
         self.count_budget_horizon = 0
         self.tot_expenses = 0
 
