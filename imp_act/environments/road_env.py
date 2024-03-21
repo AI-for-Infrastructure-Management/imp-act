@@ -110,7 +110,7 @@ class RoadEdge:
 
         self.segments = segments
         self.number_of_segments = len(segments)
-        self.inspection_campaign_reward = config["reward"]["inspection_campaign_reward"]
+        self.campaign_reward = config["reward"]["campaign_reward"]
         self.random_generator = random_generator
         self.bpr_alpha = config["traffic"]["bpr_alpha"]
         self.bpr_beta = config["traffic"]["bpr_beta"]
@@ -147,8 +147,7 @@ class RoadEdge:
             segment_reward = segment.step(action)
             reward += segment_reward
 
-        if 1 in actions:
-            reward += self.inspection_campaign_reward
+        reward += sum(self.campaign_reward[action] for action in range(1, 5) if action in actions)
 
         self.update_edge_travel_time_factors()
 
