@@ -236,9 +236,10 @@ class RoadEnvironment:
             "travel_time_reward_factor"
         ]
 
-        self.reset(reset_edges=False)
-
         self.base_total_travel_time = self._get_total_travel_time()
+
+        self.reset(reset_edges=False)
+        
 
     def reset(self, reset_edges=True):
         self.timestep = 0
@@ -252,16 +253,23 @@ class RoadEnvironment:
         edge_observations = []
         edge_nodes = []
         edge_beliefs = []
+        edge_traffic_utilization = []
         for edge in self.graph.es:
             edge_observations.append(edge["road_segments"].get_observation())
             edge_beliefs.append(edge["road_segments"].get_beliefs())
             edge_nodes.append([edge.source, edge.target])
+            volume = edge["volume"]
+            utilization = [
+                volume / segment.capacity for segment in edge["road_segments"].segments
+            ]
+            edge_traffic_utilization.append(utilization)
 
         observations = {
             "adjacency_matrix": adjacency_matrix,
             "edge_observations": edge_observations,
             "edge_beliefs": edge_beliefs,
             "edge_nodes": edge_nodes,
+            "edge_traffic_utilization": edge_traffic_utilization,
             "time_step": self.timestep,
         }
 
