@@ -1,0 +1,70 @@
+segment:
+  initial_damage_state: 0
+  deterioration:
+    path: ./deterioration_nonstationary.npz
+    type: "file"
+  observation:
+    type: "list"
+    list:
+    # Shape: A x S x S
+    # Action 0: do-nothing
+    - - [0.80, 0.20, 0.00, 0.00, 0.00]
+      - [0.20, 0.60, 0.20, 0.00, 0.00]
+      - [0.00, 0.20, 0.60, 0.20, 0.00]
+      - [0.00, 0.00, 0.20, 0.60, 0.20]
+      - [0.00, 0.00, 0.00, 0.20, 0.80]
+    # Action 1: inspect
+    - - [0.95, 0.05, 0.00, 0.00, 0.00]
+      - [0.05, 0.90, 0.05, 0.00, 0.00]
+      - [0.00, 0.05, 0.90, 0.05, 0.00]
+      - [0.00, 0.00, 0.05, 0.90, 0.05]
+      - [0.00, 0.00, 0.00, 0.00, 1.00]
+    # Action 2: minor repair
+    - - [0.80, 0.20, 0.00, 0.00, 0.00]
+      - [0.20, 0.60, 0.20, 0.00, 0.00]
+      - [0.00, 0.20, 0.60, 0.20, 0.00]
+      - [0.00, 0.00, 0.20, 0.60, 0.20]
+      - [0.00, 0.00, 0.00, 0.20, 0.80]
+    # Action 3: major repair
+    - - [0.80, 0.20, 0.00, 0.00, 0.00]
+      - [0.20, 0.60, 0.20, 0.00, 0.00]
+      - [0.00, 0.20, 0.60, 0.20, 0.00]
+      - [0.00, 0.00, 0.20, 0.60, 0.20]
+      - [0.00, 0.00, 0.00, 0.20, 0.80]
+    # Action 4: replacement
+    - - [1.00, 0.00, 0.00, 0.00, 0.00]
+      - [1.00, 0.00, 0.00, 0.00, 0.00]
+      - [1.00, 0.00, 0.00, 0.00, 0.00]
+      - [1.00, 0.00, 0.00, 0.00, 0.00]
+      - [1.00, 0.00, 0.00, 0.00, 0.00]
+  reward:
+    state_action_reward:
+      type: "list"
+      # Shape: A x S
+      # [do-nothing, inspect, minor-repair, major-repair, replacement]
+      list: 
+      - [-3_000,      -3_000,       -3_000,       -3_000,       -3_000      ]
+      - [-10_000,     -10_000,      -10_000,      -10_000,      -10_000     ]
+      - [-2_003_000,  -2_003_000,   -2_003_000,   -2_003_000,   -2_003_000  ]
+      - [-7_503_000,  -7_503_000,   -7_503_000,   -7_503_000,   -7_503_000  ]
+      - [-35_000_000, -35_000_000,  -35_000_000,  -35_000_000,  -42_000_000 ]
+
+  traffic:
+    base_travel_time_factors:
+      type: "list"
+      # Shape: A 
+      # [do-nothing, inspect, minor-repair, major-repair, replacement]
+      list: [1.0000, 1.0000, 1.0000, 1.0000, 1.3333]
+
+    capacity_factors:
+      type: "list"
+      # Shape: A 
+      # [do-nothing, inspect, minor-repair, major-repair, replacement]
+      list: [1.0000, 1.0000, 0.9807, 0.9272, 0.4717]
+  initial_damage_distribution: [1, 0, 0, 0, 0]
+edge:
+  traffic:
+    bpr_alpha: 0.15
+    bpr_beta: 4.0
+  reward:
+    inspection_campaign_reward: 0
