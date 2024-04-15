@@ -23,6 +23,14 @@ Registry().register(
 )
 
 Registry().register(
+    name="ToyNetwork-v1",
+    cls=numpy_environment_loader,
+    parameters={
+        "filename": f"{environment_path}/config/environment_presets/ToyNetwork-v1.yaml"
+    },
+)
+
+Registry().register(
     name="Montenegro-v1",
     cls=numpy_environment_loader,
     parameters={
