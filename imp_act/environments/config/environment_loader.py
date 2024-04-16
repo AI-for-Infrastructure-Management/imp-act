@@ -90,6 +90,9 @@ class EnvironmentLoader:
         segment = config["model"]["segment"]
         if segment["deterioration"]["type"] == "list":
             segment["deterioration"] = np.array(segment["deterioration"]["list"])
+        elif segment["deterioration"]["type"] == "file":
+            path = Path(segment["deterioration"]["path"])
+            segment["deterioration"] = np.load(path)["deterioration"]
         else:
             raise ValueError(
                 f"Deterioration type {segment['deterioration']['type']} not supported"
@@ -184,7 +187,7 @@ class EnvironmentLoader:
         # Ensure transition matrix values sum to 1
         # Shape: A x S x S
         deterioration_table = config["model"]["segment"]["deterioration"]
-        if not np.allclose(deterioration_table.sum(axis=2), 1):
+        if not np.allclose(deterioration_table.sum(axis=3), 1):
             raise ValueError("Transition matrix rows do not sum to 1")
 
         # Ensure do-nothing matrix is upper triangular
