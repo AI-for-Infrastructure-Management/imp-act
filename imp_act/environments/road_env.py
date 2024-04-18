@@ -15,6 +15,7 @@ class RoadSegment:
     ):
         self.random_generator = random_generator
         self.number_of_states = config["deterioration"].shape[2]
+        self.number_actions = config["deterioration"].shape[0]
         self.initial_damage_prob = config["initial_damage_distribution"]
         self.position_x = position_x
         self.position_y = position_y
@@ -33,7 +34,7 @@ class RoadSegment:
         self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
 
         # deterioration tables
-        # shape: A x DR X S x S
+        # shape: A X S x S
         self.deterioration_table = config["deterioration"]
 
         # observation tables
@@ -41,60 +42,91 @@ class RoadSegment:
         self.observation_tables = config["observation"]
 
         # Costs (negative rewards)
-        # shape: S x A
+        # shape: A x S
         self.state_action_reward = config["reward"]["state_action_reward"]
+
+        # Duration of repair actions (in timesteps)
+        self.maintenance_duration = np.zeros((self.number_actions, self.number_of_states))
+        self.maintenance_duration[2] = np.arange(self.number_of_states) * 1
+        self.maintenance_duration[3] = np.arange(self.number_of_states) * 1
+        self.maintenance_duration[4] = np.ones(self.number_of_states) * 12
+
+        self.maintenance_time_left = 0
 
         self.reset()
 
     def reset(self):
         self.get_initial_state()
 
-    def step(self, action):
-        # actions: [do-nothing, inspect, minor-repair, major-repair, replacement] = [0, 1, 2, 3, 4]
+    def _under_maintenance(self):
+        return self.maintenance_time_left > 0
 
-        # Corrective replace action if the worst condition is observed
-        if self.observation == self.number_of_states - 1:
-            action = 4
-
+    def _udpate_state_obs_beliefs(self, action):
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
-            p=self.deterioration_table[action][self.deterioration_rate][self.state],
+            p=self.deterioration_table[action][self.state],
         )
 
-        if action == 4:
-            next_deterioration_rate = 0
-        else:
-            next_deterioration_rate = self.deterioration_rate + 1
-
-        self.base_travel_time = self.base_travel_time_table[action]
-        self.capacity = self.capacity_table[action]
-
-        reward = self.state_action_reward[action][self.state]
         self.state = next_deterioration_state
-        
+
         self.observation = self.random_generator.choice(
             np.arange(self.number_of_states),
             p=self.observation_tables[action][self.state],
         )
 
-        # Belief state computation
-        self.belief = self.deterioration_table[action][self.deterioration_rate].T @ self.belief
-
-        state_probs = self.observation_tables[action][
-            :, self.observation
-        ]  # likelihood of observation
-
-        # Bayes' rule
+        # Belief state computation (Bayes' rule)
+        self.belief = self.deterioration_table[action].T @ self.belief
+        state_probs = self.observation_tables[action][:, self.observation]
         self.belief = state_probs * self.belief  # likelihood * prior
         self.belief /= np.sum(self.belief)  # normalize
 
-        self.deterioration_rate = next_deterioration_rate
+    def _do_maintenance(self):
+
+        self.maintenance_time_left -= 1
+
+        if self.maintenance_time_left == 0:
+            self._udpate_state_obs_beliefs(self.maintenance_action)
+
+        self.base_travel_time = self.base_travel_time_table[self.maintenance_action]
+        self.capacity = self.capacity_table[self.maintenance_action]
+
+        # Reward for the action divided by the duration of the maintenance action
+        reward = (
+            self.state_action_reward[self.maintenance_action][self.state]
+            / self.maintenance_duration[self.maintenance_action][self.state]
+        )
+
+        return reward
+
+    def step(self, action):
+        # actions: [do-nothing, inspect, minor-repair, major-repair, replacement] = [0, 1, 2, 3, 4]
+
+        if self._under_maintenance():
+            reward = self._do_maintenance()
+
+        else:
+            # Corrective replace action if the worst condition is observed
+            if self.observation == self.number_of_states - 1:
+                action = 4
+
+            if action == 0 or action == 1:
+                self._udpate_state_obs_beliefs(action)
+                self.base_travel_time = self.base_travel_time_table[action]
+                self.capacity = self.capacity_table[action]
+                reward = self.state_action_reward[action][self.state]
+
+            # initializating maintenance action
+            elif action == 2 or action == 3 or action == 4:
+                self.maintenance_action = action
+                self.maintenance_time_left = self.maintenance_duration[
+                    self.maintenance_action
+                ][self.state]
+                reward = self._do_maintenance()
 
         return reward
 
     def get_initial_state(self):
         # Computing initial state, observation, and belief
-        self.deterioration_rate = 0
         self.belief = np.array(self.initial_damage_prob)
         self.initial_state = self.random_generator.choice(
             np.arange(self.number_of_states),

@@ -187,7 +187,7 @@ class EnvironmentLoader:
         # Ensure transition matrix values sum to 1
         # Shape: A x S x S
         deterioration_table = config["model"]["segment"]["deterioration"]
-        if not np.allclose(deterioration_table.sum(axis=3), 1):
+        if not np.allclose(deterioration_table.sum(axis=2), 1):
             raise ValueError("Transition matrix rows do not sum to 1")
 
         # Ensure do-nothing matrix is upper triangular

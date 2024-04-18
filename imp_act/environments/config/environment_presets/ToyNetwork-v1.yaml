@@ -1,8 +1,8 @@
 general:
-  max_timesteps: 50
+  max_timesteps: 360
 model:
   include:
-    path: "./model/model_nonstationary.yaml"
+    path: "./model/model_defaults.yaml"
     override: False
   segment:
     initial_damage_distribution: [1, 0.0, 0.0, 0.0 ,0]
