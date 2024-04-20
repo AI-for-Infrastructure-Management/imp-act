@@ -47,8 +47,8 @@ class RoadSegment:
 
         # Duration of repair actions (in timesteps)
         self.maintenance_duration = np.zeros((self.number_actions, self.number_of_states))
-        self.maintenance_duration[2] = np.arange(self.number_of_states) * 1
-        self.maintenance_duration[3] = np.arange(self.number_of_states) * 1
+        self.maintenance_duration[2] = np.arange(1, self.number_of_states+1) * 1
+        self.maintenance_duration[3] = np.arange(1, self.number_of_states+1) * 1
         self.maintenance_duration[4] = np.ones(self.number_of_states) * 12
 
         self.maintenance_time_left = 0
