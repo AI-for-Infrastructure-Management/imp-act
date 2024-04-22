@@ -1,5 +1,5 @@
 general:
-  max_timesteps: 360
+  max_timesteps: 60
 model:
   include:
     path: "./model/model_defaults.yaml"
@@ -7,7 +7,7 @@ model:
   segment:
     initial_damage_distribution: [1, 0.0, 0.0, 0.0 ,0]
   network:
-    travel_time_reward_factor: -100000.0
+    travel_time_reward_factor: -100_000.0
 network:
   traffic_assignment:
     max_iterations: 15
@@ -113,6 +113,3 @@ network:
         travel_time: 1
         position_x: 0.5
         position_y: 1
-
-
-  
