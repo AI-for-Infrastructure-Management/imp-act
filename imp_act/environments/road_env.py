@@ -46,10 +46,12 @@ class RoadSegment:
         self.state_action_reward = config["reward"]["state_action_reward"]
 
         # Duration of repair actions (in timesteps)
-        self.maintenance_duration = np.zeros((self.number_actions, self.number_of_states))
-        self.maintenance_duration[2] = np.arange(1, self.number_of_states+1) * 1
-        self.maintenance_duration[3] = np.arange(1, self.number_of_states+1) * 1
-        self.maintenance_duration[4] = np.ones(self.number_of_states) * 12
+        self.maintenance_duration = np.zeros(
+            (self.number_actions, self.number_of_states)
+        )
+        self.maintenance_duration[2] = np.ones(self.number_of_states) * 1
+        self.maintenance_duration[3] = np.ones(self.number_of_states) * 3
+        self.maintenance_duration[4] = np.ones(self.number_of_states) * 6
 
         self.maintenance_time_left = 0
 
@@ -90,19 +92,14 @@ class RoadSegment:
         self.base_travel_time = self.base_travel_time_table[self.maintenance_action]
         self.capacity = self.capacity_table[self.maintenance_action]
 
-        # Reward for the action divided by the duration of the maintenance action
-        reward = (
-            self.state_action_reward[self.maintenance_action][self.state]
-            / self.maintenance_duration[self.maintenance_action][self.state]
-        )
-
-        return reward
-
     def step(self, action):
         # actions: [do-nothing, inspect, minor-repair, major-repair, replacement] = [0, 1, 2, 3, 4]
 
+        # override action if under maintenance
         if self._under_maintenance():
-            reward = self._do_maintenance()
+            self._do_maintenance()
+
+            reward = 0
 
         else:
             # Corrective replace action if the worst condition is observed
@@ -113,7 +110,6 @@ class RoadSegment:
                 self._udpate_state_obs_beliefs(action)
                 self.base_travel_time = self.base_travel_time_table[action]
                 self.capacity = self.capacity_table[action]
-                reward = self.state_action_reward[action][self.state]
 
             # initializating maintenance action
             elif action == 2 or action == 3 or action == 4:
@@ -121,7 +117,9 @@ class RoadSegment:
                 self.maintenance_time_left = self.maintenance_duration[
                     self.maintenance_action
                 ][self.state]
-                reward = self._do_maintenance()
+                self._do_maintenance()
+
+            reward = self.state_action_reward[action][self.state]
 
         return reward
 
@@ -208,6 +206,8 @@ class RoadEdge:
     def get_states(self):
         return [segment.state for segment in self.segments]
 
+    def get_maintenance_time_left(self):
+        return [segment.maintenance_time_left for segment in self.segments]
 
 class RoadEnvironment:
     def __init__(
@@ -291,10 +291,14 @@ class RoadEnvironment:
         edge_observations = []
         edge_nodes = []
         edge_beliefs = []
+        edge_maintenance_time_left = []
         for edge in self.graph.es:
             edge_observations.append(edge["road_segments"].get_observation())
             edge_beliefs.append(edge["road_segments"].get_beliefs())
             edge_nodes.append([edge.source, edge.target])
+            edge_maintenance_time_left.append(
+                edge["road_segments"].get_maintenance_time_left()
+            )
 
         observations = {
             "adjacency_matrix": adjacency_matrix,
@@ -302,6 +306,7 @@ class RoadEnvironment:
             "edge_beliefs": edge_beliefs,
             "edge_nodes": edge_nodes,
             "time_step": self.timestep,
+            "edge_maintenance_time_left": edge_maintenance_time_left,
         }
 
         return observations
