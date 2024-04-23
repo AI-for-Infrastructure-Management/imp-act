@@ -6,6 +6,7 @@ import numpy as np
 class RoadSegment:
     def __init__(
         self,
+        id,
         config,
         random_generator,
         position_x,
@@ -13,6 +14,7 @@ class RoadSegment:
         capacity,
         base_travel_time,
     ):
+        self.id = id
         self.random_generator = random_generator
         self.number_of_states = config["deterioration"].shape[2]
         self.number_actions = config["deterioration"].shape[0]
@@ -46,12 +48,10 @@ class RoadSegment:
         self.state_action_reward = config["reward"]["state_action_reward"]
 
         # Duration of repair actions (in timesteps)
-        self.maintenance_duration = np.zeros(
-            (self.number_actions, self.number_of_states)
-        )
-        self.maintenance_duration[2] = np.ones(self.number_of_states) * 1
-        self.maintenance_duration[3] = np.ones(self.number_of_states) * 3
-        self.maintenance_duration[4] = np.ones(self.number_of_states) * 6
+        self.maintenance_duration = np.zeros((self.number_actions))
+        self.maintenance_duration[2] = 1
+        self.maintenance_duration[3] = 2
+        self.maintenance_duration[4] = 6
 
         self.maintenance_time_left = 0
 
@@ -97,7 +97,9 @@ class RoadSegment:
 
         # override action if under maintenance
         if self._under_maintenance():
+
             self._do_maintenance()
+            action = self.maintenance_action
 
             reward = 0
 
@@ -116,12 +118,12 @@ class RoadSegment:
                 self.maintenance_action = action
                 self.maintenance_time_left = self.maintenance_duration[
                     self.maintenance_action
-                ][self.state]
+                ]
                 self._do_maintenance()
 
             reward = self.state_action_reward[action][self.state]
 
-        return reward
+        return reward, action
 
     def get_initial_state(self):
         # Computing initial state, observation, and belief
@@ -180,16 +182,18 @@ class RoadEdge:
             raise ValueError("self.segments and actions must have the same length")
 
         reward = 0
+        _actions = []
         for segment, action in zip(self.segments, actions):
-            segment_reward = segment.step(action)
+            segment_reward, segment_action = segment.step(action)
             reward += segment_reward
+            _actions.append(segment_action)
 
         if 1 in actions:
             reward += self.inspection_campaign_reward
 
         self.update_edge_travel_time_factors()
 
-        return reward
+        return reward, _actions
 
     def reset(self, reset_segments=True):
         if reset_segments:
@@ -208,6 +212,7 @@ class RoadEdge:
 
     def get_maintenance_time_left(self):
         return [segment.maintenance_time_left for segment in self.segments]
+
 
 class RoadEnvironment:
     def __init__(
@@ -240,12 +245,15 @@ class RoadEnvironment:
 
         self.trips = trips
 
+        id = 0
+
         # Add road segments to graph edges
         for nodes, edge_segments in config["network"]["segments"].items():
             segments = []
             for segment in edge_segments:
                 segments.append(
                     RoadSegment(
+                        id=id,
                         random_generator=self.random_generator,
                         position_x=segment["position_x"],
                         position_y=segment["position_y"],
@@ -254,6 +262,7 @@ class RoadEnvironment:
                         config=config["model"]["segment"],
                     )
                 )
+                id += 1
             road_edge = RoadEdge(
                 segments=segments,
                 config=config["model"]["edge"],
@@ -373,8 +382,12 @@ class RoadEnvironment:
 
     def step(self, actions):
         maintenance_reward = 0
+        _actions = []
         for i, edge in enumerate(self.graph.es):
-            maintenance_reward += edge["road_segments"].step(actions[i])
+
+            reward, _action = edge["road_segments"].step(actions[i])
+            maintenance_reward += reward
+            _actions.append(_action[0])
 
         total_travel_time = self._get_total_travel_time()
 
@@ -394,6 +407,7 @@ class RoadEnvironment:
             "travel_times": self.graph.es["travel_time"],
             "volumes": self.graph.es["volume"],
             "reward_elements": [travel_time_reward, maintenance_reward],
+            "actions": _actions,
         }
 
         return observation, reward, self.timestep >= self.max_timesteps, info
