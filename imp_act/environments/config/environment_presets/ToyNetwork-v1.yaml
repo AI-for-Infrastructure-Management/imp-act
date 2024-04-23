@@ -1,5 +1,5 @@
 general:
-  max_timesteps: 60
+  max_timesteps: 120
 model:
   include:
     path: "./model/model_defaults.yaml"
@@ -59,20 +59,28 @@ network:
         source: 1
         target: 4
         distance: 1
+      - id: 6
+        source: 1
+        target: 3
+        distance: 1
+      - id: 7
+        source: 4
+        target: 2
+        distance: 1
   trips:     
     type: "list"
     list:
       - origin: 0
         destination: 2
-        volume: 45
+        volume: 20
       - origin: 0
         destination: 3
-        volume: 45
+        volume: 60
+      - origin: 5
+        destination: 1
+        volume: 90
       - origin: 5
         destination: 3
-        volume: 45
-      - origin: 5
-        destination: 2
         volume: 45
   segments: 
     type: "list"
@@ -111,5 +119,17 @@ network:
         target: 4
         capacity: 100
         travel_time: 1
+        position_x: 0.5
+        position_y: 1
+      - source: 1
+        target: 3
+        capacity: 125
+        travel_time: 1.5
+        position_x: 0.5
+        position_y: 1
+      - source: 4
+        target: 2
+        capacity: 125
+        travel_time: 1.5
         position_x: 0.5
         position_y: 1
