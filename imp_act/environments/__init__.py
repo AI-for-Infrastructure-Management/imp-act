@@ -14,59 +14,20 @@ def jax_environment_loader(filename):
 
 environment_path = __path__[0]
 
-Registry().register(
-    name="ToyExample-v1",
-    cls=numpy_environment_loader,
-    parameters={
-        "filename": f"{environment_path}/presets/ToyExample-v1/ToyExample-v1.yaml"
-    },
-)
+presets = ["ToyExample-v1", "Montenegro-v1", "Denmark-v1", "Belgium-v1"]
 
-Registry().register(
-    name="Montenegro-v1",
-    cls=numpy_environment_loader,
-    parameters={
-        "filename": f"{environment_path}/presets/Montenegro-v1/Montenegro-v1.yaml"
-    },
-)
+for name in presets:
 
-Registry().register(
-    name="Denmark-v1",
-    cls=numpy_environment_loader,
-    parameters={"filename": f"{environment_path}/presets/Denmark-v1/Denmark-v1.yaml"},
-)
+    # Numpy environments
+    Registry().register(
+        name=name,
+        cls=numpy_environment_loader,
+        parameters={"filename": f"{environment_path}/presets/{name}/{name}.yaml"},
+    )
 
-Registry().register(
-    name="Belgium-v1",
-    cls=numpy_environment_loader,
-    parameters={"filename": f"{environment_path}/presets/Belgium-v1/Belgium-v1.yaml"},
-)
-
-
-Registry().register(
-    name="ToyExample-v1-jax",
-    cls=jax_environment_loader,
-    parameters={
-        "filename": f"{environment_path}/presets/ToyExample-v1/ToyExample-v1.yaml"
-    },
-)
-
-Registry().register(
-    name="Montenegro-v1-jax",
-    cls=jax_environment_loader,
-    parameters={
-        "filename": f"{environment_path}/presets/Montenegro-v1/Montenegro-v1.yaml"
-    },
-)
-
-Registry().register(
-    name="Denmark-v1-jax",
-    cls=jax_environment_loader,
-    parameters={"filename": f"{environment_path}/presets/Denmark-v1/Denmark-v1.yaml"},
-)
-
-Registry().register(
-    name="Belgium-v1-jax",
-    cls=jax_environment_loader,
-    parameters={"filename": f"{environment_path}/presets/Belgium-v1/Belgium-v1.yaml"},
-)
+    # JAX environments
+    Registry().register(
+        name=f"{name}-jax",
+        cls=jax_environment_loader,
+        parameters={"filename": f"{environment_path}/presets/{name}/{name}.yaml"},
+    )
