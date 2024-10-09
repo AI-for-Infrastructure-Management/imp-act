@@ -83,7 +83,7 @@ class EnvironmentLoader:
 
         config["traffic"]["trips"] = trips
 
-        # load model
+        # load maintenance model
         maintenance = config["maintenance"]
         if maintenance["deterioration"]["type"] == "list":
             maintenance["deterioration"] = np.array(
@@ -127,7 +127,9 @@ class EnvironmentLoader:
                 f"Deterioration type {traffic['capacity_factors']['type']} not supported"
             )
 
-        self._check_model_values(config)
+        # sanity check of maintenance and traffic model parameters
+        self._check_model_params_maintenance(config)
+        self._check_model_params_traffic(config)
 
         return config
 
@@ -179,7 +181,9 @@ class EnvironmentLoader:
                 raise ValueError("Missing required parameter: {}".format(param))
         return config
 
-    def _check_model_values(self, config):
+    def _check_model_params_maintenance(self, config):
+        """Ensure that maintenance model params are valid"""
+
         # Ensure transition matrix values sum to 1
         # Shape: A x S x S
         deterioration_table = config["maintenance"]["deterioration"]
@@ -207,6 +211,8 @@ class EnvironmentLoader:
         if np.any(reward_table > 0):
             raise ValueError("Reward matrix has values greater than 0")
 
+    def _check_model_params_traffic(self, config):
+        """Ensure that traffic model params are valid"""
         # Ensure base_travel_time_factors matrix is valid
         # Shape: A
         base_travel_time_factors = config["traffic"]["base_travel_time_factors"]
