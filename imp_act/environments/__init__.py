@@ -18,7 +18,7 @@ Registry().register(
     name="ToyExample-v1",
     cls=numpy_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/ToyExample-v1.yaml"
+        "filename": f"{environment_path}/presets/ToyExample-v1/ToyExample-v1.yaml"
     },
 )
 
@@ -26,7 +26,7 @@ Registry().register(
     name="Montenegro-v1",
     cls=numpy_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/Montenegro-v1.yaml"
+        "filename": f"{environment_path}/presets/Montenegro-v1/Montenegro-v1.yaml"
     },
 )
 
@@ -34,7 +34,7 @@ Registry().register(
     name="Denmark-v1",
     cls=numpy_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/Denmark-v1.yaml"
+        "filename": f"{environment_path}/presets/Denmark-v1/Denmark-v1.yaml"
     },
 )
 
@@ -42,7 +42,7 @@ Registry().register(
     name="Belgium-v1",
     cls=numpy_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/Belgium-v1.yaml"
+        "filename": f"{environment_path}/presets/Belgium-v1/Belgium-v1.yaml"
     },
 )
 
@@ -51,7 +51,7 @@ Registry().register(
     name="ToyExample-v1-jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/ToyExample-v1.yaml"
+        "filename": f"{environment_path}/presets/ToyExample-v1/ToyExample-v1.yaml"
     },
 )
 
@@ -59,7 +59,7 @@ Registry().register(
     name="Montenegro-v1-jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/Montenegro-v1.yaml"
+        "filename": f"{environment_path}/presets/Montenegro-v1/Montenegro-v1.yaml"
     },
 )
 
@@ -67,7 +67,7 @@ Registry().register(
     name="Denmark-v1-jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/Denmark-v1.yaml"
+        "filename": f"{environment_path}/presets/Denmark-v1/Denmark-v1.yaml"
     },
 )
 
@@ -75,6 +75,6 @@ Registry().register(
     name="Belgium-v1-jax",
     cls=jax_environment_loader,
     parameters={
-        "filename": f"{environment_path}/config/environment_presets/Belgium-v1.yaml"
+        "filename": f"{environment_path}/presets/Belgium-v1/Belgium-v1.yaml"
     },
 )
