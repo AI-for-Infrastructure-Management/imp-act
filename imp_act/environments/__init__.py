@@ -1,4 +1,4 @@
-from .config.environment_loader import EnvironmentLoader
+from .environment_loader import EnvironmentLoader
 from .registry import Registry
 
 
