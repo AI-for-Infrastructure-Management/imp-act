@@ -33,17 +33,13 @@ Registry().register(
 Registry().register(
     name="Denmark-v1",
     cls=numpy_environment_loader,
-    parameters={
-        "filename": f"{environment_path}/presets/Denmark-v1/Denmark-v1.yaml"
-    },
+    parameters={"filename": f"{environment_path}/presets/Denmark-v1/Denmark-v1.yaml"},
 )
 
 Registry().register(
     name="Belgium-v1",
     cls=numpy_environment_loader,
-    parameters={
-        "filename": f"{environment_path}/presets/Belgium-v1/Belgium-v1.yaml"
-    },
+    parameters={"filename": f"{environment_path}/presets/Belgium-v1/Belgium-v1.yaml"},
 )
 
 
@@ -66,15 +62,11 @@ Registry().register(
 Registry().register(
     name="Denmark-v1-jax",
     cls=jax_environment_loader,
-    parameters={
-        "filename": f"{environment_path}/presets/Denmark-v1/Denmark-v1.yaml"
-    },
+    parameters={"filename": f"{environment_path}/presets/Denmark-v1/Denmark-v1.yaml"},
 )
 
 Registry().register(
     name="Belgium-v1-jax",
     cls=jax_environment_loader,
-    parameters={
-        "filename": f"{environment_path}/presets/Belgium-v1/Belgium-v1.yaml"
-    },
+    parameters={"filename": f"{environment_path}/presets/Belgium-v1/Belgium-v1.yaml"},
 )
