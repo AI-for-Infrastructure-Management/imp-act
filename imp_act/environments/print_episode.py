@@ -4,9 +4,11 @@ from imp_act import make
 
 
 def main():
-    env = make("ToyExample-v1")
+    env = make("ToyExample-v2")
+    env.count_redundancies()
+    env._print_edge_traffic_summary()
     env.reset()
-    actions = [[1, 1] for _ in range(4)]
+    actions = [[1]*len(e["road_segments"].segments) for e in env.graph.es]
     done = False
     timestep = 0
     while not done:
