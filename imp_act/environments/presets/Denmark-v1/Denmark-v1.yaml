@@ -1,14 +1,22 @@
-general:
-  max_timesteps: 50
-model:
+maintenance:
+  initial_damage_distribution: [0.72, 0.094, 0.093, 0.093, 0]
   include:
-    path: "../common/model_defaults.yaml"
+      path: "../common/maintenance_defaults.yaml"
+      override: False
+      
+traffic:
+  travel_time_reward_factor: -500.0
+  trips:
+    path: ./traffic.csv
+    type: file
+  include:
+    path: "../common/traffic_defaults.yaml"
     override: False
-  segment:
-    initial_damage_distribution: [0.72, 0.094, 0.093, 0.093, 0]
-  network:
-    travel_time_reward_factor: -500.0
-network:
-  include:
-    path: "./network.yaml"
-  
+
+topology:
+  graph:
+    path: ./graph.graphml
+    type: file
+  segments:
+    path: ./segments.csv
+    type: file

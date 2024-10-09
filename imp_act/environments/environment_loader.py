@@ -23,11 +23,8 @@ class EnvironmentLoader:
 
         config = self._check_params(config)
 
-        # load network
-        network_config = config["network"]
-
         # load graph
-        graph_config = network_config["graph"]
+        graph_config = config["topology"]["graph"]
         if graph_config["type"] == "file":
             path = Path(graph_config["path"])
             graph = Graph.Read_GraphML(open(path, "r"))
@@ -53,24 +50,10 @@ class EnvironmentLoader:
         else:
             raise ValueError(f"Graph type {graph_config['type']} not supported")
 
-        config["network"]["graph"] = graph
-
-        # load trips
-        trips_config = network_config["trips"]
-        if trips_config["type"] == "file":
-            path = Path(trips_config["path"])
-            trips = pd.read_csv(path)
-            # ensure that origin, destination are integers
-            trips = trips.astype({"origin": int, "destination": int, "volume": float})
-        elif trips_config["type"] == "list":
-            trips = pd.DataFrame(trips_config["list"])
-        else:
-            raise ValueError(f"Trips type {trips_config['type']} not supported")
-
-        config["network"]["trips"] = trips
+        config["topology"]["graph"] = graph
 
         # load segments
-        segments_config = network_config["segments"]
+        segments_config = config["topology"]["segments"]
         if segments_config["type"] == "file":
             path = Path(segments_config["path"])
             segments_df = pd.read_csv(path)
@@ -84,34 +67,50 @@ class EnvironmentLoader:
         for group, df in segments_df.groupby(["source", "target"]):
             segments[group] = df.to_dict("records")
 
-        config["network"]["segments"] = segments
+        config["topology"]["segments"] = segments
+
+        # load trips
+        trips_config = config["traffic"]["trips"]
+        if trips_config["type"] == "file":
+            path = Path(trips_config["path"])
+            trips = pd.read_csv(path)
+            # ensure that origin, destination are integers
+            trips = trips.astype({"origin": int, "destination": int, "volume": float})
+        elif trips_config["type"] == "list":
+            trips = pd.DataFrame(trips_config["list"])
+        else:
+            raise ValueError(f"Trips type {trips_config['type']} not supported")
+
+        config["traffic"]["trips"] = trips
 
         # load model
-        segment = config["model"]["segment"]
-        if segment["deterioration"]["type"] == "list":
-            segment["deterioration"] = np.array(segment["deterioration"]["list"])
-        else:
-            raise ValueError(
-                f"Deterioration type {segment['deterioration']['type']} not supported"
-            )
-
-        if segment["observation"]["type"] == "list":
-            segment["observation"] = np.array(segment["observation"]["list"])
-        else:
-            raise ValueError(
-                f"Deterioration type {segment['observation']['type']} not supported"
-            )
-
-        if segment["reward"]["state_action_reward"]["type"] == "list":
-            segment["reward"]["state_action_reward"] = np.array(
-                segment["reward"]["state_action_reward"]["list"]
+        maintenance = config["maintenance"]
+        if maintenance["deterioration"]["type"] == "list":
+            maintenance["deterioration"] = np.array(
+                maintenance["deterioration"]["list"]
             )
         else:
             raise ValueError(
-                f"Deterioration type {segment['state_action_reward']['type']} not supported"
+                f"Deterioration type {maintenance['deterioration']['type']} not supported"
             )
 
-        traffic = config["model"]["segment"]["traffic"]
+        if maintenance["observation"]["type"] == "list":
+            maintenance["observation"] = np.array(maintenance["observation"]["list"])
+        else:
+            raise ValueError(
+                f"Deterioration type {maintenance['observation']['type']} not supported"
+            )
+
+        if maintenance["reward"]["state_action_reward"]["type"] == "list":
+            maintenance["reward"]["state_action_reward"] = np.array(
+                maintenance["reward"]["state_action_reward"]["list"]
+            )
+        else:
+            raise ValueError(
+                f"Deterioration type {maintenance['state_action_reward']['type']} not supported"
+            )
+
+        traffic = config["traffic"]
         if traffic["base_travel_time_factors"]["type"] == "list":
             traffic["base_travel_time_factors"] = np.array(
                 traffic["base_travel_time_factors"]["list"]
@@ -174,7 +173,7 @@ class EnvironmentLoader:
 
     def _check_params(self, config):
         """Ensure that all required parameters are specified in the config file"""
-        required_top_level_parameter = ["general", "model", "network"]
+        required_top_level_parameter = ["maintenance", "traffic", "topology"]
         for param in required_top_level_parameter:
             if param not in config.keys():
                 raise ValueError("Missing required parameter: {}".format(param))
@@ -183,7 +182,7 @@ class EnvironmentLoader:
     def _check_model_values(self, config):
         # Ensure transition matrix values sum to 1
         # Shape: A x S x S
-        deterioration_table = config["model"]["segment"]["deterioration"]
+        deterioration_table = config["maintenance"]["deterioration"]
         if not np.allclose(deterioration_table.sum(axis=2), 1):
             raise ValueError("Transition matrix rows do not sum to 1")
 
@@ -198,27 +197,25 @@ class EnvironmentLoader:
 
         # Ensure observation matrix values sum to 1
         # Shape: A x S x S
-        observation_table = config["model"]["segment"]["observation"]
+        observation_table = config["maintenance"]["observation"]
         if not np.allclose(observation_table.sum(axis=2), 1):
             raise ValueError("Observation matrix rows do not sum to 1")
 
         # Ensure reward matrix is valid
         # Shape: A
-        reward_table = config["model"]["segment"]["reward"]["state_action_reward"]
+        reward_table = config["maintenance"]["reward"]["state_action_reward"]
         if np.any(reward_table > 0):
             raise ValueError("Reward matrix has values greater than 0")
 
         # Ensure base_travel_time_factors matrix is valid
         # Shape: A
-        base_travel_time_factors = config["model"]["segment"]["traffic"][
-            "base_travel_time_factors"
-        ]
+        base_travel_time_factors = config["traffic"]["base_travel_time_factors"]
         if np.any(base_travel_time_factors < 1):
             raise ValueError("base_travel_time_factors vector has values less than 1")
 
         # Ensure traffic capacity_factors matrix is valid
         # Shape: A
-        capacity_factors = config["model"]["segment"]["traffic"]["capacity_factors"]
+        capacity_factors = config["traffic"]["capacity_factors"]
         if np.any(capacity_factors > 1):
             raise ValueError("capacity_factors vector has values greater than 1")
 
