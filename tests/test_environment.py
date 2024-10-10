@@ -5,10 +5,19 @@ import numpy as np
 import pytest
 
 
-def test_observation_keys(toy_environment):
+environment_fixtures = [
+    "toy_environment_1",
+    "toy_environment_2",
+    "small_environment",
+    "medium_environment",
+    "large_environment",
+]
+
+
+def test_observation_keys(toy_environment_1):
     """Test if the observation dictionary has the correct keys in reset and step functions."""
 
-    env = toy_environment
+    env = toy_environment_1
     obs = env.reset()
 
     keys = [
@@ -28,28 +37,12 @@ def test_observation_keys(toy_environment):
         assert key in obs.keys()
 
 
-def test_one_episode(toy_environment):
-    """Test if the environment can run one episode."""
-    env = toy_environment
-
-    obs = env.reset()
-    actions = [[1] * len(e) for e in obs["edge_observations"]]
-    timestep = 0
-    done = False
-
-    while not done:
-        timestep += 1
-        obs, cost, done, info = env.step(actions)
-
-    assert timestep == env.max_timesteps
-
-
 @pytest.mark.parametrize(
     "parameter_fixture",
-    ["small_environment", "medium_environment", "large_environment"],
+    environment_fixtures,
     indirect=True,
 )
-def test_environment(parameter_fixture):
+def test_one_episode(parameter_fixture):
     """Test if the environment can run one episode."""
     env = parameter_fixture
 
@@ -73,9 +66,9 @@ def test_environment(parameter_fixture):
     print("Test Result: ", end="")
 
 
-def test_timing(toy_environment):
+def test_timing(toy_environment_1):
     "Test if the average time per trajectory is below the threshold"
-    env = toy_environment
+    env = toy_environment_1
 
     obs = env.reset()
     actions = [[1] * len(e) for e in obs["edge_observations"]]
@@ -372,7 +365,7 @@ def seeded_episode_rollout(environment, seed, actions):
 
 @pytest.mark.parametrize(
     "parameter_fixture",
-    ["toy_environment", "small_environment", "medium_environment", "large_environment"],
+    environment_fixtures,
     indirect=True,
 )
 def test_only_negative_rewards(parameter_fixture, test_seed_1, random_time_seed):
@@ -396,7 +389,7 @@ FAIL_LIMIT_RATIO = 3
 @pytest.mark.skip(reason="Waiting for final calibration of the environment")
 @pytest.mark.parametrize(
     "parameter_fixture",
-    ["toy_environment", "small_environment", "medium_environment", "large_environment"],
+    environment_fixtures,
     indirect=True,
 )
 def test_segment_volume_to_capacity_ratio_within_resonable_limits(

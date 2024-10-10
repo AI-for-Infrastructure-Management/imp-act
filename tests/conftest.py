@@ -15,9 +15,15 @@ def toy_environment_loader():
 
 
 @pytest.fixture
-def toy_environment():
+def toy_environment_1():
     """Create a toy environment loader for testing."""
     return make("ToyExample-v1")
+
+
+@pytest.fixture
+def toy_environment_2():
+    """Create a toy environment loader for testing."""
+    return make("ToyExample-v2")
 
 
 @pytest.fixture
