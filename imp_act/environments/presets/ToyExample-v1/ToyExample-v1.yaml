@@ -30,6 +30,7 @@ traffic:
         volume: 75
 topology:
   graph:
+    directed: false
     type: "list"
     nodes:
       - id: 0

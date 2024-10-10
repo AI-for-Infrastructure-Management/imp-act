@@ -14,7 +14,13 @@ def jax_environment_loader(filename):
 
 environment_path = __path__[0]
 
-presets = ["ToyExample-v1", "Montenegro-v1", "Denmark-v1", "Belgium-v1"]
+presets = [
+    "ToyExample-v1",
+    "ToyExample-v2",
+    "Montenegro-v1",
+    "Denmark-v1",
+    "Belgium-v1",
+]
 
 for name in presets:
 

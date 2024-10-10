@@ -227,7 +227,7 @@ class RoadEnvironment:
 
             vertex_1 = self.graph.vs.select(id_eq=nodes[0])
             vertex_2 = self.graph.vs.select(id_eq=nodes[1])
-            graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))[0]
+            graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))
             graph_edge["road_segments"] = road_edge
 
         # Traffic assignment parameters
@@ -362,3 +362,67 @@ class RoadEnvironment:
             edge["road_segments"].random_generator = self.random_generator
             for segment in edge["road_segments"].segments:
                 segment.random_generator = self.random_generator
+
+    def get_count_redundancies_summary(self, verbose: bool = True):
+        vcount = self.graph.vcount()
+
+        # number of paths between each origin-destination pair
+        OD_num_paths = np.zeros((vcount, vcount))
+        OD_matrix = np.zeros((vcount, vcount))
+
+        string = ""
+
+        string += "Summary | Network Trips\n"
+        string += "=" * 23 + "\n\n"
+
+        string += f"Total number of trips: {len(self.trips)}\n\n"
+
+        for (origin, destination, _) in self.trips:
+            paths = self.graph.get_all_simple_paths(origin, destination)
+
+            if verbose:
+                string += f"O: {origin}, D: {destination} | # paths: {len(paths)}\n"
+
+            OD_num_paths[origin, destination] = len(paths)
+            OD_matrix[origin, destination] = 1
+
+        string += "\n"
+        string += "Summary | Network Redundancy\n"
+        string += "=" * 28 + "\n\n"
+
+        assert (OD_num_paths - OD_matrix >= 0).all(), "Some paths are missing"
+
+        # count the number of redundancies
+        # example: 'x' trips have 0 redundancies, 'y' trips have 1 redundancy, etc.
+        _redundancy = OD_num_paths - OD_matrix
+        redundancy_count = {}
+        nonzero_indices = np.nonzero(OD_matrix)
+        # loop through the non-zero elements of the OD matrix
+        for i, j in zip(nonzero_indices[0], nonzero_indices[1]):
+            n_redundancy = int(_redundancy[i, j])
+            if n_redundancy not in redundancy_count:
+                redundancy_count[n_redundancy] = 1
+            else:
+                redundancy_count[n_redundancy] += 1
+
+        # print the redundancy count
+        for k, v in redundancy_count.items():
+            string += f"{v} trips have {k} redundancies\n"
+        return string
+
+    def get_edge_traffic_summary(self):
+        string = ""
+        string += "Summary | Edge Traffic\n"
+        string += "=" * 22 + "\n\n"
+        string += f"{'Edge':^5} {'Volume (%)':^15} {'Travel Time':^5}\n"
+        string += "-" * 30 + "\n"
+
+        for edge in self.graph.es:
+            id = edge.index
+            volume = edge["volume"]
+            travel_time = edge["travel_time"]
+            capacity = sum([seg.capacity for seg in edge["road_segments"].segments])
+            usage = volume / capacity * 100
+            string += f"{id:^5} {int(volume):^5}({usage:^3.1f}%) {travel_time:^15.2f}\n"
+
+        return string
