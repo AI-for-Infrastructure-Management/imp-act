@@ -14,8 +14,8 @@ class RoadSegment:
         base_travel_time,
     ):
         self.random_generator = random_generator
-        self.number_of_states = config["deterioration"].shape[1]
-        self.initial_damage_prob = config["initial_damage_distribution"]
+        self.number_of_states = config["maintenance"]["deterioration"].shape[1]
+        self.initial_damage_prob = config["maintenance"]["initial_damage_distribution"]
         self.position_x = position_x
         self.position_y = position_y
 
@@ -34,15 +34,17 @@ class RoadSegment:
 
         # deterioration tables
         # shape: A x S x S
-        self.deterioration_table = config["deterioration"]
+        self.deterioration_table = config["maintenance"]["deterioration"]
 
         # observation tables
         # shape: A x S x O
-        self.observation_tables = config["observation"]
+        self.observation_tables = config["maintenance"]["observation"]
 
         # Costs (negative rewards)
         # shape: S x A
-        self.state_action_reward = config["reward"]["state_action_reward"]
+        self.state_action_reward = config["maintenance"]["reward"][
+            "state_action_reward"
+        ]
 
         self.reset()
 
@@ -110,7 +112,9 @@ class RoadEdge:
 
         self.segments = segments
         self.number_of_segments = len(segments)
-        self.inspection_campaign_reward = config["reward"]["inspection_campaign_reward"]
+        self.inspection_campaign_reward = config["maintenance"]["reward"][
+            "inspection_campaign_reward"
+        ]
         self.random_generator = random_generator
         self.bpr_alpha = config["traffic"]["bpr_alpha"]
         self.bpr_beta = config["traffic"]["bpr_beta"]
@@ -177,12 +181,12 @@ class RoadEnvironment:
         seed: Optional[int] = None,
     ):
         self.random_generator = np.random.default_rng(seed)
-        self.max_timesteps = config["general"]["max_timesteps"]
+        self.max_timesteps = config["maintenance"]["max_timesteps"]
 
-        self.graph = config["network"]["graph"]
+        self.graph = config["topology"]["graph"]
 
         # Convert trips dataframe to list of tuples with correct vertex indices
-        trips_df = config["network"]["trips"]
+        trips_df = config["traffic"]["trips"]
         trips = []
         for index in trips_df.index:
             vertex_1_list = self.graph.vs.select(id_eq=trips_df["origin"][index])
@@ -202,7 +206,7 @@ class RoadEnvironment:
         self.trips = trips
 
         # Add road segments to graph edges
-        for nodes, edge_segments in config["network"]["segments"].items():
+        for nodes, edge_segments in config["topology"]["segments"].items():
             segments = []
             for segment in edge_segments:
                 segments.append(
@@ -212,12 +216,12 @@ class RoadEnvironment:
                         position_y=segment["position_y"],
                         capacity=segment["capacity"],
                         base_travel_time=segment["travel_time"],
-                        config=config["model"]["segment"],
+                        config=config,
                     )
                 )
             road_edge = RoadEdge(
                 segments=segments,
-                config=config["model"]["edge"],
+                config=config,
                 random_generator=self.random_generator,
             )
 
@@ -227,14 +231,12 @@ class RoadEnvironment:
             graph_edge["road_segments"] = road_edge
 
         # Traffic assignment parameters
-        ta_conf = config["network"]["traffic_assignment"]
+        ta_conf = config["traffic"]["traffic_assignment"]
         self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
         self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
 
-        self.travel_time_reward_factor = config["model"]["network"][
-            "travel_time_reward_factor"
-        ]
+        self.travel_time_reward_factor = config["traffic"]["travel_time_reward_factor"]
 
         self.reset(reset_edges=False)
 
