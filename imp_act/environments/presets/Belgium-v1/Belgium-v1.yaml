@@ -15,6 +15,7 @@ traffic:
 
 topology:
   graph:
+    directed: false
     path: ./graph.graphml
     type: file
   segments:

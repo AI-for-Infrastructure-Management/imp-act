@@ -411,7 +411,6 @@ class RoadEnvironment:
         for k, v in redundancy_count.items():
             print(f"{v} trips have {k} redundancies")
 
-
     def _print_edge_traffic_summary(self):
 
         print("")

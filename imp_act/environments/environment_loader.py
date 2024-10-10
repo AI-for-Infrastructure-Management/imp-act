@@ -30,7 +30,7 @@ class EnvironmentLoader:
             graph = Graph.Read_GraphML(open(path, "r"))
             graph.vs["id"] = [int(v["id"]) for v in graph.vs]
         elif graph_config["type"] == "list":
-            graph = Graph(directed=True)
+            graph = Graph(directed=graph_config["directed"])
 
             nodes_list = graph_config["nodes"]
             nodes = [n["id"] for n in nodes_list]
