@@ -363,34 +363,32 @@ class RoadEnvironment:
             for segment in edge["road_segments"].segments:
                 segment.random_generator = self.random_generator
 
-    def count_redundancies(self, verbose: bool = True):
-
+    def get_count_redundancies_summary(self, verbose: bool = True):
         vcount = self.graph.vcount()
 
         # number of paths between each origin-destination pair
         OD_num_paths = np.zeros((vcount, vcount))
         OD_matrix = np.zeros((vcount, vcount))
 
-        print("")  # empty line
-        print("Summary | Network Trips")
-        print("=" * 23)
-        print("")
+        string = ""
 
-        print(f"Total number of trips: {len(self.trips)}\n")
+        string += "Summary | Network Trips\n"
+        string += "=" * 23 + "\n\n"
+
+        string += f"Total number of trips: {len(self.trips)}\n\n"
 
         for (origin, destination, _) in self.trips:
             paths = self.graph.get_all_simple_paths(origin, destination)
 
             if verbose:
-                print(f"O: {origin}, D: {destination} | # paths: {len(paths)}")
+                string += f"O: {origin}, D: {destination} | # paths: {len(paths)}\n"
 
             OD_num_paths[origin, destination] = len(paths)
             OD_matrix[origin, destination] = 1
 
-        print("")  # empty line
-        print("Summary | Network Redundancy")
-        print("=" * 28)
-        print("")
+        string += "\n"
+        string += "Summary | Network Redundancy\n"
+        string += "=" * 28 + "\n\n"
 
         assert (OD_num_paths - OD_matrix >= 0).all(), "Some paths are missing"
 
@@ -409,20 +407,22 @@ class RoadEnvironment:
 
         # print the redundancy count
         for k, v in redundancy_count.items():
-            print(f"{v} trips have {k} redundancies")
+            string += f"{v} trips have {k} redundancies\n"
+        return string
 
-    def _print_edge_traffic_summary(self):
+    def get_edge_traffic_summary(self):
+        string = ""
+        string += "Summary | Edge Traffic\n"
+        string += "=" * 22 + "\n\n"
+        string += f"{'Edge':^5} {'Volume (%)':^15} {'Travel Time':^5}\n"
+        string += "-" * 30 + "\n"
 
-        print("")
-        print("Summary | Edge Traffic")
-        print("=" * 22)
-        print("")
-        print(f"{'Edge':^5} {'Volume (%)':^15} {'Travel Time':^5}")
-        print("-" * 30)
         for edge in self.graph.es:
             id = edge.index
             volume = edge["volume"]
             travel_time = edge["travel_time"]
             capacity = sum([seg.capacity for seg in edge["road_segments"].segments])
             usage = volume / capacity * 100
-            print(f"{id:^5} {int(volume):^5}({usage:^3.1f}%) {travel_time:^15.2f}")
+            string += f"{id:^5} {int(volume):^5}({usage:^3.1f}%) {travel_time:^15.2f}\n"
+
+        return string
