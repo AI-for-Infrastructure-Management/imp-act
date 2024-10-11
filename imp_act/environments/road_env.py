@@ -14,7 +14,7 @@ class RoadSegment:
         base_travel_time,
     ):
         self.random_generator = random_generator
-        self.number_of_states = config["maintenance"]["deterioration"].shape[1]
+        self.number_of_states = config["maintenance"]["deterioration"].shape[2]
         self.initial_damage_prob = config["maintenance"]["initial_damage_distribution"]
         self.position_x = position_x
         self.position_y = position_y
@@ -60,8 +60,13 @@ class RoadSegment:
 
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
-            p=self.deterioration_table[action][self.state],
+            p=self.deterioration_table[action][self.deterioration_rate][self.state],
         )
+
+        if action == 4:
+            next_deterioration_rate = 0
+        else:
+            next_deterioration_rate = self.deterioration_rate + 1
 
         self.base_travel_time = self.base_travel_time_table[action]
         self.capacity = self.capacity_table[action]
@@ -75,7 +80,7 @@ class RoadSegment:
         )
 
         # Belief state computation
-        self.belief = self.deterioration_table[action].T @ self.belief
+        self.belief = self.deterioration_table[action][self.deterioration_rate].T @ self.belief
 
         state_probs = self.observation_tables[action][
             :, self.observation
@@ -85,11 +90,13 @@ class RoadSegment:
         self.belief = state_probs * self.belief  # likelihood * prior
         self.belief /= np.sum(self.belief)  # normalize
 
+        self.deterioration_rate = next_deterioration_rate
+
         return reward
 
     def get_initial_state(self):
         # Computing initial state, observation, and belief
-
+        self.deterioration_rate = 0
         self.belief = np.array(self.initial_damage_prob)
         self.initial_state = self.random_generator.choice(
             np.arange(self.number_of_states),
