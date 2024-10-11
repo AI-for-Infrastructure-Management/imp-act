@@ -232,9 +232,8 @@ class RoadEnvironment:
                 random_generator=self.random_generator,
             )
 
-            vertex_1 = self.graph.vs.select(id_eq=nodes[0])
-            vertex_2 = self.graph.vs.select(id_eq=nodes[1])
-            graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))
+            edge_id = self.graph.get_eid(nodes[0], nodes[1])
+            graph_edge = self.graph.es[edge_id]
             graph_edge["road_segments"] = road_edge
 
         # Traffic assignment parameters
