@@ -85,7 +85,10 @@ class EnvironmentLoader:
 
         # load maintenance model
         maintenance = config["maintenance"]
-        if maintenance["deterioration"]["type"] == "list":
+        if maintenance["deterioration"]["type"] == "file":
+            path = Path(maintenance["deterioration"]["path"])
+            maintenance["deterioration"] = np.load(path)['deterioration']
+        elif maintenance["deterioration"]["type"] == "list":
             maintenance["deterioration"] = np.array(
                 maintenance["deterioration"]["list"]
             )
