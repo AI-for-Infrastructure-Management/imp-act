@@ -190,12 +190,12 @@ class EnvironmentLoader:
         # Ensure transition matrix values sum to 1
         # Shape: A x S x S
         deterioration_table = config["maintenance"]["deterioration"]
-        if not np.allclose(deterioration_table.sum(axis=2), 1):
+        if not np.allclose(deterioration_table.sum(axis=3), 1):
             raise ValueError("Transition matrix rows do not sum to 1")
 
         # Ensure do-nothing matrix is upper triangular
         # Shape: S x S
-        if not np.allclose(np.triu(deterioration_table[0]), deterioration_table[0]):
+        if not np.allclose(np.triu(deterioration_table[0,0]), deterioration_table[0,0]):
             raise ValueError("Transition matrix is not upper triangular")
         if not np.allclose(deterioration_table[0], deterioration_table[1]):
             raise ValueError(
