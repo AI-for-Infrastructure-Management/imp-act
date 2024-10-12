@@ -189,6 +189,9 @@ class RoadEdge:
 
     def get_observation(self):
         return [segment.observation for segment in self.segments]
+    
+    def get_deterioration_rate(self):
+        return [segment.deterioration_rate for segment in self.segments]
 
     def get_beliefs(self):
         return [segment.belief for segment in self.segments]
@@ -279,14 +282,17 @@ class RoadEnvironment:
         edge_observations = []
         edge_nodes = []
         edge_beliefs = []
+        edge_deterioration_rates = []
         for edge in self.graph.es:
             edge_observations.append(edge["road_segments"].get_observation())
+            edge_deterioration_rates.append(edge["road_segments"].get_deterioration_rate())
             edge_beliefs.append(edge["road_segments"].get_beliefs())
             edge_nodes.append([edge.source, edge.target])
 
         observations = {
             "adjacency_matrix": adjacency_matrix,
             "edge_observations": edge_observations,
+            "edge_deterioration_rates": edge_deterioration_rates,
             "edge_beliefs": edge_beliefs,
             "edge_nodes": edge_nodes,
             "time_step": self.timestep,
