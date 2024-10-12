@@ -33,8 +33,9 @@ class RoadSegment:
         self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
 
         # deterioration tables
-        # shape: A x S x S
+        # shape: A x S x S or A x DR x S x S
         self.deterioration_table = config["maintenance"]["deterioration"]
+        self.deterioration_rate_enabled = self.deterioration_table.ndim == 4
 
         # observation tables
         # shape: A x S x O
@@ -58,15 +59,23 @@ class RoadSegment:
         if self.observation == self.number_of_states - 1:
             action = 4
 
+        if self.deterioration_rate_enabled:
+            transition_probabilities = self.deterioration_table[action][
+                self.deterioration_rate
+            ][self.state]
+        else:
+            transition_probabilities = self.deterioration_table[action][self.state]
+
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
-            p=self.deterioration_table[action][self.deterioration_rate][self.state],
+            p=transition_probabilities,
         )
 
-        if action == 4:
-            next_deterioration_rate = 0
-        else:
-            next_deterioration_rate = self.deterioration_rate + 1
+        if self.deterioration_rate_enabled:
+            if action == 4:
+                next_deterioration_rate = 0
+            else:
+                next_deterioration_rate = self.deterioration_rate + 1
 
         self.base_travel_time = self.base_travel_time_table[action]
         self.capacity = self.capacity_table[action]
@@ -80,9 +89,13 @@ class RoadSegment:
         )
 
         # Belief state computation
-        self.belief = (
-            self.deterioration_table[action][self.deterioration_rate].T @ self.belief
-        )
+        if self.deterioration_rate_enabled:
+            self.belief = (
+                self.deterioration_table[action][self.deterioration_rate].T
+                @ self.belief
+            )
+        else:
+            self.belief = self.deterioration_table[action].T @ self.belief
 
         state_probs = self.observation_tables[action][
             :, self.observation
@@ -92,7 +105,8 @@ class RoadSegment:
         self.belief = state_probs * self.belief  # likelihood * prior
         self.belief /= np.sum(self.belief)  # normalize
 
-        self.deterioration_rate = next_deterioration_rate
+        if self.deterioration_rate_enabled:
+            self.deterioration_rate = next_deterioration_rate
 
         return reward
 
