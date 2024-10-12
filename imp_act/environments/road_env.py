@@ -232,7 +232,8 @@ class RoadEnvironment:
                 random_generator=self.random_generator,
             )
 
-            edge_id = self.graph.get_eid(nodes[0], nodes[1])
+            edge_id = self.graph.get_eid(self.graph.vs.find(id=nodes[0]).index,
+                                        self.graph.vs.find(id=nodes[1]).index)
             graph_edge = self.graph.es[edge_id]
             graph_edge["road_segments"] = road_edge
 
