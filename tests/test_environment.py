@@ -80,6 +80,7 @@ def test_timing(toy_environment_1):
     # Run the environment for a number of repeats
     for k in range(repeats):
         state_time = time.time()
+        obs = env.reset()
         done = False
         while not done:
             _, _, done, _ = env.step(actions)
