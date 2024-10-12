@@ -193,6 +193,14 @@ class EnvironmentLoader:
         if not np.allclose(deterioration_table.sum(axis=-1), 1):
             raise ValueError("Transition matrix rows do not sum to 1")
 
+        # Ensure transition matrix has enough size for max_timesteps in case of DR
+        if deterioration_table.ndim == 4:
+            max_timesteps = config["maintenance"]["max_timesteps"]
+            if deterioration_table.shape[1] < max_timesteps:
+                raise ValueError(
+                    f"Deterioration dimension in transition matrix of size {deterioration_table.shape[1]} is smaller than max_timesteps ({max_timesteps})"
+                )
+
         # Ensure do-nothing matrix is upper triangular
         # Shape: S x S
         index_subarray = (0,) * (deterioration_table.ndim - 2)
