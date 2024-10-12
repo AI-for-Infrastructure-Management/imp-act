@@ -80,7 +80,9 @@ class RoadSegment:
         )
 
         # Belief state computation
-        self.belief = self.deterioration_table[action][self.deterioration_rate].T @ self.belief
+        self.belief = (
+            self.deterioration_table[action][self.deterioration_rate].T @ self.belief
+        )
 
         state_probs = self.observation_tables[action][
             :, self.observation
@@ -232,8 +234,10 @@ class RoadEnvironment:
                 random_generator=self.random_generator,
             )
 
-            edge_id = self.graph.get_eid(self.graph.vs.find(id=nodes[0]).index,
-                                        self.graph.vs.find(id=nodes[1]).index)
+            edge_id = self.graph.get_eid(
+                self.graph.vs.find(id=nodes[0]).index,
+                self.graph.vs.find(id=nodes[1]).index,
+            )
             graph_edge = self.graph.es[edge_id]
             graph_edge["road_segments"] = road_edge
 

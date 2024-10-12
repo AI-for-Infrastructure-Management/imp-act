@@ -87,7 +87,7 @@ class EnvironmentLoader:
         maintenance = config["maintenance"]
         if maintenance["deterioration"]["type"] == "file":
             path = Path(maintenance["deterioration"]["path"])
-            maintenance["deterioration"] = np.load(path)['deterioration']
+            maintenance["deterioration"] = np.load(path)["deterioration"]
         elif maintenance["deterioration"]["type"] == "list":
             maintenance["deterioration"] = np.array(
                 maintenance["deterioration"]["list"]
@@ -196,7 +196,10 @@ class EnvironmentLoader:
         # Ensure do-nothing matrix is upper triangular
         # Shape: S x S
         index_subarray = (0,) * (deterioration_table.ndim - 2)
-        if not np.allclose(np.triu(deterioration_table[index_subarray]), deterioration_table[index_subarray]):
+        if not np.allclose(
+            np.triu(deterioration_table[index_subarray]),
+            deterioration_table[index_subarray],
+        ):
             raise ValueError("Transition matrix is not upper triangular")
         if not np.allclose(deterioration_table[0], deterioration_table[1]):
             raise ValueError(
