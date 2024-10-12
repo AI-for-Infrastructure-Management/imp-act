@@ -14,7 +14,7 @@ class RoadSegment:
         base_travel_time,
     ):
         self.random_generator = random_generator
-        self.number_of_states = config["maintenance"]["deterioration"].shape[2]
+        self.number_of_states = config["maintenance"]["deterioration"].shape[-1]
         self.initial_damage_prob = config["maintenance"]["initial_damage_distribution"]
         self.position_x = position_x
         self.position_y = position_y
