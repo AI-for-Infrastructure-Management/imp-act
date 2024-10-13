@@ -85,7 +85,10 @@ class EnvironmentLoader:
 
         # load maintenance model
         maintenance = config["maintenance"]
-        if maintenance["deterioration"]["type"] == "list":
+        if maintenance["deterioration"]["type"] == "file":
+            path = Path(maintenance["deterioration"]["path"])
+            maintenance["deterioration"] = np.load(path)["deterioration"]
+        elif maintenance["deterioration"]["type"] == "list":
             maintenance["deterioration"] = np.array(
                 maintenance["deterioration"]["list"]
             )
@@ -185,14 +188,26 @@ class EnvironmentLoader:
         """Ensure that maintenance model params are valid"""
 
         # Ensure transition matrix values sum to 1
-        # Shape: A x S x S
+        # Shape: A x S x S or A x DR x S x S
         deterioration_table = config["maintenance"]["deterioration"]
-        if not np.allclose(deterioration_table.sum(axis=2), 1):
+        if not np.allclose(deterioration_table.sum(axis=-1), 1):
             raise ValueError("Transition matrix rows do not sum to 1")
+
+        # Ensure transition matrix has enough size for max_timesteps in case of DR
+        if deterioration_table.ndim == 4:
+            max_timesteps = config["maintenance"]["max_timesteps"]
+            if deterioration_table.shape[1] < max_timesteps:
+                raise ValueError(
+                    f"Deterioration dimension in transition matrix of size {deterioration_table.shape[1]} is smaller than max_timesteps ({max_timesteps})"
+                )
 
         # Ensure do-nothing matrix is upper triangular
         # Shape: S x S
-        if not np.allclose(np.triu(deterioration_table[0]), deterioration_table[0]):
+        index_subarray = (0,) * (deterioration_table.ndim - 2)
+        if not np.allclose(
+            np.triu(deterioration_table[index_subarray]),
+            deterioration_table[index_subarray],
+        ):
             raise ValueError("Transition matrix is not upper triangular")
         if not np.allclose(deterioration_table[0], deterioration_table[1]):
             raise ValueError(

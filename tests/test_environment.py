@@ -80,6 +80,7 @@ def test_timing(toy_environment_1):
     # Run the environment for a number of repeats
     for k in range(repeats):
         state_time = time.time()
+        obs = env.reset()
         done = False
         while not done:
             _, _, done, _ = env.step(actions)
@@ -421,3 +422,13 @@ def test_segment_volume_to_capacity_ratio_within_resonable_limits(
 
     test_capacity_ratio(env, test_seed_1)
     test_capacity_ratio(env, random_time_seed)
+
+
+def test_stationary_deterioration_environment(stationary_deterioration_environment):
+    """Test if the stationary deterioration environment can run one episode."""
+    assert (
+        not stationary_deterioration_environment.graph.es[0]["road_segments"]
+        .segments[0]
+        .deterioration_rate_enabled
+    )
+    test_one_episode(stationary_deterioration_environment)

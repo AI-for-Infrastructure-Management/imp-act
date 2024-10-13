@@ -49,3 +49,14 @@ def random_time_seed():
 @pytest.fixture
 def parameter_fixture(request):
     return request.getfixturevalue(request.param)
+
+
+def load_test_env(name):
+    return EnvironmentLoader(
+        f"tests/test_environment_configs/{name}/{name}.yaml"
+    ).to_numpy()
+
+
+@pytest.fixture
+def stationary_deterioration_environment():
+    return load_test_env("stationary_deterioration")

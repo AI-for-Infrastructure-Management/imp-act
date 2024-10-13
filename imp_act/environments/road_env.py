@@ -14,7 +14,7 @@ class RoadSegment:
         base_travel_time,
     ):
         self.random_generator = random_generator
-        self.number_of_states = config["maintenance"]["deterioration"].shape[1]
+        self.number_of_states = config["maintenance"]["deterioration"].shape[-1]
         self.initial_damage_prob = config["maintenance"]["initial_damage_distribution"]
         self.position_x = position_x
         self.position_y = position_y
@@ -33,8 +33,9 @@ class RoadSegment:
         self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
 
         # deterioration tables
-        # shape: A x S x S
+        # shape: A x S x S or A x DR x S x S
         self.deterioration_table = config["maintenance"]["deterioration"]
+        self.deterioration_rate_enabled = self.deterioration_table.ndim == 4
 
         # observation tables
         # shape: A x S x O
@@ -58,10 +59,23 @@ class RoadSegment:
         if self.observation == self.number_of_states - 1:
             action = 4
 
+        if self.deterioration_rate_enabled:
+            transition_probabilities = self.deterioration_table[action][
+                self.deterioration_rate
+            ][self.state]
+        else:
+            transition_probabilities = self.deterioration_table[action][self.state]
+
         next_deterioration_state = self.random_generator.choice(
             np.arange(self.number_of_states),
-            p=self.deterioration_table[action][self.state],
+            p=transition_probabilities,
         )
+
+        if self.deterioration_rate_enabled:
+            if action == 4:
+                next_deterioration_rate = 0
+            else:
+                next_deterioration_rate = self.deterioration_rate + 1
 
         self.base_travel_time = self.base_travel_time_table[action]
         self.capacity = self.capacity_table[action]
@@ -75,7 +89,13 @@ class RoadSegment:
         )
 
         # Belief state computation
-        self.belief = self.deterioration_table[action].T @ self.belief
+        if self.deterioration_rate_enabled:
+            self.belief = (
+                self.deterioration_table[action][self.deterioration_rate].T
+                @ self.belief
+            )
+        else:
+            self.belief = self.deterioration_table[action].T @ self.belief
 
         state_probs = self.observation_tables[action][
             :, self.observation
@@ -85,11 +105,14 @@ class RoadSegment:
         self.belief = state_probs * self.belief  # likelihood * prior
         self.belief /= np.sum(self.belief)  # normalize
 
+        if self.deterioration_rate_enabled:
+            self.deterioration_rate = next_deterioration_rate
+
         return reward
 
     def get_initial_state(self):
         # Computing initial state, observation, and belief
-
+        self.deterioration_rate = 0
         self.belief = np.array(self.initial_damage_prob)
         self.initial_state = self.random_generator.choice(
             np.arange(self.number_of_states),
@@ -167,6 +190,9 @@ class RoadEdge:
     def get_observation(self):
         return [segment.observation for segment in self.segments]
 
+    def get_deterioration_rate(self):
+        return [segment.deterioration_rate for segment in self.segments]
+
     def get_beliefs(self):
         return [segment.belief for segment in self.segments]
 
@@ -225,9 +251,11 @@ class RoadEnvironment:
                 random_generator=self.random_generator,
             )
 
-            vertex_1 = self.graph.vs.select(id_eq=nodes[0])
-            vertex_2 = self.graph.vs.select(id_eq=nodes[1])
-            graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))
+            edge_id = self.graph.get_eid(
+                self.graph.vs.find(id=nodes[0]).index,
+                self.graph.vs.find(id=nodes[1]).index,
+            )
+            graph_edge = self.graph.es[edge_id]
             graph_edge["road_segments"] = road_edge
 
         # Traffic assignment parameters
@@ -254,14 +282,19 @@ class RoadEnvironment:
         edge_observations = []
         edge_nodes = []
         edge_beliefs = []
+        edge_deterioration_rates = []
         for edge in self.graph.es:
             edge_observations.append(edge["road_segments"].get_observation())
+            edge_deterioration_rates.append(
+                edge["road_segments"].get_deterioration_rate()
+            )
             edge_beliefs.append(edge["road_segments"].get_beliefs())
             edge_nodes.append([edge.source, edge.target])
 
         observations = {
             "adjacency_matrix": adjacency_matrix,
             "edge_observations": edge_observations,
+            "edge_deterioration_rates": edge_deterioration_rates,
             "edge_beliefs": edge_beliefs,
             "edge_nodes": edge_nodes,
             "time_step": self.timestep,
