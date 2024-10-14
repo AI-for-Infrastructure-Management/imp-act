@@ -5,10 +5,19 @@ import numpy as np
 import pytest
 
 
-def test_observation_keys(toy_environment):
+environment_fixtures = [
+    "toy_environment_1",
+    "toy_environment_2",
+    "small_environment",
+    "medium_environment",
+    "large_environment",
+]
+
+
+def test_observation_keys(toy_environment_1):
     """Test if the observation dictionary has the correct keys in reset and step functions."""
 
-    env = toy_environment
+    env = toy_environment_1
     obs = env.reset()
 
     keys = [
@@ -28,28 +37,12 @@ def test_observation_keys(toy_environment):
         assert key in obs.keys()
 
 
-def test_one_episode(toy_environment):
-    """Test if the environment can run one episode."""
-    env = toy_environment
-
-    obs = env.reset()
-    actions = [[1] * len(e) for e in obs["edge_observations"]]
-    timestep = 0
-    done = False
-
-    while not done:
-        timestep += 1
-        obs, cost, done, info = env.step(actions)
-
-    assert timestep == env.max_timesteps
-
-
 @pytest.mark.parametrize(
     "parameter_fixture",
-    ["small_environment", "medium_environment", "large_environment"],
+    environment_fixtures,
     indirect=True,
 )
-def test_environment(parameter_fixture):
+def test_one_episode(parameter_fixture):
     """Test if the environment can run one episode."""
     env = parameter_fixture
 
@@ -73,9 +66,9 @@ def test_environment(parameter_fixture):
     print("Test Result: ", end="")
 
 
-def test_timing(toy_environment):
+def test_timing(toy_environment_1):
     "Test if the average time per trajectory is below the threshold"
-    env = toy_environment
+    env = toy_environment_1
 
     obs = env.reset()
     actions = [[1] * len(e) for e in obs["edge_observations"]]
@@ -87,6 +80,7 @@ def test_timing(toy_environment):
     # Run the environment for a number of repeats
     for k in range(repeats):
         state_time = time.time()
+        obs = env.reset()
         done = False
         while not done:
             _, _, done, _ = env.step(actions)
@@ -372,7 +366,7 @@ def seeded_episode_rollout(environment, seed, actions):
 
 @pytest.mark.parametrize(
     "parameter_fixture",
-    ["toy_environment", "small_environment", "medium_environment", "large_environment"],
+    environment_fixtures,
     indirect=True,
 )
 def test_only_negative_rewards(parameter_fixture, test_seed_1, random_time_seed):
@@ -391,10 +385,12 @@ def test_only_negative_rewards(parameter_fixture, test_seed_1, random_time_seed)
 
 WARN_LIMIT_RATIO = 2
 FAIL_LIMIT_RATIO = 3
+
+
 @pytest.mark.skip(reason="Waiting for final calibration of the environment")
 @pytest.mark.parametrize(
     "parameter_fixture",
-    ["toy_environment", "small_environment", "medium_environment", "large_environment"],
+    environment_fixtures,
     indirect=True,
 )
 def test_segment_volume_to_capacity_ratio_within_resonable_limits(
@@ -402,7 +398,7 @@ def test_segment_volume_to_capacity_ratio_within_resonable_limits(
 ):
     """Test if the segment volume to capacity ratio is within reasonable limits."""
     env = parameter_fixture
-    
+
     def test_capacity_ratio(env, seed):
         obs = env.reset()
         env.seed(seed)
@@ -426,3 +422,13 @@ def test_segment_volume_to_capacity_ratio_within_resonable_limits(
 
     test_capacity_ratio(env, test_seed_1)
     test_capacity_ratio(env, random_time_seed)
+
+
+def test_stationary_deterioration_environment(stationary_deterioration_environment):
+    """Test if the stationary deterioration environment can run one episode."""
+    assert (
+        not stationary_deterioration_environment.graph.es[0]["road_segments"]
+        .segments[0]
+        .deterioration_rate_enabled
+    )
+    test_one_episode(stationary_deterioration_environment)

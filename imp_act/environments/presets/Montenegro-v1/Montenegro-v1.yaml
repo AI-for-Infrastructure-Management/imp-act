@@ -1,0 +1,23 @@
+maintenance:
+  initial_damage_distribution: [0.55, 0.15, 0.15, 0.15 ,0]
+  include:
+      path: "../common/maintenance_defaults.yaml"
+      override: False
+      
+traffic:
+  travel_time_reward_factor: -50000.0
+  trips:
+    path: ./traffic.csv
+    type: file
+  include:
+    path: "../common/traffic_defaults.yaml"
+    override: False
+
+topology:
+  graph:
+    directed: false
+    path: ./graph.graphml
+    type: file
+  segments:
+    path: ./segments.csv
+    type: file

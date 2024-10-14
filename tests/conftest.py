@@ -3,7 +3,7 @@ from time import time
 import pytest
 
 from imp_act import make
-from imp_act.environments.config.environment_loader import EnvironmentLoader
+from imp_act.environments.environment_loader import EnvironmentLoader
 from imp_act.environments.registry import Registry
 
 
@@ -15,9 +15,15 @@ def toy_environment_loader():
 
 
 @pytest.fixture
-def toy_environment():
+def toy_environment_1():
     """Create a toy environment loader for testing."""
     return make("ToyExample-v1")
+
+
+@pytest.fixture
+def toy_environment_2():
+    """Create a toy environment loader for testing."""
+    return make("ToyExample-v2")
 
 
 @pytest.fixture
@@ -43,3 +49,14 @@ def random_time_seed():
 @pytest.fixture
 def parameter_fixture(request):
     return request.getfixturevalue(request.param)
+
+
+def load_test_env(name):
+    return EnvironmentLoader(
+        f"tests/test_environment_configs/{name}/{name}.yaml"
+    ).to_numpy()
+
+
+@pytest.fixture
+def stationary_deterioration_environment():
+    return load_test_env("stationary_deterioration")
