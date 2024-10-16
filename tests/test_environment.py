@@ -432,3 +432,23 @@ def test_stationary_deterioration_environment(stationary_deterioration_environme
         .deterioration_rate_enabled
     )
     test_one_episode(stationary_deterioration_environment)
+
+def test_actions_unchanged(toy_environment_2):
+    """Test if the actions are not changed by the environment."""
+    env = toy_environment_2
+    obs = env.reset()
+    actions = [np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]]
+    actions_copy = actions.copy()
+    _, _, _, _ = seeded_episode_rollout(env, 42, actions)
+    assert actions == actions_copy
+
+def test_budget_non_negative(toy_environment_2):
+    """Test if the budget is always positive."""
+    env = toy_environment_2
+    obs = env.reset()
+    assert obs["budget_remaining"] >= 0
+    done = False
+    while not done:
+        actions = [np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]]
+        obs, reward, done, info = env.step(actions)
+        assert obs["budget_remaining"] >= 0

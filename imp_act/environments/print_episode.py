@@ -20,6 +20,8 @@ def main():
         print(f"reward: {reward}")
         print(f"done: {done}")
         print(f"total travel time: {info['total_travel_time']}")
+        print(f"remaining budget: {observation['budget_remaining']}/{env.budget_amount}")
+        print(f"time until budget renewal: {observation['budget_time_until_renewal']}")
 
         for i, observations, beliefs, states in zip(
             range(len(observation["edge_observations"])),
