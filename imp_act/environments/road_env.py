@@ -388,9 +388,11 @@ class RoadEnvironment:
 
         reward = maintenance_reward + travel_time_reward
 
-        observation = self._get_observation()
+        # Update variables after step is complete for up to date observations
 
         self.timestep += 1
+
+        observation = self._get_observation()
 
         info = {
             "states": self._get_states(),

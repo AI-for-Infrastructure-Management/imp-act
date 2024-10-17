@@ -37,6 +37,28 @@ def test_observation_keys(toy_environment_1):
         assert key in obs.keys()
 
 
+def test_increasing_timesteps(toy_environment_2):
+    """Test if the environment can run multiple episodes with increasing timesteps."""
+
+    TEST_EPISODES = 3
+
+    env = toy_environment_2
+
+    for episode in range(TEST_EPISODES):
+        timestep = 0
+        obs = env.reset()
+
+        done = False
+        while not done:
+            actions = [
+                np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]
+            ]
+            obs, reward, done, info = env.step(actions)
+            timestep += 1
+            assert obs["time_step"] == env.timestep
+            assert obs["time_step"] == timestep
+
+
 @pytest.mark.parametrize(
     "parameter_fixture",
     environment_fixtures,
