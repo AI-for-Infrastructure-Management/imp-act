@@ -103,7 +103,9 @@ class RoadSegment:
             else:
                 self.deterioration_rate += 1
                 if self.deterioration_rate > self.deterioration_rate_max:
-                    raise ValueError(f"Deterioration rate exceeded maximum value {self.deterioration_rate_max}")
+                    raise ValueError(
+                        f"Deterioration rate exceeded maximum value {self.deterioration_rate_max}"
+                    )
 
         return reward
 
@@ -257,9 +259,9 @@ class RoadEnvironment:
 
         # Budget parameters
         self.budget_amount = config["maintenance"]["budget_amount"]
-        assert(type(self.budget_amount) in [int,float])
+        assert type(self.budget_amount) in [int, float]
         self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
-        assert(type(self.budget_renewal_interval) == int)
+        assert type(self.budget_renewal_interval) == int
 
         # Traffic assignment parameters
         ta_conf = config["traffic"]["traffic_assignment"]
@@ -276,6 +278,7 @@ class RoadEnvironment:
     def reset(self, reset_edges=True):
         self.timestep = 0
         self.current_budget = self.budget_amount
+        self.budget_constraint_applied = False
         if reset_edges:
             for edge in self.graph.es:
                 edge["road_segments"].reset()
@@ -369,16 +372,13 @@ class RoadEnvironment:
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
-        if self.timestep % self.budget_renewal_interval == 0:
-            self.current_budget = self.budget_amount
-
         actions = self._apply_action_constraints(actions)
 
         maintenance_reward = 0
         for i, edge in enumerate(self.graph.es):
             maintenance_reward += edge["road_segments"].step(actions[i])
 
-        self.current_budget += maintenance_reward # Add to budget due to negative reward
+        self.current_budget += maintenance_reward
 
         total_travel_time = self._get_total_travel_time()
 
@@ -392,6 +392,9 @@ class RoadEnvironment:
 
         self.timestep += 1
 
+        if self.timestep % self.budget_renewal_interval == 0:
+            self.current_budget = self.budget_amount
+
         observation = self._get_observation()
 
         info = {
@@ -400,6 +403,7 @@ class RoadEnvironment:
             "travel_times": self.graph.es["travel_time"],
             "volumes": self.graph.es["volume"],
             "reward_elements": [travel_time_reward, maintenance_reward],
+            "budget_constraints_applied": self.budget_constraint_applied,
         }
 
         return observation, reward, self.timestep >= self.max_timesteps, info
@@ -475,22 +479,40 @@ class RoadEnvironment:
 
         return string
 
+    def _get_budget_remaining_time(self):
+        return (
+            self.budget_renewal_interval - self.timestep % self.budget_renewal_interval
+        )
+
+    def get_action_cost(self, actions):
+        total_cost = 0
+        for i, edge in enumerate(self.graph.es):
+            segments = edge["road_segments"].segments
+            edge_actions = actions[i]
+            for j, segment in enumerate(segments):
+                segment_action = edge_actions[j]
+                cost = -segment.state_action_reward[segment_action][segment.state]
+                total_cost += cost
+        return total_cost
+
     def _apply_action_constraints(self, actions):
         actions = [action.copy() for action in actions]
+
+        actions = self._apply_forced_repair_constraint(actions)
+        actions = self._apply_budget_constraint(actions)
+        return actions
+
+    def _apply_forced_repair_constraint(self, actions):
         # Corrective replace action if the worst condition is observed
         for i, edge in enumerate(self.graph.es):
             for j, segment in enumerate(edge["road_segments"].segments):
                 if segment.observation == segment.number_of_states - 1:
                     actions[i][j] = 4
-
-        # Apply budget constraint
-        actions = self._apply_budget_constraint(actions)
         return actions
 
-    def _get_budget_remaining_time(self):
-        return self.budget_renewal_interval - self.timestep % self.budget_renewal_interval
-
     def _apply_budget_constraint(self, actions):
+        self.budget_constraint_applied = False
+
         # Collect costs for each action
         edge_indices = []
         segment_indices = []
@@ -507,17 +529,23 @@ class RoadEnvironment:
                 segment_indices.append(j)
                 minimum_cost = -segment.state_action_reward[0, segment.state]
                 total_minimum_cost += minimum_cost
-                cost = -segment.state_action_reward[segment_action][segment.state] - minimum_cost
+                cost = (
+                    -segment.state_action_reward[segment_action][segment.state]
+                    - minimum_cost
+                )
                 total_remaining_cost += cost
                 costs.append(cost)
 
-
-        remaining_budget = self.current_budget - total_minimum_cost * self._get_budget_remaining_time()
+        remaining_budget = (
+            self.current_budget - total_minimum_cost * self._get_budget_remaining_time()
+        )
 
         assert remaining_budget >= 0, "Remaining budget is negative"
 
         if total_remaining_cost <= remaining_budget:
             return actions
+
+        self.budget_constraint_applied = True
 
         edge_indices = np.array(edge_indices)
         segment_indices = np.array(segment_indices)
@@ -531,7 +559,7 @@ class RoadEnvironment:
         cumulative_costs = np.cumsum(shuffled_costs)
 
         # Find the index where the cumulative costs exceed the budget
-        cutoff_index = np.searchsorted(cumulative_costs, remaining_budget, side='right')
+        cutoff_index = np.searchsorted(cumulative_costs, remaining_budget, side="right")
 
         # Set the actions that cannot be taken to 0
         zero_indices = indices[cutoff_index:]

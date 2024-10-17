@@ -455,6 +455,7 @@ def test_stationary_deterioration_environment(stationary_deterioration_environme
     )
     test_one_episode(stationary_deterioration_environment)
 
+
 def test_actions_unchanged(toy_environment_2):
     """Test if the actions are not changed by the environment."""
     env = toy_environment_2
@@ -464,13 +465,54 @@ def test_actions_unchanged(toy_environment_2):
     _, _, _, _ = seeded_episode_rollout(env, 42, actions)
     assert actions == actions_copy
 
-def test_budget_non_negative(toy_environment_2):
-    """Test if the budget is always positive."""
+
+def test_budget(toy_environment_2):
+    """
+    Test if the budget is always positive.
+    Test if the budget is reset after the budget renewal time.
+    Test if the budget is decreased by the cost of the actions.
+    """
+
+    def check_budget_positive(env, obs, reward, done, info):
+        assert obs["budget_remaining"] >= 0, "Budget is negative"
+
+    def check_budget_renewed(env, obs, reward, done, info):
+        if obs["budget_time_until_renewal"] % env.budget_renewal_interval == 0:
+            assert (
+                obs["budget_remaining"] == env.budget_amount
+            ), "Budget is not reset after the budget renewal time"
+
+    TEST_EPISODES = 3
+
     env = toy_environment_2
-    obs = env.reset()
-    assert obs["budget_remaining"] >= 0
-    done = False
-    while not done:
-        actions = [np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]]
-        obs, reward, done, info = env.step(actions)
-        assert obs["budget_remaining"] >= 0
+
+    for episode in range(TEST_EPISODES):
+        obs = env.reset()
+        check_budget_positive(env, obs, None, None, None)
+        check_budget_renewed(env, obs, None, None, None)
+        last_budget = obs["budget_remaining"]
+
+        done = False
+        while not done:
+            actions = [
+                np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]
+            ]
+            constrained_actions = env._apply_forced_repair_constraint(
+                [action.copy() for action in actions]
+            )
+            action_cost = env.get_action_cost(constrained_actions)
+
+            returns = env.step(actions)
+            check_budget_renewed(env, *returns)
+            check_budget_positive(env, *returns)
+
+            obs, reward, done, info = returns
+            if (
+                not info["budget_constraints_applied"]
+                and obs["budget_time_until_renewal"] % env.budget_renewal_interval != 0
+            ):
+                assert (
+                    last_budget - action_cost == obs["budget_remaining"]
+                ), "Budget is not decreased by the cost of the actions"
+
+            last_budget = obs["budget_remaining"]
