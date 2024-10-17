@@ -36,6 +36,8 @@ class RoadSegment:
         # shape: A x S x S or A x DR x S x S
         self.deterioration_table = config["maintenance"]["deterioration"]
         self.deterioration_rate_enabled = self.deterioration_table.ndim == 4
+        if self.deterioration_rate_enabled:
+            self.deterioration_rate_max = self.deterioration_table.shape[1]
 
         # observation tables
         # shape: A x S x O
@@ -100,6 +102,8 @@ class RoadSegment:
                 self.deterioration_rate = 0
             else:
                 self.deterioration_rate += 1
+                if self.deterioration_rate > self.deterioration_rate_max:
+                    raise ValueError(f"Deterioration rate exceeded maximum value {self.deterioration_rate_max}")
 
         return reward
 
