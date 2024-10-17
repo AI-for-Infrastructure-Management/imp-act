@@ -429,7 +429,7 @@ class RoadEnvironment:
 
         string += f"Total number of trips: {len(self.trips)}\n\n"
 
-        for (origin, destination, _) in self.trips:
+        for origin, destination, _ in self.trips:
             paths = self.graph.get_all_simple_paths(origin, destination)
 
             if verbose:
@@ -511,59 +511,68 @@ class RoadEnvironment:
         return actions
 
     def _apply_budget_constraint(self, actions):
+        """
+        When actions cannot be taken due to budget constraints, we will
+        set the actions to 0 (do-nothing). However, the cost associated
+        with do-nothing is non-zero, which we will refer to as fallback cost.
+        We will require those to be paid upfront for the budget cycle.
+        When an action other than do-nothing is taken, the cost of
+        that action will be adjusted to account for the fallback costs paid upfront.
+        """
         self.budget_constraint_applied = False
 
         # Collect costs for each action
         edge_indices = []
         segment_indices = []
-        remaining_costs = []
-        total_minimum_cost = 0
-        total_remaining_cost = 0
+        adjusted_costs = []
+        total_upfront_cost = 0  # total cost of do-nothing action for all segments
+        total_adjusted_cost = 0  # total cost (after adjusting for upfront costs)
         for i, edge in enumerate(self.graph.es):
             segments = edge["road_segments"].segments
             edge_actions = actions[i]
 
             for j, segment in enumerate(segments):
-                segment_action = edge_actions[j]
+                action = edge_actions[j]
                 edge_indices.append(i)
                 segment_indices.append(j)
-                minimum_cost = -segment.state_action_reward[0, segment.state]
-                total_minimum_cost += minimum_cost
-                remaining_cost = (
-                    -segment.state_action_reward[segment_action][segment.state]
-                    - minimum_cost
-                )
-                total_remaining_cost += remaining_cost
-                remaining_costs.append(remaining_cost)
+                upfront_cost = -segment.state_action_reward[0, segment.state]
+                action_cost = -segment.state_action_reward[action][segment.state]
+                adjusted_cost = action_cost - upfront_cost
+
+                total_upfront_cost += upfront_cost
+                total_adjusted_cost += adjusted_cost
+                adjusted_costs.append(adjusted_cost)
 
         remaining_budget = (
-            self.current_budget - total_minimum_cost * self._get_budget_remaining_time()
+            self.current_budget - total_upfront_cost * self._get_budget_remaining_time()
         )
 
         assert remaining_budget >= 0, "Remaining budget is negative"
 
-        if total_remaining_cost <= remaining_budget:
-            return actions
+        # if we do not have enough budget to take all actions,
+        # we prioritize actions and select the largest set of actions 
+        # that satisfy the budget
+        if total_adjusted_cost > remaining_budget:
 
-        self.budget_constraint_applied = True
+            self.budget_constraint_applied = True
 
-        edge_indices = np.array(edge_indices)
-        segment_indices = np.array(segment_indices)
-        remaining_costs = np.array(remaining_costs)
+            edge_indices = np.array(edge_indices)
+            segment_indices = np.array(segment_indices)
+            adjusted_costs = np.array(adjusted_costs)
 
-        # Shuffle the costs to randomly select valid actions
-        indices = np.arange(len(remaining_costs))
-        self.random_generator.shuffle(indices)
+            # Shuffle the costs to randomly select valid actions
+            indices = np.arange(len(adjusted_costs))
+            self.random_generator.shuffle(indices)
 
-        shuffled_costs = remaining_costs[indices]
-        cumulative_costs = np.cumsum(shuffled_costs)
+            shuffled_costs = adjusted_costs[indices]
+            cumulative_costs = np.cumsum(shuffled_costs)
 
-        # Find the index where the cumulative costs exceed the budget
-        cutoff_index = np.searchsorted(cumulative_costs, remaining_budget, side="right")
+            # Find the index where the cumulative costs exceed the budget
+            cutoff_index = np.searchsorted(cumulative_costs, remaining_budget, side="right")
 
-        # Set the actions that cannot be taken to 0
-        zero_indices = indices[cutoff_index:]
-        for idx in zero_indices:
-            actions[edge_indices[idx]][segment_indices[idx]] = 0
+            # Set the actions that cannot be taken to 0
+            zero_indices = indices[cutoff_index:]
+            for idx in zero_indices:
+                actions[edge_indices[idx]][segment_indices[idx]] = 0
 
         return actions
