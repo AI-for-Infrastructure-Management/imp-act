@@ -255,7 +255,7 @@ class RoadEnvironment:
         self.budget_amount = config["maintenance"]["budget_amount"]
         assert(type(self.budget_amount) in [int,float])
         self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
-        assert(type(self.budget_amount) == int)
+        assert(type(self.budget_renewal_interval) == int)
 
         # Traffic assignment parameters
         ta_conf = config["traffic"]["traffic_assignment"]
