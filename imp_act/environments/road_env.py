@@ -516,7 +516,7 @@ class RoadEnvironment:
         # Collect costs for each action
         edge_indices = []
         segment_indices = []
-        costs = []
+        remaining_costs = []
         total_minimum_cost = 0
         total_remaining_cost = 0
         for i, edge in enumerate(self.graph.es):
@@ -529,12 +529,12 @@ class RoadEnvironment:
                 segment_indices.append(j)
                 minimum_cost = -segment.state_action_reward[0, segment.state]
                 total_minimum_cost += minimum_cost
-                cost = (
+                remaining_cost = (
                     -segment.state_action_reward[segment_action][segment.state]
                     - minimum_cost
                 )
-                total_remaining_cost += cost
-                costs.append(cost)
+                total_remaining_cost += remaining_cost
+                remaining_costs.append(remaining_cost)
 
         remaining_budget = (
             self.current_budget - total_minimum_cost * self._get_budget_remaining_time()
@@ -549,13 +549,13 @@ class RoadEnvironment:
 
         edge_indices = np.array(edge_indices)
         segment_indices = np.array(segment_indices)
-        costs = np.array(costs)
+        remaining_costs = np.array(remaining_costs)
 
         # Shuffle the costs to randomly select valid actions
-        indices = np.arange(len(costs))
+        indices = np.arange(len(remaining_costs))
         self.random_generator.shuffle(indices)
 
-        shuffled_costs = costs[indices]
+        shuffled_costs = remaining_costs[indices]
         cumulative_costs = np.cumsum(shuffled_costs)
 
         # Find the index where the cumulative costs exceed the budget
