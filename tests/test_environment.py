@@ -4,6 +4,8 @@ import numpy as np
 
 import pytest
 
+from imp_act.environments.road_env import RoadSegment
+
 
 environment_fixtures = [
     "toy_environment_1",
@@ -482,6 +484,17 @@ def test_budget(toy_environment_2):
                 obs["budget_remaining"] == env.budget_amount
             ), "Budget is not reset after the budget renewal time"
 
+    def get_forced_maintenance_actions(env, actions):
+        # Corrective replace action if the worst condition is observed
+        for i, edge in enumerate(env.graph.es):
+            for j, segment in enumerate(edge["road_segments"].segments):
+                if (
+                    segment.observation == segment.number_of_states - 1
+                    or segment.forced_repair_interest_counter > 0
+                ):
+                    actions[i][j] = RoadSegment.ACTION_REPLACE
+        return actions
+
     TEST_EPISODES = 3
 
     env = toy_environment_2
@@ -497,8 +510,8 @@ def test_budget(toy_environment_2):
             actions = [
                 np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]
             ]
-            constrained_actions = env._apply_forced_repair_constraint(
-                [action.copy() for action in actions]
+            constrained_actions = get_forced_maintenance_actions(
+                env, [action.copy() for action in actions]
             )
             action_cost = env.get_action_cost(constrained_actions)
 

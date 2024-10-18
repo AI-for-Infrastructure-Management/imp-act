@@ -39,6 +39,7 @@ observation:
     - [1.00, 0.00, 0.00, 0.00, 0.00]
 reward:
   inspection_campaign_reward: 0
+  forced_repair_interest_rate: 1.01
   state_action_reward:
     type: "list"
     # Shape: A x S

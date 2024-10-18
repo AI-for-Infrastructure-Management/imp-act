@@ -4,6 +4,9 @@ import numpy as np
 
 
 class RoadSegment:
+    ACTION_DO_NOTHING = 0
+    ACTION_REPLACE = 4
+
     def __init__(
         self,
         config,
@@ -49,6 +52,11 @@ class RoadSegment:
             "state_action_reward"
         ]
 
+        # Forced repair interest rate
+        self.forced_repair_interest_rate = config["maintenance"]["reward"][
+            "forced_repair_interest_rate"
+        ]
+
         self.reset()
 
     def reset(self):
@@ -72,7 +80,8 @@ class RoadSegment:
         self.base_travel_time = self.base_travel_time_table[action]
         self.capacity = self.capacity_table[action]
 
-        reward = self.state_action_reward[action][self.state]
+        reward = self.get_action_reward(action)
+
         self.state = next_deterioration_state
 
         self.observation = self.random_generator.choice(
@@ -98,7 +107,7 @@ class RoadSegment:
         self.belief /= np.sum(self.belief)  # normalize
 
         if self.deterioration_rate_enabled:
-            if action == 4:
+            if action == self.ACTION_REPLACE:
                 self.deterioration_rate = 0
             else:
                 self.deterioration_rate += 1
@@ -112,6 +121,7 @@ class RoadSegment:
     def get_initial_state(self):
         # Computing initial state, observation, and belief
         self.deterioration_rate = 0
+        self.forced_repair_interest_counter = 0
         self.belief = np.array(self.initial_damage_prob)
         self.initial_state = self.random_generator.choice(
             np.arange(self.number_of_states),
@@ -120,8 +130,22 @@ class RoadSegment:
         self.state = self.initial_state
         self.observation = self.random_generator.choice(
             np.arange(self.number_of_states),
-            p=self.observation_tables[0][self.state],
+            p=self.observation_tables[self.ACTION_DO_NOTHING][self.state],
         )
+
+    def get_action_reward(self, action):
+        reward = 0
+        if action == self.ACTION_REPLACE:
+            forced_repair_interest = (
+                self.forced_repair_interest_rate**self.forced_repair_interest_counter
+            )
+            reward = (
+                self.state_action_reward[action][self.state] * forced_repair_interest
+            )
+            self.forced_repair_interest_counter = 0
+        else:
+            reward = self.state_action_reward[action][self.state]
+        return reward
 
 
 class RoadEdge:
@@ -495,7 +519,7 @@ class RoadEnvironment:
             edge_actions = actions[i]
             for j, segment in enumerate(segments):
                 segment_action = edge_actions[j]
-                cost = -segment.state_action_reward[segment_action][segment.state]
+                cost = -segment.get_action_reward(segment_action)
                 total_cost += cost
         return total_cost
 
@@ -510,8 +534,12 @@ class RoadEnvironment:
         # Corrective replace action if the worst condition is observed
         for i, edge in enumerate(self.graph.es):
             for j, segment in enumerate(edge["road_segments"].segments):
-                if segment.observation == segment.number_of_states - 1:
-                    actions[i][j] = 4
+                if (
+                    segment.observation == segment.number_of_states - 1
+                    or segment.forced_repair_interest_counter > 0
+                ):
+                    actions[i][j] = RoadSegment.ACTION_REPLACE
+                    segment.forced_repair_interest_counter += 1
         return actions
 
     def _apply_budget_constraint(self, actions):
@@ -539,8 +567,8 @@ class RoadEnvironment:
                 action = edge_actions[j]
                 edge_indices.append(i)
                 segment_indices.append(j)
-                upfront_cost = -segment.state_action_reward[0, segment.state]
-                action_cost = -segment.state_action_reward[action][segment.state]
+                upfront_cost = -segment.get_action_reward(RoadSegment.ACTION_DO_NOTHING)
+                action_cost = -segment.get_action_reward(action)
                 adjusted_cost = action_cost - upfront_cost
 
                 total_upfront_cost += upfront_cost
