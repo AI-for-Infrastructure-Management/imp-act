@@ -15,6 +15,7 @@ environment_fixtures = [
     "large_environment",
 ]
 
+
 def test_return_types(toy_environment_2):
     """Test if the return types of the environment are correct."""
     env = toy_environment_2
@@ -36,6 +37,7 @@ def test_return_types(toy_environment_2):
         "budget_remaining": float,
         "budget_time_until_renewal": int,
     }
+
     def check_obs_types(obs):
         for key, value in obs_types.items():
             assert isinstance(obs[key], value)
@@ -48,6 +50,7 @@ def test_return_types(toy_environment_2):
         actions = [[1] * len(e) for e in obs["edge_observations"]]
         obs, reward, done, info = env.step(actions)
         check_return_types(obs, reward, done, info)
+
 
 def test_increasing_timesteps(toy_environment_2):
     """Test if the environment can run multiple episodes with increasing timesteps."""
