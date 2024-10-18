@@ -409,7 +409,7 @@ def test_segment_volume_to_capacity_ratio_within_resonable_limits(
             _, _, done, _ = env.step(actions)
             for edge in env.graph.es:
                 volume = edge["volume"]
-                for segment in edge["road_segments"].segments:
+                for segment in edge["road_edge"].segments:
                     capacity = segment.capacity
                     if capacity == 0:
                         continue
@@ -427,7 +427,7 @@ def test_segment_volume_to_capacity_ratio_within_resonable_limits(
 def test_stationary_deterioration_environment(stationary_deterioration_environment):
     """Test if the stationary deterioration environment can run one episode."""
     assert (
-        not stationary_deterioration_environment.graph.es[0]["road_segments"]
+        not stationary_deterioration_environment.graph.es[0]["road_edge"]
         .segments[0]
         .deterioration_rate_enabled
     )
