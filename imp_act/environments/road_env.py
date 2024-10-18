@@ -137,6 +137,10 @@ class RoadEdge:
         self.inspection_campaign_reward = config["maintenance"]["reward"][
             "inspection_campaign_reward"
         ]
+        if self.inspection_campaign_reward != 0:
+            raise NotImplementedError(
+                "Inspection campaign reward is not currently implemented with hard budget constraints."
+            )
         self.random_generator = random_generator
         self.bpr_alpha = config["traffic"]["bpr_alpha"]
         self.bpr_beta = config["traffic"]["bpr_beta"]
@@ -550,7 +554,7 @@ class RoadEnvironment:
         assert remaining_budget >= 0, "Remaining budget is negative"
 
         # if we do not have enough budget to take all actions,
-        # we prioritize actions and select the largest set of actions 
+        # we prioritize actions and select the largest set of actions
         # that satisfy the budget
         if total_adjusted_cost > remaining_budget:
 
@@ -568,7 +572,9 @@ class RoadEnvironment:
             cumulative_costs = np.cumsum(shuffled_costs)
 
             # Find the index where the cumulative costs exceed the budget
-            cutoff_index = np.searchsorted(cumulative_costs, remaining_budget, side="right")
+            cutoff_index = np.searchsorted(
+                cumulative_costs, remaining_budget, side="right"
+            )
 
             # Set the actions that cannot be taken to 0
             zero_indices = indices[cutoff_index:]
