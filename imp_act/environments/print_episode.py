@@ -8,7 +8,7 @@ def main():
     print(env.get_count_redundancies_summary())
     print(env.get_edge_traffic_summary())
     env.reset()
-    actions = [[1] * len(e["road_segments"].segments) for e in env.graph.es]
+    actions = [[1] * len(e["road_edge"].segments) for e in env.graph.es]
     done = False
     timestep = 0
     while not done:

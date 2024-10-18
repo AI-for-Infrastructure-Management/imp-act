@@ -256,7 +256,7 @@ class RoadEnvironment:
                 self.graph.vs.find(id=nodes[1]).index,
             )
             graph_edge = self.graph.es[edge_id]
-            graph_edge["road_segments"] = road_edge
+            graph_edge["road_edge"] = road_edge
 
         # Traffic assignment parameters
         ta_conf = config["traffic"]["traffic_assignment"]
@@ -274,7 +274,7 @@ class RoadEnvironment:
         self.timestep = 0
         if reset_edges:
             for edge in self.graph.es:
-                edge["road_segments"].reset()
+                edge["road_edge"].reset()
         return self._get_observation()
 
     def _get_observation(self):
@@ -284,11 +284,11 @@ class RoadEnvironment:
         edge_beliefs = []
         edge_deterioration_rates = []
         for edge in self.graph.es:
-            edge_observations.append(edge["road_segments"].get_observation())
+            edge_observations.append(edge["road_edge"].get_observation())
             edge_deterioration_rates.append(
-                edge["road_segments"].get_deterioration_rate()
+                edge["road_edge"].get_deterioration_rate()
             )
-            edge_beliefs.append(edge["road_segments"].get_beliefs())
+            edge_beliefs.append(edge["road_edge"].get_beliefs())
             edge_nodes.append([edge.source, edge.target])
 
         observations = {
@@ -305,7 +305,7 @@ class RoadEnvironment:
     def _get_states(self):
         edge_states = []
         for edge in self.graph.es:
-            edge_states.append(edge["road_segments"].get_states())
+            edge_states.append(edge["road_edge"].get_states())
 
         return edge_states
 
@@ -315,7 +315,7 @@ class RoadEnvironment:
 
         # Initialize with all-or-nothing assignment
         self.graph.es["travel_time"] = [
-            edge["road_segments"].compute_edge_travel_time(edge["volume"])
+            edge["road_edge"].compute_edge_travel_time(edge["volume"])
             for edge in self.graph.es
         ]
 
@@ -329,7 +329,7 @@ class RoadEnvironment:
         for iteration in range(self.traffic_assignment_max_iterations):
             # Recalculate travel times with current volumes
             self.graph.es["travel_time"] = [
-                edge["road_segments"].compute_edge_travel_time(edge["volume"])
+                edge["road_edge"].compute_edge_travel_time(edge["volume"])
                 for edge in self.graph.es
             ]
 
@@ -357,7 +357,7 @@ class RoadEnvironment:
             )
 
         self.graph.es["travel_time"] = [
-            edge["road_segments"].compute_edge_travel_time(edge["volume"])
+            edge["road_edge"].compute_edge_travel_time(edge["volume"])
             for edge in self.graph.es
         ]
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
@@ -365,7 +365,7 @@ class RoadEnvironment:
     def step(self, actions):
         maintenance_reward = 0
         for i, edge in enumerate(self.graph.es):
-            maintenance_reward += edge["road_segments"].step(actions[i])
+            maintenance_reward += edge["road_edge"].step(actions[i])
 
         total_travel_time = self._get_total_travel_time()
 
@@ -392,8 +392,8 @@ class RoadEnvironment:
     def seed(self, seed):
         self.random_generator = np.random.default_rng(seed)
         for edge in self.graph.es:
-            edge["road_segments"].random_generator = self.random_generator
-            for segment in edge["road_segments"].segments:
+            edge["road_edge"].random_generator = self.random_generator
+            for segment in edge["road_edge"].segments:
                 segment.random_generator = self.random_generator
 
     def get_count_redundancies_summary(self, verbose: bool = True):
@@ -454,7 +454,7 @@ class RoadEnvironment:
             id = edge.index
             volume = edge["volume"]
             travel_time = edge["travel_time"]
-            capacity = sum([seg.capacity for seg in edge["road_segments"].segments])
+            capacity = sum([seg.capacity for seg in edge["road_edge"].segments])
             usage = volume / capacity * 100
             string += f"{id:^5} {int(volume):^5}({usage:^3.1f}%) {travel_time:^15.2f}\n"
 
