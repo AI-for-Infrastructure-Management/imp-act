@@ -285,9 +285,7 @@ class RoadEnvironment:
         edge_deterioration_rates = []
         for edge in self.graph.es:
             edge_observations.append(edge["road_edge"].get_observation())
-            edge_deterioration_rates.append(
-                edge["road_edge"].get_deterioration_rate()
-            )
+            edge_deterioration_rates.append(edge["road_edge"].get_deterioration_rate())
             edge_beliefs.append(edge["road_edge"].get_beliefs())
             edge_nodes.append([edge.source, edge.target])
 
