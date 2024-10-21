@@ -49,6 +49,8 @@ class RoadSegment:
             "state_action_reward"
         ]
 
+        self.forced_repair = False
+
         self.reset()
 
     def reset(self):
@@ -72,7 +74,12 @@ class RoadSegment:
         self.base_travel_time = self.base_travel_time_table[action]
         self.capacity = self.capacity_table[action]
 
-        reward = self.state_action_reward[action][self.state]
+        if self.forced_repair:
+            reward = self.state_action_reward[-1][-1]
+            self.forced_repair = False
+        else:
+            reward = self.state_action_reward[action][self.state]
+
         self.state = next_deterioration_state
 
         self.observation = self.random_generator.choice(
@@ -274,6 +281,7 @@ class RoadEnvironment:
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
 
         self.travel_time_reward_factor = config["traffic"]["travel_time_reward_factor"]
+        self.replacement_cost = config["maintenance"]["reward"]["state_action_reward"][-1][-1]
 
         self.reset(reset_edges=False)
 
@@ -502,8 +510,8 @@ class RoadEnvironment:
     def _apply_action_constraints(self, actions):
         actions = [action.copy() for action in actions]
 
-        actions = self._apply_forced_repair_constraint(actions)
         actions = self._apply_budget_constraint(actions)
+        actions = self._apply_forced_repair_constraint(actions)
         return actions
 
     def _apply_forced_repair_constraint(self, actions):
@@ -512,6 +520,8 @@ class RoadEnvironment:
             for j, segment in enumerate(edge["road_segments"].segments):
                 if segment.observation == segment.number_of_states - 1:
                     actions[i][j] = 4
+                    self.current_budget -= self.replacement_cost
+                    segment.forced_repair = True
         return actions
 
     def _apply_budget_constraint(self, actions):
