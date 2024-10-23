@@ -49,11 +49,11 @@ class RoadSegment:
             "state_action_reward"
         ]
 
-        self.forced_repair = False
-
         self.reset()
 
     def reset(self):
+        self.forced_repair = False
+        self.damaged_obs = 0
         self.get_initial_state()
 
     def step(self, action):
@@ -77,6 +77,7 @@ class RoadSegment:
         if self.forced_repair:
             reward = self.state_action_reward[-1][-1]
             self.forced_repair = False
+            self.damaged_obs = 0
         else:
             reward = self.state_action_reward[action][self.state]
 
@@ -519,9 +520,11 @@ class RoadEnvironment:
         for i, edge in enumerate(self.graph.es):
             for j, segment in enumerate(edge["road_segments"].segments):
                 if segment.observation == segment.number_of_states - 1:
-                    actions[i][j] = 4
-                    self.current_budget -= self.replacement_cost
-                    segment.forced_repair = True
+                    segment.damaged_obs += 1
+                    if segment.damaged_obs > 1:
+                        self.current_budget -= self.replacement_cost
+                        segment.forced_repair = True
+                        actions[i][j] = 4
         return actions
 
     def _apply_budget_constraint(self, actions):
