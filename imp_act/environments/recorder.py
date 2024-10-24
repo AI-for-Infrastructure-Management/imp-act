@@ -1,9 +1,9 @@
 """
 The Recorder class is used to record the interactions of the agent with 
 the environment. It records the observations, actions, rewards, done flags,
-in a "tape". It is a wrapper around the core environment.
+in a "tape". It is a wrapper around the environment.
 
-The tape is a dict for 2 reasons, 
+The tape is a dict for 3 reasons:
     - Each episode can have varying keys, 
         for example, if there is an evaluation at that episode etc.
     - Easy manipulation using pandas,
@@ -16,7 +16,7 @@ import pandas as pd
 
 class Recorder:
     def __init__(self, env):
-        self.core = env
+        self.env = env
         self.init_recorder()
 
     def init_recorder(self):
@@ -29,7 +29,7 @@ class Recorder:
         self.time_step = 0
         self.episode += 1
 
-        obs = self.core.reset()
+        obs = self.env.reset()
 
         # Record
         self.tape[self.episode] = {
@@ -43,7 +43,7 @@ class Recorder:
         return obs
 
     def step(self, action):
-        obs, reward, done, info = self.core.step(action)
+        obs, reward, done, info = self.env.step(action)
 
         # Record
         self.record("obs", obs)
