@@ -33,11 +33,21 @@ class Recorder:
 
         # Record
         self.tape[self.episode] = {
-            "obs": [obs],
+            # lists with 'max_timesteps+1' elements
+            "time_step": [self.time_step],
+            "edge_states": [self.env._get_states()],
+            "edge_observations": [obs["edge_observations"]],
+            "edge_deterioration_rates": [obs["edge_deterioration_rates"]],
+            "edge_beliefs": [obs["edge_beliefs"]],
+            # lists with 'max_timesteps' elements
             "action": [],
             "reward": [],
             "done": [],
-            "info": [],
+            "total_travel_time": [],
+            "travel_times": [],
+            "volumes": [],
+            "reward_elements": [],
+            "actions_taken": [],
         }
 
         return obs
@@ -46,11 +56,19 @@ class Recorder:
         obs, reward, done, info = self.env.step(action)
 
         # Record
-        self.record("obs", obs)
+        self.record("time_step", self.time_step)
+        self.record("edge_states", info["states"])
+        self.record("edge_observations", obs["edge_observations"])
+        self.record("edge_deterioration_rates", obs["edge_deterioration_rates"])
+        self.record("edge_beliefs", obs["edge_beliefs"])
         self.record("action", action)
         self.record("reward", reward)
         self.record("done", done)
-        self.record("info", info)
+        self.record("total_travel_time", info["total_travel_time"])
+        self.record("travel_times", info["travel_times"])
+        self.record("volumes", info["volumes"])
+        self.record("reward_elements", info["reward_elements"])
+        self.record("actions_taken", info["actions_taken"])
 
         self.time_step += 1
 
