@@ -329,7 +329,6 @@ class RolloutPlotter:
             _ax[1].plot(
                 time,
                 plot_data["travel_times"][:, i],
-                label=label,
                 color=colors(i),  # Use distinct color for each line
                 marker="x",  # Optional: add markers to each line
                 linestyle="-",  # Keep lines solid
