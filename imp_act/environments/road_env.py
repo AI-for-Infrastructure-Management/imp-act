@@ -108,7 +108,7 @@ class RoadSegment:
         if self.deterioration_rate_enabled:
             self.deterioration_rate = next_deterioration_rate
 
-        return reward
+        return reward, action
 
     def get_initial_state(self):
         # Computing initial state, observation, and belief
@@ -170,16 +170,18 @@ class RoadEdge:
             raise ValueError("self.segments and actions must have the same length")
 
         reward = 0
+        edge_actions = []
         for segment, action in zip(self.segments, actions):
-            segment_reward = segment.step(action)
+            segment_reward, segment_action = segment.step(action)
             reward += segment_reward
+            edge_actions.append(segment_action)
 
         if 1 in actions:
             reward += self.inspection_campaign_reward
 
         self.update_edge_travel_time_factors()
 
-        return reward
+        return reward, edge_actions
 
     def reset(self, reset_segments=True):
         if reset_segments:
@@ -362,8 +364,11 @@ class RoadEnvironment:
 
     def step(self, actions):
         maintenance_reward = 0
+        actions_taken = []
         for i, edge in enumerate(self.graph.es):
-            maintenance_reward += edge["road_edge"].step(actions[i])
+            _maintenance_reward, edge_actions = edge["road_edge"].step(actions[i])
+            actions_taken.append(edge_actions)
+            maintenance_reward += _maintenance_reward
 
         total_travel_time = self._get_total_travel_time()
 
@@ -383,6 +388,7 @@ class RoadEnvironment:
             "travel_times": self.graph.es["travel_time"],
             "volumes": self.graph.es["volume"],
             "reward_elements": [travel_time_reward, maintenance_reward],
+            "actions_taken": actions_taken,
         }
 
         return observation, reward, self.timestep >= self.max_timesteps, info
@@ -408,7 +414,7 @@ class RoadEnvironment:
 
         string += f"Total number of trips: {len(self.trips)}\n\n"
 
-        for (origin, destination, _) in self.trips:
+        for origin, destination, _ in self.trips:
             paths = self.graph.get_all_simple_paths(origin, destination)
 
             if verbose:
