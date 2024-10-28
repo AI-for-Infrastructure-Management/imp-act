@@ -14,7 +14,8 @@ An optional wrapper to record the agent's interactions with the environment. Thi
 
 Usage:
 ```python
-from imp_act.environments.recorder import Recoder
+from imp_act import make
+from imp_act.environments.recorder import Recorder
 
 env = make("ToyExample-v2")
 recorded_env = Recorder(env)
