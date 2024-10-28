@@ -1,10 +1,10 @@
 """
-The Recorder class is used to record the interactions of the agent with 
-the environment. It records the observations, actions, rewards, done 
+The Recorder class is used to record the interactions of the agent with
+the environment. It records the observations, actions, rewards, done
 flags etc. in "rollout_data". It is a wrapper around the environment.
 
 The rollout_data is a dict for 3 reasons:
-    - Each episode can have varying keys, 
+    - Each episode can have varying keys,
         for example, if there is an evaluation at that episode etc.
     - Easy manipulation using pandas,
     - Easy conversion to csv for storage where it is human readable

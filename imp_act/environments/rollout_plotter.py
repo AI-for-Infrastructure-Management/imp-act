@@ -1,6 +1,7 @@
 from itertools import chain
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.lines import Line2D
 
 from imp_act.environments.recorder import Recorder
@@ -147,7 +148,7 @@ class RolloutPlotter:
             )
 
             # belief
-            colorbar = ax.pcolormesh(
+            ax.pcolormesh(
                 plot_data["time"],
                 np.arange(self.num_damage_states),
                 plot_data["edge_beliefs"][:, :, c].T,
