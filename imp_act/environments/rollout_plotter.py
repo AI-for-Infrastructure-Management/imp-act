@@ -223,7 +223,7 @@ class RolloutPlotter:
         legend_handles += [pcolormesh_proxy]
         if plot_data["component_failures"].any():
             legend_handles += [
-                Line2D([], [], color="red", linestyle="--", label="component failure")
+                Line2D([], [], color="red", linestyle="--", label="unsafe state")
             ]
 
         # Move the legend outside the plot
@@ -340,12 +340,12 @@ class RolloutPlotter:
 
         for ax in _ax:
             ax.set_xlim([-0.5, self.max_timesteps + 0.5])
-            ax.set_xticks(np.arange(0, self.max_timesteps + 1, 10))
+            ax.set_xticks(np.arange(0, self.max_timesteps + 1, 1))
             ax.grid(True, which="both", linestyle="--", linewidth=0.5)
             ax.set_xlabel("Time (s)", fontsize=12)
 
         fig.suptitle("Traffic Data", fontsize=14)
-        fig.legend(loc="upper left", bbox_to_anchor=(1, 1), fontsize=10)
+        fig.legend(loc="center right", bbox_to_anchor=(1.1, 0.5), fontsize=10)
         fig.tight_layout()
 
         if save_kwargs:
