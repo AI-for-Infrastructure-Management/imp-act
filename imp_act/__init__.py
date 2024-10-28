@@ -1,5 +1,6 @@
 from .environments.registry import Registry
-
+from .environments.recorder import Recorder
+from .environments.rollout_plotter import RolloutPlotter
 
 def make(environment_name):
     """Given a registered environment name return a fully initialized environment instance."""
