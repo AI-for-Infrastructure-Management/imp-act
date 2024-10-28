@@ -10,7 +10,7 @@ This directory is organized as follows:
 
 #### Recorder Wrapper
 
-An optional wrapper to record the agent's interactions with the environment. This is useful for analyzing the agent's behavior. The Recoder wrapper is available in the `recorder.py` file, and stores the data in `tape` as dict.
+An optional wrapper to record the agent's interactions with the environment. This is useful for analyzing the agent's behavior. The Recoder wrapper is available in the `recorder.py` file, and stores the data in `rollout_data` as dict.
 
 Usage:
 ```python
@@ -30,6 +30,6 @@ for ep in range(10):
 
         obs, reward, done, info = recorded_env.step(actions)
 
-# convert the tape to a pandas dataframe
-df = recorded_env.tape_to_df()
+# convert the rollout_data to a pandas dataframe
+df = recorded_env.rollout_data_to_df()
 ```

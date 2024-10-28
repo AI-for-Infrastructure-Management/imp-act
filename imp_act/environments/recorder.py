@@ -1,9 +1,9 @@
 """
 The Recorder class is used to record the interactions of the agent with 
-the environment. It records the observations, actions, rewards, done flags,
-in a "tape". It is a wrapper around the environment.
+the environment. It records the observations, actions, rewards, done 
+flags etc. in "rollout_data". It is a wrapper around the environment.
 
-The tape is a dict for 3 reasons:
+The rollout_data is a dict for 3 reasons:
     - Each episode can have varying keys, 
         for example, if there is an evaluation at that episode etc.
     - Easy manipulation using pandas,
@@ -23,7 +23,7 @@ class Recorder:
         self.time_step = 0
         self.episode = -1  # because we increment it at the beginning of reset
 
-        self.tape = {}
+        self.rollout_data = {}
 
     def reset(self):
         self.time_step = 0
@@ -32,7 +32,7 @@ class Recorder:
         obs = self.env.reset()
 
         # Record
-        self.tape[self.episode] = {
+        self.rollout_data[self.episode] = {
             # lists with 'max_timesteps+1' elements
             "time_step": [self.time_step],
             "edge_states": [self.env._get_states()],
@@ -75,13 +75,13 @@ class Recorder:
         return obs, reward, done, info
 
     def record(self, key, value):
-        self.tape[self.episode][key].append(value)
+        self.rollout_data[self.episode][key].append(value)
 
-    def tape_to_df(self):
-        return pd.DataFrame(self.tape).T
+    def rollout_data_to_df(self):
+        return pd.DataFrame(self.rollout_data).T
 
-    def save_tape(self, path):
-        self.tape_to_df().to_csv(path)
+    def save_rollout_data(self, path):
+        self.rollout_data_to_df().to_csv(path)
 
-    def load_tape(self, path):
-        self.tape = pd.read_csv(path).to_dict()
+    def load_rollout_data(self, path):
+        self.rollout_data = pd.read_csv(path).to_dict()
