@@ -497,10 +497,7 @@ def test_budget(toy_environment_2):
             actions = [
                 np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]
             ]
-            constrained_actions = env._apply_forced_repair_constraint(
-                [action.copy() for action in actions]
-            )
-            action_cost = env.get_action_cost(constrained_actions)
+            action_cost = env.get_action_cost(actions)
 
             returns = env.step(actions)
             check_budget_renewed(env, *returns)
@@ -510,6 +507,7 @@ def test_budget(toy_environment_2):
             if (
                 not info["budget_constraints_applied"]
                 and obs["budget_time_until_renewal"] % env.budget_renewal_interval != 0
+                and not info["forced_replace_constraint_applied"]
             ):
                 assert (
                     last_budget - action_cost == obs["budget_remaining"]

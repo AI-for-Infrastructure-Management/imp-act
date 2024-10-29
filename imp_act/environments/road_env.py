@@ -53,9 +53,9 @@ class RoadSegment:
 
     def reset(self):
         self.forced_repair = False
-        self.damaged_obs = 0
-        
-        self.deterioration_rate = 0 
+        self.worst_observation_counter = 0
+
+        self.deterioration_rate = 0
         self.belief = np.array(self.initial_damage_prob)
         self.state = self.random_generator.choice(
             np.arange(self.number_of_states),
@@ -65,7 +65,6 @@ class RoadSegment:
             np.arange(self.number_of_states),
             p=self.observation_tables[0][self.state],
         )
-
 
     def step(self, action):
         # actions: [do-nothing, inspect, minor-repair, major-repair, replacement] = [0, 1, 2, 3, 4]
@@ -88,7 +87,7 @@ class RoadSegment:
         if self.forced_repair:
             reward = self.state_action_reward[-1][-1]
             self.forced_repair = False
-            self.damaged_obs = 0
+            self.worst_observation_counter = 0
         else:
             reward = self.state_action_reward[action][self.state]
 
@@ -127,6 +126,7 @@ class RoadSegment:
                     )
 
         return reward
+
 
 class RoadEdge:
     def __init__(
@@ -215,6 +215,9 @@ class RoadEnvironment:
     ):
         self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = config["maintenance"]["max_timesteps"]
+        self.forced_replace_worst_observation_count = config["maintenance"][
+            "forced_replace_worst_observation_count"
+        ]
 
         self.graph = config["topology"]["graph"]
 
@@ -278,7 +281,6 @@ class RoadEnvironment:
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
 
         self.travel_time_reward_factor = config["traffic"]["travel_time_reward_factor"]
-        self.replacement_cost = config["maintenance"]["reward"]["state_action_reward"][-1][-1]
 
         self.reset(reset_edges=False)
 
@@ -387,8 +389,6 @@ class RoadEnvironment:
         for i, edge in enumerate(self.graph.es):
             maintenance_reward += edge["road_segments"].step(actions[i])
 
-        self.current_budget += maintenance_reward
-
         total_travel_time = self._get_total_travel_time()
 
         travel_time_reward = self.travel_time_reward_factor * (
@@ -411,8 +411,13 @@ class RoadEnvironment:
             "total_travel_time": total_travel_time,
             "travel_times": self.graph.es["travel_time"],
             "volumes": self.graph.es["volume"],
-            "reward_elements": [travel_time_reward, maintenance_reward],
+            "reward_elements": {
+                "travel_time_reward": travel_time_reward,
+                "maintenance_reward": maintenance_reward,
+            },
             "budget_constraints_applied": self.budget_constraint_applied,
+            "forced_replace_constraint_applied": self.forced_replace_constraint_applied,
+            "applied_actions": actions,
         }
 
         return observation, reward, self.timestep >= self.max_timesteps, info
@@ -507,20 +512,27 @@ class RoadEnvironment:
     def _apply_action_constraints(self, actions):
         actions = [action.copy() for action in actions]
 
-        actions = self._apply_budget_constraint(actions)
         actions = self._apply_forced_repair_constraint(actions)
+        actions = self._apply_budget_constraint(actions)
+
         return actions
 
     def _apply_forced_repair_constraint(self, actions):
         # Corrective replace action if the worst condition is observed
+        self.forced_replace_constraint_applied = False
         for i, edge in enumerate(self.graph.es):
             for j, segment in enumerate(edge["road_segments"].segments):
                 if segment.observation == segment.number_of_states - 1:
-                    segment.damaged_obs += 1
-                    if segment.damaged_obs > 1:
-                        self.current_budget -= self.replacement_cost
+                    segment.worst_observation_counter += 1
+                    if (
+                        segment.worst_observation_counter
+                        > self.forced_replace_worst_observation_count
+                    ):
+                        self.forced_replace_constraint_applied = True
                         segment.forced_repair = True
                         actions[i][j] = 4
+                else:
+                    segment.worst_observation_counter = 0
         return actions
 
     def _apply_budget_constraint(self, actions):
@@ -538,33 +550,46 @@ class RoadEnvironment:
         edge_indices = []
         segment_indices = []
         adjusted_costs = []
-        total_upfront_cost = 0  # total cost of do-nothing action for all segments
+        total_upfront_cost = 0  # total minimum cost for all segments
+        total_future_upfront_cost = (
+            0  # total minimum cost for all segments in the future
+        )
         total_adjusted_cost = 0  # total cost (after adjusting for upfront costs)
         for i, edge in enumerate(self.graph.es):
             segments = edge["road_segments"].segments
             edge_actions = actions[i]
 
             for j, segment in enumerate(segments):
-                action = edge_actions[j]
                 edge_indices.append(i)
                 segment_indices.append(j)
-                upfront_cost = -segment.state_action_reward[0, segment.state]
-                action_cost = -segment.state_action_reward[action][segment.state]
+                if segment.forced_repair:  # forced repairs are not part of the budget
+                    upfront_cost = 0
+                    action_cost = 0
+                else:
+                    action = edge_actions[j]
+                    upfront_cost = -segment.state_action_reward[0, segment.state]
+                    action_cost = -segment.state_action_reward[action][segment.state]
+
+                future_upfront_cost = -segment.state_action_reward[0, segment.state]
+
                 adjusted_cost = action_cost - upfront_cost
 
                 total_upfront_cost += upfront_cost
+                total_future_upfront_cost += future_upfront_cost
                 total_adjusted_cost += adjusted_cost
                 adjusted_costs.append(adjusted_cost)
 
         remaining_budget = (
-            self.current_budget - total_upfront_cost * self._get_budget_remaining_time()
+            self.current_budget
+            - total_upfront_cost
+            - total_future_upfront_cost * (self._get_budget_remaining_time() - 1)
         )
 
         assert remaining_budget >= 0, "Remaining budget is negative"
 
         # if we do not have enough budget to take all actions,
-        # we prioritize actions and select the largest set of actions
-        # that satisfy the budget
+        # we prioritize actions and select a random possible set of actions
+        # that satisfies the budget
         if total_adjusted_cost > remaining_budget:
 
             self.budget_constraint_applied = True
@@ -587,7 +612,10 @@ class RoadEnvironment:
 
             # Set the actions that cannot be taken to 0
             zero_indices = indices[cutoff_index:]
+            adjusted_costs[zero_indices] = 0
             for idx in zero_indices:
                 actions[edge_indices[idx]][segment_indices[idx]] = 0
+
+        self.current_budget -= total_upfront_cost + np.sum(adjusted_costs)
 
         return actions
