@@ -14,10 +14,32 @@ environment_fixtures = [
 ]
 
 
-def test_observation_keys(toy_environment_1):
-    """Test if the observation dictionary has the correct keys in reset and step functions."""
+def test_return_types(toy_environment_2):
+    """Test if the return types of the environment are correct."""
+    env = toy_environment_2
 
-    env = toy_environment_1
+    def check_return_types(obs, reward, done, info):
+        assert isinstance(obs, dict)
+        assert isinstance(reward, float)
+        assert isinstance(done, bool)
+        assert isinstance(info, dict)
+        check_obs_types(obs)
+
+    obs_types = {
+        "adjacency_matrix": np.ndarray,
+        "edge_observations": list,
+        "edge_deterioration_rates": list,
+        "edge_beliefs": list,
+        "edge_nodes": list,
+        "time_step": int,
+        "budget_remaining": float,
+        "budget_time_until_renewal": int,
+    }
+
+    def check_obs_types(obs):
+        for key, value in obs_types.items():
+            assert isinstance(obs[key], value)
+
     obs = env.reset()
 
     keys = [
@@ -30,12 +52,11 @@ def test_observation_keys(toy_environment_1):
     for key in keys:
         assert key in obs.keys()
 
-    actions = [[1] * len(e) for e in obs["edge_observations"]]
-    obs, cost, done, info = env.step(actions)
-
-    for key in keys:
-        assert key in obs.keys()
-
+    done = False
+    while not done:
+        actions = [[1] * len(e) for e in obs["edge_observations"]]
+        obs, reward, done, info = env.step(actions)
+        check_return_types(obs, reward, done, info)
 
 def test_increasing_timesteps(toy_environment_2):
     """Test if the environment can run multiple episodes with increasing timesteps."""
