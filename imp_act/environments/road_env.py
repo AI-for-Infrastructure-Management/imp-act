@@ -54,7 +54,18 @@ class RoadSegment:
     def reset(self):
         self.forced_repair = False
         self.damaged_obs = 0
-        self.get_initial_state()
+        
+        self.deterioration_rate = 0 
+        self.belief = np.array(self.initial_damage_prob)
+        self.state = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            p=self.initial_damage_prob,
+        )
+        self.observation = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            p=self.observation_tables[0][self.state],
+        )
+
 
     def step(self, action):
         # actions: [do-nothing, inspect, minor-repair, major-repair, replacement] = [0, 1, 2, 3, 4]
@@ -116,21 +127,6 @@ class RoadSegment:
                     )
 
         return reward
-
-    def get_initial_state(self):
-        # Computing initial state, observation, and belief
-        self.deterioration_rate = 0
-        self.belief = np.array(self.initial_damage_prob)
-        self.initial_state = self.random_generator.choice(
-            np.arange(self.number_of_states),
-            p=self.initial_damage_prob,
-        )
-        self.state = self.initial_state
-        self.observation = self.random_generator.choice(
-            np.arange(self.number_of_states),
-            p=self.observation_tables[0][self.state],
-        )
-
 
 class RoadEdge:
     def __init__(
