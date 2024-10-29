@@ -58,6 +58,7 @@ def test_return_types(toy_environment_2):
         obs, reward, done, info = env.step(actions)
         check_return_types(obs, reward, done, info)
 
+
 def test_increasing_timesteps(toy_environment_2):
     """Test if the environment can run multiple episodes with increasing timesteps."""
 

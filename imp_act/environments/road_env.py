@@ -54,7 +54,7 @@ class RoadSegment:
         self.terminal_state_reward = config["maintenance"]["reward"][
             "terminal_state_reward"
         ]
-        
+
         self.reset()
 
     def reset(self):
