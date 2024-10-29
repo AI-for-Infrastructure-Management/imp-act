@@ -51,4 +51,4 @@ reward:
     - [-35_000_000, -35_000_000,  -35_000_000,  -35_000_000,  -42_000_000 ]
 budget_amount: 12_000_000
 budget_renewal_interval: 5
-forced_replace_worst_observation_count: 2
+forced_replace_worst_observation_count: 1
