@@ -614,7 +614,8 @@ class RoadEnvironment:
             zero_indices = indices[cutoff_index:]
             adjusted_costs[zero_indices] = 0
             for idx in zero_indices:
-                actions[edge_indices[idx]][segment_indices[idx]] = 0
+                if not self.graph.es[edge_indices[idx]]["road_segments"].segments[segment_indices[idx]].forced_repair:
+                    actions[edge_indices[idx]][segment_indices[idx]] = 0
 
         self.current_budget -= total_upfront_cost + np.sum(adjusted_costs)
 
