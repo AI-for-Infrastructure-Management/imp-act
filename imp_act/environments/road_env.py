@@ -383,7 +383,7 @@ class RoadEnvironment:
         self.timestep += 1
 
         info = {
-            "states": self._get_states(),
+            "edge_states": self._get_states(),
             "total_travel_time": total_travel_time,
             "travel_times": self.graph.es["travel_time"],
             "volumes": self.graph.es["volume"],
