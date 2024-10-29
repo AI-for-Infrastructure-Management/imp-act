@@ -477,13 +477,13 @@ def test_stationary_deterioration_environment(stationary_deterioration_environme
     test_one_episode(stationary_deterioration_environment)
 
 
-def test_actions_unchanged(toy_environment_2):
+def test_actions_unchanged(toy_environment_2, test_seed_1):
     """Test if the actions are not changed by the environment."""
     env = toy_environment_2
     obs = env.reset()
     actions = [np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]]
     actions_copy = actions.copy()
-    _, _, _, _ = seeded_episode_rollout(env, 42, actions)
+    _, _, _, _ = seeded_episode_rollout(env, test_seed_1, actions)
     assert actions == actions_copy
 
 
