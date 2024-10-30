@@ -6,7 +6,7 @@ This directory is organized as follows:
 
 ## Wrappers
 
-<img src="wrappers.png" alt="images/wrappers" width="50%">
+<img src="images/wrappers.png" alt="wrappers" width="50%">
 
 ### Recorder Wrapper
 
