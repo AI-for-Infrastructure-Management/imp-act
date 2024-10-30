@@ -13,3 +13,6 @@ def list_environments():
     """List all registered environments."""
     registry = Registry()
     return list(registry)
+
+
+__all__ = ["Recorder", "Registry", "RolloutPlotter", "make", "list_environments"]
