@@ -499,7 +499,7 @@ class RoadEnvironment:
     def get_action_cost(self, actions):
         total_cost = 0
         for i, edge in enumerate(self.graph.es):
-            segments = edge["road_segments"].segments
+            segments = edge["road_edge"].segments
             edge_actions = actions[i]
             for j, segment in enumerate(segments):
                 segment_action = edge_actions[j]
@@ -519,7 +519,7 @@ class RoadEnvironment:
         # Corrective replace action if the worst condition is observed
         self.forced_replace_constraint_applied = False
         for i, edge in enumerate(self.graph.es):
-            for j, segment in enumerate(edge["road_segments"].segments):
+            for j, segment in enumerate(edge["road_edge"].segments):
                 if segment.observation == segment.number_of_states - 1:
                     segment.worst_observation_counter += 1
                     if (
@@ -554,7 +554,7 @@ class RoadEnvironment:
         )
         total_adjusted_cost = 0  # total cost (after adjusting for upfront costs)
         for i, edge in enumerate(self.graph.es):
-            segments = edge["road_segments"].segments
+            segments = edge["road_edge"].segments
             edge_actions = actions[i]
 
             for j, segment in enumerate(segments):
@@ -613,7 +613,7 @@ class RoadEnvironment:
             adjusted_costs[zero_indices] = 0
             for idx in zero_indices:
                 if (
-                    not self.graph.es[edge_indices[idx]]["road_segments"]
+                    not self.graph.es[edge_indices[idx]]["road_edge"]
                     .segments[segment_indices[idx]]
                     .forced_repair
                 ):
