@@ -89,6 +89,7 @@ class RolloutPlotter:
 
         self._plot_deterioration(data, save_kwargs=save_kwargs)
         self._plot_travel_time_and_rewards(data, save_kwargs=save_kwargs)
+        self._plot_budget(data, save_kwargs=save_kwargs)
         self._plot_traffic_volume_and_travel_times(data, save_kwargs=save_kwargs)
 
     def _plot_deterioration(self, plot_data, save_kwargs=None):
@@ -290,6 +291,50 @@ class RolloutPlotter:
 
         if save_kwargs is not None:
             fig.savefig(**save_kwargs)
+
+    def _plot_budget(self, plot_data, save_kwargs=None):
+
+        time = plot_data["time_step"]
+
+        fig, ax = plt.subplots(1, 1, figsize=(12, 5), sharex=True)
+
+        percent_remaining = plot_data["budget_remaining"] / self.env.budget_amount * 100
+
+        ax.plot(time, percent_remaining, color="blue", alpha=0.5)
+
+        for t in plot_data["time_step"][:-1]:
+            # draw vertical lines for budget renewals
+            if t % self.env.budget_renewal_interval == 0:
+                ax.axvline(t, color="green", linestyle="--", alpha=0.2)
+
+            # add a cross marker for forced replace constraint
+            if plot_data["forced_replace_constraint_applied"][t]:
+                ax.plot(t, 102, "x", color="red")
+
+        ax.set_title("Budget Remaining", fontsize=14)
+        ax.set_ylabel("% budget remaining", fontsize=12)
+        ax.set_ylim([0, 105])
+        ax.set_yticks(np.arange(0, 101, 10))
+        ax.set_xlabel("time", fontsize=12)
+        ax.set_xlim([-0.5, self.max_timesteps + 0.5])
+        ax.set_xticks(np.arange(0, self.max_timesteps + 1, 10))
+
+        # make a custom legend
+        custom_lines = [
+            Line2D([], [], color="blue", alpha=0.5, label="budget remaining"),
+            Line2D(
+                [], [], color="black", linestyle="--", alpha=0.2, label="budget renewal"
+            ),
+            Line2D([], [], color="red", marker="x", label="forced replace constraint"),
+        ]
+
+        fig.legend(
+            handles=custom_lines,
+            loc="lower center",
+            fontsize=10,
+            bbox_to_anchor=(1, 0.5),
+        )
+        ax.grid()
 
     def _plot_traffic_volume_and_travel_times(self, plot_data, save_kwargs=None):
 
