@@ -3,6 +3,7 @@ from itertools import chain
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
+import matplotlib.patches as patches
 
 from imp_act.environments.recorder import Recorder
 
@@ -32,67 +33,52 @@ class RolloutPlotter:
         return list(chain(*lst))
 
     def _preprocess_episode_data(self, episode_data):
+        """
+        N: number of components
+        T: max timesteps
+        S: number of damage states
+        E: number of edges
+        """
 
         # stencil for the plotting data
         plot_data = {
-            "time": np.arange(0, self.max_timesteps + 1),
-            "edge_states": np.empty((self.max_timesteps + 1, self.num_components)),
-            "edge_observations": np.empty(
-                (self.max_timesteps + 1, self.num_components)
-            ),
-            "edge_beliefs": np.empty(
-                (self.max_timesteps + 1, self.num_damage_states, self.num_components)
-            ),
-            "actions": np.ones((self.max_timesteps, self.num_components), dtype=int)
-            * -1,
-            "applied_actions": np.ones(
-                (self.max_timesteps, self.num_components), dtype=int
-            )
-            * -1,
+            "time_step": None,  # shape: (T,)
+            "edge_states": None,  # shape: (T+1, N)
+            "edge_observations": None,  # shape: (T+1, N)
+            "edge_beliefs": None,  # shape: (T+1, S, N)
+            "action": None,  # shape: (T, N)
+            "applied_actions": None,  # shape: (T, N)
             "component_failures": np.zeros(
                 (self.max_timesteps + 1, self.num_components)
             ),
-            "total_travel_time": np.empty(self.max_timesteps),
-            "travel_times": np.empty((self.max_timesteps, self.num_components)),
-            "rewards": np.empty(self.max_timesteps),
-            "reward_travel_time": np.empty(self.max_timesteps),
-            "reward_maintenance": np.empty(self.max_timesteps),
-            "traffic_volumes": np.empty((self.max_timesteps, self.env.graph.ecount())),
+            "total_travel_time": None,  # shape: (T,)
+            "travel_times": None,  # shape: (T, E)
+            "reward": None,  # shape: (T,)
+            "travel_time_reward": np.zeros(self.max_timesteps),  # shape: (T,)
+            "maintenance_reward": np.zeros(self.max_timesteps),  # shape: (T,)
+            "budget_remaining": None,  # shape: (T+1,)
+            "budget_constraints_applied": None,  # shape: (T,)
+            "forced_replace_constraint_applied": None,  # shape: (T,)
+            "traffic_volumes": None,  # shape: (T, E)
             "episode_cost": 0,
         }
 
-        # lists with 'max_timesteps+1' elements
+        for key in plot_data.keys():
+            if key in episode_data:
+                plot_data[key] = np.array(episode_data[key]).squeeze()
+
+        for t in range(self.max_timesteps):
+            _x = episode_data["reward_elements"][t]
+            plot_data["maintenance_reward"][t] = _x["maintenance_reward"]
+            plot_data["travel_time_reward"][t] = _x["travel_time_reward"]
+
         for t in range(self.max_timesteps + 1):
-
-            plot_data["edge_states"][t, :] = self.flatten(
-                episode_data["edge_states"][t]
-            )
-            plot_data["edge_observations"][t, :] = self.flatten(
-                episode_data["edge_observations"][t]
-            )
-            plot_data["edge_beliefs"][t, :, :] = (
-                np.array(episode_data["edge_beliefs"][t]).squeeze().T
-            )
-
             # if damage state is self.num_damage_states, then component has failed
             plot_data["component_failures"][t, :] = plot_data["edge_states"][t, :] == (
                 self.num_damage_states - 1
             )
 
-        # lists with 'max_timesteps' elements
-        for t in range(self.max_timesteps):
-            plot_data["actions"][t, :] = self.flatten(episode_data["action"][t])
-            plot_data["applied_actions"][t, :] = self.flatten(
-                episode_data["applied_actions"][t]
-            )
-            plot_data["rewards"][t] = episode_data["reward"][t]
-            plot_data["reward_travel_time"][t] = episode_data["reward_elements"][t][0]
-            plot_data["reward_maintenance"][t] = episode_data["reward_elements"][t][1]
-            plot_data["total_travel_time"][t] = episode_data["total_travel_time"][t]
-            plot_data["travel_times"][t, :] = episode_data["travel_times"][t]
-            plot_data["traffic_volumes"][t, :] = episode_data["volumes"][t]
-
-        plot_data["episode_cost"] = -np.sum(plot_data["rewards"])
+        plot_data["episode_cost"] = -np.sum(plot_data["reward"])
 
         return plot_data
 
@@ -127,7 +113,7 @@ class RolloutPlotter:
 
             # state
             (h_true_state,) = ax.plot(
-                plot_data["time"],
+                plot_data["time_step"],
                 plot_data["edge_states"][:, c],
                 "-",
                 label="true state",
@@ -138,7 +124,7 @@ class RolloutPlotter:
 
             # observation
             (h_obs,) = ax.plot(
-                plot_data["time"],
+                plot_data["time_step"],
                 plot_data["edge_observations"][:, c],
                 "-o",
                 label="observation",
@@ -149,9 +135,9 @@ class RolloutPlotter:
 
             # belief
             ax.pcolormesh(
-                plot_data["time"],
+                plot_data["time_step"],
                 np.arange(self.num_damage_states),
-                plot_data["edge_beliefs"][:, :, c].T,
+                plot_data["edge_beliefs"][:, c, :].T,
                 shading="nearest",
                 cmap="binary",  # _r for reversed
                 alpha=0.2,
@@ -165,11 +151,11 @@ class RolloutPlotter:
                 for t in np.where(plot_data["component_failures"][:, c])[0]:
                     ax.axvline(t, color="red", linestyle="--", alpha=0.5)
 
-            import matplotlib.patches as patches
-
             # Highlight the last timestep with hatching
-            last_timestep_start = plot_data["time"][-1] - 0.5
-            last_timestep_width = plot_data["time"][-1] - plot_data["time"][-2]
+            last_timestep_start = plot_data["time_step"][-1] - 0.5
+            last_timestep_width = (
+                plot_data["time_step"][-1] - plot_data["time_step"][-2]
+            )
             rect = patches.Rectangle(
                 (last_timestep_start, -0.5),  # Lower left corner of the rectangle
                 last_timestep_width,  # Width of the rectangle (covers last timestep)
@@ -244,7 +230,7 @@ class RolloutPlotter:
 
     def _plot_travel_time_and_rewards(self, plot_data, save_kwargs=None):
 
-        time = plot_data["time"][:-1]
+        time = plot_data["time_step"][:-1]
 
         fig, _ax = plt.subplots(1, 3, figsize=(18, 5))
 
@@ -267,15 +253,15 @@ class RolloutPlotter:
 
         # plot rewards
         ax = _ax[1]
-        ax.plot(time, plot_data["rewards"], label="total reward")
+        ax.plot(time, plot_data["reward"], label="total reward")
         ax.plot(
             time,
-            plot_data["reward_travel_time"],
+            plot_data["travel_time_reward"],
             label="travel time reward",
         )
         ax.plot(
             time,
-            plot_data["reward_maintenance"],
+            plot_data["maintenance_reward"],
             label="maintenance reward",
         )
         ax.set_ylabel("reward", fontsize=12)
@@ -290,8 +276,8 @@ class RolloutPlotter:
 
         # plot reward pie chart
         ax = _ax[2]
-        x1 = -plot_data["reward_travel_time"].sum()
-        x2 = -plot_data["reward_maintenance"].sum()
+        x1 = -plot_data["travel_time_reward"].sum()
+        x2 = -plot_data["maintenance_reward"].sum()
         ax.pie(
             [x1, x2],
             labels=["travel time", "maintenance"],
@@ -307,7 +293,7 @@ class RolloutPlotter:
 
     def _plot_traffic_volume_and_travel_times(self, plot_data, save_kwargs=None):
 
-        time = plot_data["time"][:-1]
+        time = plot_data["time_step"][:-1]
 
         fig, _ax = plt.subplots(2, 1, figsize=(12, 5), sharex=True)
 
