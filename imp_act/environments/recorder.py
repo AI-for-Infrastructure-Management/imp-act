@@ -17,9 +17,12 @@ import pandas as pd
 class Recorder:
     def __init__(self, env):
         self.env = env
-        self.episode = -1  # because we increment it at the beginning of reset
-        self.rollout_data = {}
+        self.initialize_recorder()
         self.record_exclude_keys = ["adjacency_matrix"]
+
+    def initialize_recorder(self):
+        self.episode = -1
+        self.rollout_data = {}
 
     def reset(self):
         self.episode += 1
