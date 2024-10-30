@@ -36,6 +36,8 @@ class RoadSegment:
         # shape: A x S x S or A x DR x S x S
         self.deterioration_table = config["maintenance"]["deterioration"]
         self.deterioration_rate_enabled = self.deterioration_table.ndim == 4
+        if self.deterioration_rate_enabled:
+            self.deterioration_rate_max = self.deterioration_table.shape[1]
 
         # observation tables
         # shape: A x S x O
@@ -50,14 +52,22 @@ class RoadSegment:
         self.reset()
 
     def reset(self):
-        self.get_initial_state()
+        self.forced_repair = False
+        self.worst_observation_counter = 0
+
+        self.deterioration_rate = 0
+        self.belief = np.array(self.initial_damage_prob)
+        self.state = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            p=self.initial_damage_prob,
+        )
+        self.observation = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            p=self.observation_tables[0][self.state],
+        )
 
     def step(self, action):
         # actions: [do-nothing, inspect, minor-repair, major-repair, replacement] = [0, 1, 2, 3, 4]
-
-        # Corrective replace action if the worst condition is observed
-        if self.observation == self.number_of_states - 1:
-            action = 4
 
         if self.deterioration_rate_enabled:
             transition_probabilities = self.deterioration_table[action][
@@ -71,16 +81,16 @@ class RoadSegment:
             p=transition_probabilities,
         )
 
-        if self.deterioration_rate_enabled:
-            if action == 4:
-                next_deterioration_rate = 0
-            else:
-                next_deterioration_rate = self.deterioration_rate + 1
-
         self.base_travel_time = self.base_travel_time_table[action]
         self.capacity = self.capacity_table[action]
 
-        reward = self.state_action_reward[action][self.state]
+        if self.forced_repair:
+            reward = self.state_action_reward[-1][-1]
+            self.forced_repair = False
+            self.worst_observation_counter = 0
+        else:
+            reward = self.state_action_reward[action][self.state]
+
         self.state = next_deterioration_state
 
         self.observation = self.random_generator.choice(
@@ -106,23 +116,16 @@ class RoadSegment:
         self.belief /= np.sum(self.belief)  # normalize
 
         if self.deterioration_rate_enabled:
-            self.deterioration_rate = next_deterioration_rate
+            if action == 4:
+                self.deterioration_rate = 0
+            else:
+                self.deterioration_rate += 1
+                if self.deterioration_rate > self.deterioration_rate_max:
+                    raise ValueError(
+                        f"Deterioration rate exceeded maximum value {self.deterioration_rate_max}"
+                    )
 
-        return reward, action
-
-    def get_initial_state(self):
-        # Computing initial state, observation, and belief
-        self.deterioration_rate = 0
-        self.belief = np.array(self.initial_damage_prob)
-        self.initial_state = self.random_generator.choice(
-            np.arange(self.number_of_states),
-            p=self.initial_damage_prob,
-        )
-        self.state = self.initial_state
-        self.observation = self.random_generator.choice(
-            np.arange(self.number_of_states),
-            p=self.observation_tables[0][self.state],
-        )
+        return reward
 
 
 class RoadEdge:
@@ -138,6 +141,10 @@ class RoadEdge:
         self.inspection_campaign_reward = config["maintenance"]["reward"][
             "inspection_campaign_reward"
         ]
+        if self.inspection_campaign_reward != 0:
+            raise NotImplementedError(
+                "Inspection campaign reward is not currently implemented with hard budget constraints."
+            )
         self.random_generator = random_generator
         self.bpr_alpha = config["traffic"]["bpr_alpha"]
         self.bpr_beta = config["traffic"]["bpr_beta"]
@@ -170,18 +177,16 @@ class RoadEdge:
             raise ValueError("self.segments and actions must have the same length")
 
         reward = 0
-        edge_actions = []
         for segment, action in zip(self.segments, actions):
-            segment_reward, segment_action = segment.step(action)
+            segment_reward = segment.step(action)
             reward += segment_reward
-            edge_actions.append(segment_action)
 
         if 1 in actions:
             reward += self.inspection_campaign_reward
 
         self.update_edge_travel_time_factors()
 
-        return reward, edge_actions
+        return reward
 
     def reset(self, reset_segments=True):
         if reset_segments:
@@ -210,6 +215,9 @@ class RoadEnvironment:
     ):
         self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = config["maintenance"]["max_timesteps"]
+        self.forced_replace_worst_observation_count = config["maintenance"][
+            "forced_replace_worst_observation_count"
+        ]
 
         self.graph = config["topology"]["graph"]
 
@@ -260,6 +268,12 @@ class RoadEnvironment:
             graph_edge = self.graph.es[edge_id]
             graph_edge["road_edge"] = road_edge
 
+        # Budget parameters
+        self.budget_amount = config["maintenance"]["budget_amount"]
+        assert type(self.budget_amount) in [int, float]
+        self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
+        assert type(self.budget_renewal_interval) == int
+
         # Traffic assignment parameters
         ta_conf = config["traffic"]["traffic_assignment"]
         self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
@@ -274,6 +288,8 @@ class RoadEnvironment:
 
     def reset(self, reset_edges=True):
         self.timestep = 0
+        self.current_budget = self.budget_amount
+        self.budget_constraint_applied = False
         if reset_edges:
             for edge in self.graph.es:
                 edge["road_edge"].reset()
@@ -298,6 +314,8 @@ class RoadEnvironment:
             "edge_beliefs": edge_beliefs,
             "edge_nodes": edge_nodes,
             "time_step": self.timestep,
+            "budget_remaining": self.current_budget,
+            "budget_time_until_renewal": self._get_budget_remaining_time(),
         }
 
         return observations
@@ -363,12 +381,11 @@ class RoadEnvironment:
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
+        actions = self._apply_action_constraints(actions)
+
         maintenance_reward = 0
-        actions_taken = []
         for i, edge in enumerate(self.graph.es):
-            _maintenance_reward, edge_actions = edge["road_edge"].step(actions[i])
-            actions_taken.append(edge_actions)
-            maintenance_reward += _maintenance_reward
+            maintenance_reward += edge["road_edge"].step(actions[i])
 
         total_travel_time = self._get_total_travel_time()
 
@@ -378,17 +395,27 @@ class RoadEnvironment:
 
         reward = maintenance_reward + travel_time_reward
 
-        observation = self._get_observation()
+        # Update variables after step is complete for up to date observations
 
         self.timestep += 1
+
+        if self.timestep % self.budget_renewal_interval == 0:
+            self.current_budget = self.budget_amount
+
+        observation = self._get_observation()
 
         info = {
             "edge_states": self._get_states(),
             "total_travel_time": total_travel_time,
             "travel_times": self.graph.es["travel_time"],
             "volumes": self.graph.es["volume"],
-            "reward_elements": [travel_time_reward, maintenance_reward],
-            "actions_taken": actions_taken,
+            "reward_elements": {
+                "travel_time_reward": travel_time_reward,
+                "maintenance_reward": maintenance_reward,
+            },
+            "budget_constraints_applied": self.budget_constraint_applied,
+            "forced_replace_constraint_applied": self.forced_replace_constraint_applied,
+            "applied_actions": actions,
         }
 
         return observation, reward, self.timestep >= self.max_timesteps, info
@@ -463,3 +490,135 @@ class RoadEnvironment:
             string += f"{id:^5} {int(volume):^5}({usage:^3.1f}%) {travel_time:^15.2f}\n"
 
         return string
+
+    def _get_budget_remaining_time(self):
+        return (
+            self.budget_renewal_interval - self.timestep % self.budget_renewal_interval
+        )
+
+    def get_action_cost(self, actions):
+        total_cost = 0
+        for i, edge in enumerate(self.graph.es):
+            segments = edge["road_edge"].segments
+            edge_actions = actions[i]
+            for j, segment in enumerate(segments):
+                segment_action = edge_actions[j]
+                cost = -segment.state_action_reward[segment_action][segment.state]
+                total_cost += cost
+        return total_cost
+
+    def _apply_action_constraints(self, actions):
+        actions = [action.copy() for action in actions]
+
+        actions = self._apply_forced_repair_constraint(actions)
+        actions = self._apply_budget_constraint(actions)
+
+        return actions
+
+    def _apply_forced_repair_constraint(self, actions):
+        # Corrective replace action if the worst condition is observed
+        self.forced_replace_constraint_applied = False
+        for i, edge in enumerate(self.graph.es):
+            for j, segment in enumerate(edge["road_edge"].segments):
+                if segment.observation == segment.number_of_states - 1:
+                    segment.worst_observation_counter += 1
+                    if (
+                        segment.worst_observation_counter
+                        > self.forced_replace_worst_observation_count
+                    ):
+                        self.forced_replace_constraint_applied = True
+                        segment.forced_repair = True
+                        actions[i][j] = 4
+                else:
+                    segment.worst_observation_counter = 0
+        return actions
+
+    def _apply_budget_constraint(self, actions):
+        """
+        When actions cannot be taken due to budget constraints, we will
+        set the actions to 0 (do-nothing). However, the cost associated
+        with do-nothing is non-zero, which we will refer to as fallback cost.
+        We will require those to be paid upfront for the budget cycle.
+        When an action other than do-nothing is taken, the cost of
+        that action will be adjusted to account for the fallback costs paid upfront.
+        """
+        self.budget_constraint_applied = False
+
+        # Collect costs for each action
+        edge_indices = []
+        segment_indices = []
+        adjusted_costs = []
+        total_upfront_cost = 0  # total minimum cost for all segments
+        total_future_upfront_cost = (
+            0  # total minimum cost for all segments in the future
+        )
+        total_adjusted_cost = 0  # total cost (after adjusting for upfront costs)
+        for i, edge in enumerate(self.graph.es):
+            segments = edge["road_edge"].segments
+            edge_actions = actions[i]
+
+            for j, segment in enumerate(segments):
+                edge_indices.append(i)
+                segment_indices.append(j)
+                if segment.forced_repair:  # forced repairs are not part of the budget
+                    upfront_cost = 0
+                    action_cost = 0
+                else:
+                    action = edge_actions[j]
+                    upfront_cost = -segment.state_action_reward[0, segment.state]
+                    action_cost = -segment.state_action_reward[action][segment.state]
+
+                future_upfront_cost = -segment.state_action_reward[0, segment.state]
+
+                adjusted_cost = action_cost - upfront_cost
+
+                total_upfront_cost += upfront_cost
+                total_future_upfront_cost += future_upfront_cost
+                total_adjusted_cost += adjusted_cost
+                adjusted_costs.append(adjusted_cost)
+
+        remaining_budget = (
+            self.current_budget
+            - total_upfront_cost
+            - total_future_upfront_cost * (self._get_budget_remaining_time() - 1)
+        )
+
+        assert remaining_budget >= 0, "Remaining budget is negative"
+
+        # if we do not have enough budget to take all actions,
+        # we prioritize actions and select a random possible set of actions
+        # that satisfies the budget
+        if total_adjusted_cost > remaining_budget:
+
+            self.budget_constraint_applied = True
+
+            edge_indices = np.array(edge_indices)
+            segment_indices = np.array(segment_indices)
+            adjusted_costs = np.array(adjusted_costs)
+
+            # Shuffle the costs to randomly select valid actions
+            indices = np.arange(len(adjusted_costs))
+            self.random_generator.shuffle(indices)
+
+            shuffled_costs = adjusted_costs[indices]
+            cumulative_costs = np.cumsum(shuffled_costs)
+
+            # Find the index where the cumulative costs exceed the budget
+            cutoff_index = np.searchsorted(
+                cumulative_costs, remaining_budget, side="right"
+            )
+
+            # Set the actions that cannot be taken to 0
+            zero_indices = indices[cutoff_index:]
+            adjusted_costs[zero_indices] = 0
+            for idx in zero_indices:
+                if (
+                    not self.graph.es[edge_indices[idx]]["road_edge"]
+                    .segments[segment_indices[idx]]
+                    .forced_repair
+                ):
+                    actions[edge_indices[idx]][segment_indices[idx]] = 0
+
+        self.current_budget -= total_upfront_cost + np.sum(adjusted_costs)
+
+        return actions

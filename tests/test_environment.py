@@ -37,6 +37,28 @@ def test_observation_keys(toy_environment_1):
         assert key in obs.keys()
 
 
+def test_increasing_timesteps(toy_environment_2):
+    """Test if the environment can run multiple episodes with increasing timesteps."""
+
+    TEST_EPISODES = 3
+
+    env = toy_environment_2
+
+    for episode in range(TEST_EPISODES):
+        timestep = 0
+        obs = env.reset()
+
+        done = False
+        while not done:
+            actions = [
+                np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]
+            ]
+            obs, reward, done, info = env.step(actions)
+            timestep += 1
+            assert obs["time_step"] == env.timestep
+            assert obs["time_step"] == timestep
+
+
 @pytest.mark.parametrize(
     "parameter_fixture",
     environment_fixtures,
@@ -432,3 +454,63 @@ def test_stationary_deterioration_environment(stationary_deterioration_environme
         .deterioration_rate_enabled
     )
     test_one_episode(stationary_deterioration_environment)
+
+
+def test_actions_unchanged(toy_environment_2):
+    """Test if the actions are not changed by the environment."""
+    env = toy_environment_2
+    obs = env.reset()
+    actions = [np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]]
+    actions_copy = actions.copy()
+    _, _, _, _ = seeded_episode_rollout(env, 42, actions)
+    assert actions == actions_copy
+
+
+def test_budget(toy_environment_2):
+    """
+    Test if the budget is always positive.
+    Test if the budget is reset after the budget renewal time.
+    Test if the budget is decreased by the cost of the actions.
+    """
+
+    def check_budget_positive(env, obs, reward, done, info):
+        assert obs["budget_remaining"] >= 0, "Budget is negative"
+
+    def check_budget_renewed(env, obs, reward, done, info):
+        if obs["budget_time_until_renewal"] % env.budget_renewal_interval == 0:
+            assert (
+                obs["budget_remaining"] == env.budget_amount
+            ), "Budget is not reset after the budget renewal time"
+
+    TEST_EPISODES = 3
+
+    env = toy_environment_2
+
+    for episode in range(TEST_EPISODES):
+        obs = env.reset()
+        check_budget_positive(env, obs, None, None, None)
+        check_budget_renewed(env, obs, None, None, None)
+        last_budget = obs["budget_remaining"]
+
+        done = False
+        while not done:
+            actions = [
+                np.random.randint(0, 2, len(e)) for e in obs["edge_observations"]
+            ]
+            action_cost = env.get_action_cost(actions)
+
+            returns = env.step(actions)
+            check_budget_renewed(env, *returns)
+            check_budget_positive(env, *returns)
+
+            obs, reward, done, info = returns
+            if (
+                not info["budget_constraints_applied"]
+                and obs["budget_time_until_renewal"] % env.budget_renewal_interval != 0
+                and not info["forced_replace_constraint_applied"]
+            ):
+                assert (
+                    last_budget - action_cost == obs["budget_remaining"]
+                ), "Budget is not decreased by the cost of the actions"
+
+            last_budget = obs["budget_remaining"]

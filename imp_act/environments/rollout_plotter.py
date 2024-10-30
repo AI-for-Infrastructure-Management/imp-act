@@ -45,7 +45,7 @@ class RolloutPlotter:
             ),
             "actions": np.ones((self.max_timesteps, self.num_components), dtype=int)
             * -1,
-            "actions_taken": np.ones(
+            "applied_actions": np.ones(
                 (self.max_timesteps, self.num_components), dtype=int
             )
             * -1,
@@ -82,8 +82,8 @@ class RolloutPlotter:
         # lists with 'max_timesteps' elements
         for t in range(self.max_timesteps):
             plot_data["actions"][t, :] = self.flatten(episode_data["action"][t])
-            plot_data["actions_taken"][t, :] = self.flatten(
-                episode_data["actions_taken"][t]
+            plot_data["applied_actions"][t, :] = self.flatten(
+                episode_data["applied_actions"][t]
             )
             plot_data["rewards"][t] = episode_data["reward"][t]
             plot_data["reward_travel_time"][t] = episode_data["reward_elements"][t][0]
@@ -184,7 +184,7 @@ class RolloutPlotter:
 
             ## Plot agent actions
             for a in range(self.num_component_actions):
-                _x = np.where(plot_data["actions_taken"][:, c] == a)
+                _x = np.where(plot_data["applied_actions"][:, c] == a)
                 ax.plot(
                     _x,
                     2,
