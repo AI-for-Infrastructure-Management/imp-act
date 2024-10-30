@@ -134,7 +134,7 @@ def only_edge_colors(
     g: nx.Graph, ax: plt.axes, use_cmap=False, my_edge_dict: dict = {}
 ) -> dict:
     num_states = (
-        next(iter(next(iter(g.adjacency()))[1].values()))["road_segments"]
+        next(iter(next(iter(g.adjacency()))[1].values()))["road_edge"]
         .segments[0]
         .number_of_states
     )
@@ -142,9 +142,7 @@ def only_edge_colors(
     edge_colors = list()
     if use_cmap:
         for e in g.edges():
-            edge_colors.append(
-                max([s.state for s in g.edges[e]["road_segments"].segments])
-            )
+            edge_colors.append(max([s.state for s in g.edges[e]["road_edge"].segments]))
         # new_edge_dict = update_dict(d=new_edge_dict, my_dict={'edge_color': edge_colors, 'edge_vmax': num_states})
         new_edge_dict = update_dict(
             d=my_edge_dict, my_dict={"edge_color": edge_colors, "edge_vmax": num_states}
@@ -153,9 +151,7 @@ def only_edge_colors(
     else:
         for e in g.edges():
             edge_colors.append(
-                color_coding[
-                    max([s.state for s in g.edges[e]["road_segments"].segments])
-                ]
+                color_coding[max([s.state for s in g.edges[e]["road_edge"].segments])]
             )
         # new_edge_dict = update_dict(d=new_edge_dict, my_dict={'edge_color': edge_colors, 'edge_cmap':None, 'edge_vmin':0, 'edge_vmax': None})
         new_edge_dict = update_dict(
@@ -188,7 +184,7 @@ def only_edge_colors(
 
 def only_edge_labels(g: nx.Graph, my_edge_label_dict: dict = {}) -> dict:
     num_states = (
-        next(iter(next(iter(g.adjacency()))[1].values()))["road_segments"]
+        next(iter(next(iter(g.adjacency()))[1].values()))["road_edge"]
         .segments[0]
         .number_of_states
     )
@@ -196,7 +192,7 @@ def only_edge_labels(g: nx.Graph, my_edge_label_dict: dict = {}) -> dict:
     edge_states = list()
     edge_labels = {}
     for e in g.edges():
-        edge_states.append([s.state for s in g.edges[e]["road_segments"].segments])
+        edge_states.append([s.state for s in g.edges[e]["road_edge"].segments])
         el = [0] * num_states
         for s in edge_states[-1]:
             el[s] += 1
