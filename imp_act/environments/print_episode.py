@@ -8,7 +8,7 @@ def main():
     print(env.get_count_redundancies_summary())
     print(env.get_edge_traffic_summary())
     env.reset()
-    actions = [[1] * len(e["road_segments"].segments) for e in env.graph.es]
+    actions = [[1] * len(e["road_edge"].segments) for e in env.graph.es]
     done = False
     timestep = 0
     while not done:
@@ -20,6 +20,10 @@ def main():
         print(f"reward: {reward}")
         print(f"done: {done}")
         print(f"total travel time: {info['total_travel_time']}")
+        print(
+            f"remaining budget: {observation['budget_remaining']}/{env.budget_amount}"
+        )
+        print(f"time until budget renewal: {observation['budget_time_until_renewal']}")
 
         for i, observations, beliefs, states in zip(
             range(len(observation["edge_observations"])),

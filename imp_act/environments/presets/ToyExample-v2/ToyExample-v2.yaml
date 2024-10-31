@@ -3,7 +3,6 @@ maintenance:
   include:
       path: "../common/maintenance_defaults.yaml"
       override: False
-      
 traffic:
   travel_time_reward_factor: -50000.0
   traffic_assignment:
