@@ -405,10 +405,10 @@ class RoadEnvironment:
         observation = self._get_observation()
 
         info = {
-            "states": self._get_states(),
+            "edge_states": self._get_states(),
             "total_travel_time": total_travel_time,
             "travel_times": self.graph.es["travel_time"],
-            "volumes": self.graph.es["volume"],
+            "traffic_volumes": self.graph.es["volume"],
             "reward_elements": {
                 "travel_time_reward": travel_time_reward,
                 "maintenance_reward": maintenance_reward,
