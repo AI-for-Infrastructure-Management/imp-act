@@ -393,7 +393,10 @@ class RoadEnvironment:
             total_travel_time - self.base_total_travel_time
         )
 
-        reward = maintenance_reward + travel_time_reward+ budget_penalty_factor * self.budget_overrun
+        reward = maintenance_reward + travel_time_reward
+        if self.budget_overrun < 0:
+            reward += budget_penalty_factor * self.budget_overrun
+
 
         # Update variables after step is complete for up to date observations
 
@@ -412,6 +415,7 @@ class RoadEnvironment:
             "reward_elements": {
                 "travel_time_reward": travel_time_reward,
                 "maintenance_reward": maintenance_reward,
+                "budget_penalty": budget_penalty_factor * self.budget_overrun if self.budget_overrun < 0 else 0,
             },
             "budget_constraints_applied": self.budget_constraint_applied,
             "budget_overrun": self.budget_overrun,  
