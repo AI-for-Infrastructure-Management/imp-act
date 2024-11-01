@@ -215,6 +215,7 @@ class RoadEnvironment:
     ):
         self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = config["maintenance"]["max_timesteps"]
+        self.lr_budget_penalty_factor  = config["maintenance"]["lr_budget_penalty_factor "]
         self.forced_replace_worst_observation_count = config["maintenance"][
             "forced_replace_worst_observation_count"
         ]
@@ -270,6 +271,7 @@ class RoadEnvironment:
 
         # Budget parameters
         self.budget_amount = config["maintenance"]["budget_amount"]
+        
         assert type(self.budget_amount) in [int, float]
         self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
         assert type(self.budget_renewal_interval) == int
