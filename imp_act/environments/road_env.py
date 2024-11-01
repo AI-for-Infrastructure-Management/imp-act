@@ -65,6 +65,11 @@ class RoadSegment:
             np.arange(self.number_of_states),
             p=self.observation_tables[0][self.state],
         )
+        
+
+        
+
+
 
     def step(self, action):
         # actions: [do-nothing, inspect, minor-repair, major-repair, replacement] = [0, 1, 2, 3, 4]
@@ -215,12 +220,13 @@ class RoadEnvironment:
     ):
         self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = config["maintenance"]["max_timesteps"]
-        self.lr_budget_penalty_factor  = config["maintenance"]["lr_budget_penalty_factor "]
+        self.lr_budget_penalty_factor  = config["maintenance"]["lr_budget_penalty_factor"]
         self.forced_replace_worst_observation_count = config["maintenance"][
             "forced_replace_worst_observation_count"
         ]
 
         self.graph = config["topology"]["graph"]
+        self.budget_penalty_factor = 0 
 
         # Convert trips dataframe to list of tuples with correct vertex indices
         trips_df = config["traffic"]["trips"]
@@ -397,7 +403,7 @@ class RoadEnvironment:
 
         reward = maintenance_reward + travel_time_reward
         if self.budget_overrun < 0:
-            reward += budget_penalty_factor * self.budget_overrun
+            reward += self.budget_penalty_factor * self.budget_overrun
 
 
         # Update variables after step is complete for up to date observations
@@ -406,6 +412,7 @@ class RoadEnvironment:
 
         if self.timestep % self.budget_renewal_interval == 0:
             self.current_budget = self.budget_amount
+            self.budget_penalty_factor=self.update_budget_penalty_factor()
 
         observation = self._get_observation()
 
@@ -417,7 +424,7 @@ class RoadEnvironment:
             "reward_elements": {
                 "travel_time_reward": travel_time_reward,
                 "maintenance_reward": maintenance_reward,
-                "budget_penalty": budget_penalty_factor * self.budget_overrun if self.budget_overrun < 0 else 0,
+                "budget_penalty": self.budget_penalty_factor * self.budget_overrun if self.budget_overrun < 0 else 0,
             },
             "budget_constraints_applied": self.budget_constraint_applied,
             "budget_overrun": self.budget_overrun,  
@@ -585,4 +592,8 @@ class RoadEnvironment:
             self.current_budget = self.budget_amount
     
         return actions
+    def update_penalty_factor(self):
+        self.budget_penalty_factor += self.lr_budget_penalty_factor*self.budget_overrun
+        self.budget_penalty_factor=np.max(self.budget_penalty_factor,0)
+        return self.budget_penalty_factor
 
