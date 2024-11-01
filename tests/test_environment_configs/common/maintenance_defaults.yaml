@@ -1,4 +1,5 @@
 max_timesteps: 50
+lr_budget_penalty_factor : 0.00001
 initial_damage_distribution: [1, 0, 0, 0, 0]
 deterioration:
   type: "file"
