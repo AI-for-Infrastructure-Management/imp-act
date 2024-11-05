@@ -21,6 +21,7 @@ presets = [
     "Denmark-v1",
     "Belgium-v1",
     "SoHo-v1",
+    "SiouxFalls-v1",
 ]
 
 for name in presets:

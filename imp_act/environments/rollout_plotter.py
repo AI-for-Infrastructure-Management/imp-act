@@ -95,7 +95,7 @@ class RolloutPlotter:
 
     def _plot_deterioration(self, plot_data, save_kwargs=None):
 
-        fig, _ax = plt.subplots(6, 2, figsize=(14, 10), sharex=True, sharey=True)
+        fig, _ax = plt.subplots(self.num_components//2, 2, figsize=(14, 10), sharex=True, sharey=True)
 
         # ticks and labels: actions
         time_horizon_ticks = np.arange(0, self.max_timesteps + 1, 10)

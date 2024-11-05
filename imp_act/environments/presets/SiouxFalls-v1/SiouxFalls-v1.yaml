@@ -1,0 +1,692 @@
+maintenance:
+  include:
+    override: false
+    path: ../common/maintenance_defaults.yaml
+  initial_damage_distribution:
+  - 0.85
+  - 0.05
+  - 0.05
+  - 0.05
+  - 0
+topology:
+  graph:
+    directed: true
+    edges:
+    - distance: 1
+      id: 0
+      source: 0
+      target: 1
+    - distance: 1
+      id: 1
+      source: 0
+      target: 6
+    - distance: 1
+      id: 2
+      source: 1
+      target: 0
+    - distance: 1
+      id: 3
+      source: 1
+      target: 2
+    - distance: 1
+      id: 4
+      source: 1
+      target: 4
+    - distance: 1
+      id: 5
+      source: 2
+      target: 1
+    - distance: 1
+      id: 6
+      source: 2
+      target: 3
+    - distance: 1
+      id: 7
+      source: 3
+      target: 2
+    - distance: 1
+      id: 8
+      source: 3
+      target: 4
+    - distance: 1
+      id: 9
+      source: 3
+      target: 9
+    - distance: 1
+      id: 10
+      source: 4
+      target: 1
+    - distance: 1
+      id: 11
+      source: 4
+      target: 3
+    - distance: 1
+      id: 12
+      source: 4
+      target: 5
+    - distance: 1
+      id: 13
+      source: 5
+      target: 4
+    - distance: 1
+      id: 14
+      source: 5
+      target: 6
+    - distance: 1
+      id: 15
+      source: 5
+      target: 8
+    - distance: 1
+      id: 16
+      source: 5
+      target: 9
+    - distance: 1
+      id: 17
+      source: 5
+      target: 10
+    - distance: 1
+      id: 18
+      source: 6
+      target: 0
+    - distance: 1
+      id: 19
+      source: 6
+      target: 5
+    - distance: 1
+      id: 20
+      source: 6
+      target: 7
+    - distance: 1
+      id: 21
+      source: 7
+      target: 6
+    - distance: 1
+      id: 22
+      source: 7
+      target: 8
+    - distance: 1
+      id: 23
+      source: 7
+      target: 15
+    - distance: 1
+      id: 24
+      source: 8
+      target: 5
+    - distance: 1
+      id: 25
+      source: 8
+      target: 7
+    - distance: 1
+      id: 26
+      source: 8
+      target: 11
+    - distance: 1
+      id: 27
+      source: 8
+      target: 14
+    - distance: 1
+      id: 28
+      source: 9
+      target: 3
+    - distance: 1
+      id: 29
+      source: 9
+      target: 5
+    - distance: 1
+      id: 30
+      source: 9
+      target: 10
+    - distance: 1
+      id: 31
+      source: 10
+      target: 5
+    - distance: 1
+      id: 32
+      source: 10
+      target: 9
+    - distance: 1
+      id: 33
+      source: 10
+      target: 11
+    - distance: 1
+      id: 34
+      source: 11
+      target: 8
+    - distance: 1
+      id: 35
+      source: 11
+      target: 10
+    - distance: 1
+      id: 36
+      source: 11
+      target: 12
+    - distance: 1
+      id: 37
+      source: 12
+      target: 11
+    - distance: 1
+      id: 38
+      source: 12
+      target: 13
+    - distance: 1
+      id: 39
+      source: 12
+      target: 14
+    - distance: 1
+      id: 40
+      source: 13
+      target: 12
+    - distance: 1
+      id: 41
+      source: 13
+      target: 14
+    - distance: 1
+      id: 42
+      source: 13
+      target: 16
+    - distance: 1
+      id: 43
+      source: 14
+      target: 8
+    - distance: 1
+      id: 44
+      source: 14
+      target: 12
+    - distance: 1
+      id: 45
+      source: 14
+      target: 13
+    - distance: 1
+      id: 46
+      source: 14
+      target: 15
+    - distance: 1
+      id: 47
+      source: 15
+      target: 7
+    - distance: 1
+      id: 48
+      source: 15
+      target: 14
+    - distance: 1
+      id: 49
+      source: 15
+      target: 16
+    - distance: 1
+      id: 50
+      source: 16
+      target: 13
+    - distance: 1
+      id: 51
+      source: 16
+      target: 15
+    nodes:
+    - id: 0
+      position_x: 130000
+      position_y: 440000
+    - id: 1
+      position_x: 220000
+      position_y: 440000
+    - id: 2
+      position_x: 320000
+      position_y: 440000
+    - id: 3
+      position_x: 320000
+      position_y: 380000
+    - id: 4
+      position_x: 220000
+      position_y: 380000
+    - id: 5
+      position_x: 220000
+      position_y: 320000
+    - id: 6
+      position_x: 130000
+      position_y: 320000
+    - id: 7
+      position_x: 130000
+      position_y: 190000
+    - id: 8
+      position_x: 220000
+      position_y: 190000
+    - id: 9
+      position_x: 320000
+      position_y: 320000
+    - id: 10
+      position_x: 320000
+      position_y: 260000
+    - id: 11
+      position_x: 320000
+      position_y: 190000
+    - id: 12
+      position_x: 320000
+      position_y: 50000
+    - id: 13
+      position_x: 220000
+      position_y: 50000
+    - id: 14
+      position_x: 220000
+      position_y: 130000
+    - id: 15
+      position_x: 130000
+      position_y: 130000
+    - id: 16
+      position_x: 130000
+      position_y: 50000
+    type: list
+  segments:
+    list:
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 0
+      target: 1
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 0
+      target: 6
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 1
+      target: 0
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 1
+      target: 2
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 1
+      target: 4
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 2
+      target: 1
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 2
+      target: 3
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 3
+      target: 2
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 3
+      target: 4
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 3
+      target: 9
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 4
+      target: 1
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 4
+      target: 3
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 4
+      target: 5
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 5
+      target: 4
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 5
+      target: 6
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 5
+      target: 8
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 5
+      target: 9
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 5
+      target: 10
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 6
+      target: 0
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 6
+      target: 5
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 6
+      target: 7
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 7
+      target: 6
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 7
+      target: 8
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 7
+      target: 15
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 8
+      target: 5
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 8
+      target: 7
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 8
+      target: 11
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 8
+      target: 14
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 9
+      target: 3
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 9
+      target: 5
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 9
+      target: 10
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 10
+      target: 5
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 10
+      target: 9
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 10
+      target: 11
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 11
+      target: 8
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 11
+      target: 10
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 11
+      target: 12
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 12
+      target: 11
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 12
+      target: 13
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 12
+      target: 14
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 13
+      target: 12
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 13
+      target: 14
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 13
+      target: 16
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 14
+      target: 8
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 14
+      target: 12
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 14
+      target: 13
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 14
+      target: 15
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 15
+      target: 7
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 15
+      target: 14
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 15
+      target: 16
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 16
+      target: 13
+      travel_time: 1
+    - capacity: 100
+      position_x: null
+      position_y: null
+      source: 16
+      target: 15
+      travel_time: 1
+    type: list
+traffic:
+  include:
+    override: false
+    path: ../common/traffic_defaults.yaml
+  traffic_assignment:
+    convergence_threshold: 0.01
+    max_iterations: 15
+    update_weight: 0.1
+  travel_time_reward_factor: -50000.0
+  trips:
+    list:
+    - destination: 1
+      origin: 15
+      volume: 4.0
+    - destination: 7
+      origin: 5
+      volume: 84.0
+    - destination: 5
+      origin: 0
+      volume: 48.0
+    - destination: 8
+      origin: 0
+      volume: 20.0
+    - destination: 12
+      origin: 5
+      volume: 100.0
+    - destination: 8
+      origin: 11
+      volume: 32.0
+    - destination: 13
+      origin: 2
+      volume: 4.0
+    - destination: 2
+      origin: 15
+      volume: 4.0
+    - destination: 9
+      origin: 16
+      volume: 12.0
+    - destination: 15
+      origin: 8
+      volume: 40.0
+    - destination: 11
+      origin: 8
+      volume: 32.0
+    - destination: 16
+      origin: 14
+      volume: 44.0
+    - destination: 14
+      origin: 4
+      volume: 28.0
+    - destination: 5
+      origin: 3
+      volume: 64.0
+    - destination: 10
+      origin: 6
+      volume: 40.0
+    - destination: 12
+      origin: 3
+      volume: 36.0
+    - destination: 14
+      origin: 3
+      volume: 20.0
+    - destination: 9
+      origin: 3
+      volume: 88.0
+    - destination: 6
+      origin: 10
+      volume: 40.0
+    - destination: 3
+      origin: 14
+      volume: 20.0
+    - destination: 13
+      origin: 15
+      volume: 28.0
+    - destination: 16
+      origin: 12
+      volume: 16.0
+    - destination: 2
+      origin: 16
+      volume: 4.0
+    - destination: 2
+      origin: 12
+      volume: 12.0
+    - destination: 11
+      origin: 10
+      volume: 68.0
+    - destination: 0
+      origin: 10
+      volume: 20.0
+    - destination: 1
+      origin: 7
+      volume: 4.0
+    - destination: 12
+      origin: 8
+      volume: 44.0
+    - destination: 6
+      origin: 15
+      volume: 52.0
+    - destination: 1
+      origin: 9
+      volume: 20.0
+    type: list
