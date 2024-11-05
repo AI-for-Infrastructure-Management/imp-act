@@ -369,7 +369,7 @@ class RoadEnvironment:
     def get_terminal_reward(self):
         total_terminal_reward = 0
         for edge in self.graph.es:
-            for segment in edge["road_segments"].segments:
+            for segment in edge["road_edge"].segments:
                 total_terminal_reward += segment.get_terminal_reward()
         return total_terminal_reward
 
