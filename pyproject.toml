@@ -31,7 +31,7 @@ optional = true
 [tool.poetry.group.vis.dependencies]
 matplotlib="~3.8.2"
 networkx="~3.2.1"
-Pillow="~10.1.0"
+Pillow="~10.3.0"
 
 [build-system]
 requires = ["poetry-core"]
