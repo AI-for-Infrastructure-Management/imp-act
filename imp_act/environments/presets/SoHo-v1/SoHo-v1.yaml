@@ -1,531 +1,816 @@
 maintenance:
-  initial_damage_distribution: [0.85, 0.05, 0.05, 0.05 ,0]
   include:
-      path: "../common/maintenance_defaults.yaml"
-      override: False
-      
-traffic:
-  travel_time_reward_factor: -50000.0
-  traffic_assignment:
-    max_iterations: 15
-    convergence_threshold: 0.01
-    update_weight: 0.1
-  include:
-    path: "../common/traffic_defaults.yaml"
-    override: False
-  trips:
-    type: "list"
-    list:
-      - origin: 0
-        destination: 5
-        volume: 40
-      - origin: 5
-        destination: 0
-        volume: 40
-      - origin: 1
-        destination: 3
-        volume: 20
-      - origin: 4
-        destination: 2
-        volume: 30
-      - origin: 2
-        destination: 5
-        volume: 30
-  
+    override: false
+    path: ../common/maintenance_defaults.yaml
+  initial_damage_distribution:
+  - 0.85
+  - 0.05
+  - 0.05
+  - 0.05
+  - 0
 topology:
   graph:
     directed: true
     edges:
-      - distance: 162.614
-        id: 0
-        source: 0
-        target: 1
-      - distance: 162.614
-        id: 1
-        source: 1
-        target: 0
-      - distance: 160.35299999999998
-        id: 2
-        source: 1
-        target: 2
-      - distance: 160.35299999999998
-        id: 3
-        source: 2
-        target: 1
-      - distance: 81.00600000000001
-        id: 4
-        source: 0
-        target: 6
-      - distance: 81.00600000000001
-        id: 5
-        source: 6
-        target: 0
-      - distance: 81.46100000000001
-        id: 6
-        source: 0
-        target: 7
-      - distance: 81.46100000000001
-        id: 7
-        source: 7
-        target: 0
-      - distance: 77.786
-        id: 8
-        source: 7
-        target: 8
-      - distance: 77.786
-        id: 9
-        source: 8
-        target: 7
-      - distance: 96.44099999999999
-        id: 10
-        source: 4
-        target: 9
-      - distance: 96.44099999999999
-        id: 11
-        source: 9
-        target: 4
-      - distance: 164.47899999999998
-        id: 12
-        source: 7
-        target: 10
-      - distance: 164.47899999999998
-        id: 13
-        source: 10
-        target: 7
-      - distance: 160.96499999999997
-        id: 14
-        source: 10
-        target: 15
-      - distance: 160.96499999999997
-        id: 15
-        source: 15
-        target: 10
-      - distance: 76.176
-        id: 16
-        source: 3
-        target: 4
-      - distance: 76.176
-        id: 17
-        source: 4
-        target: 3
-      - distance: 36.714000000000006
-        id: 18
-        source: 4
-        target: 5
-      - distance: 36.714000000000006
-        id: 19
-        source: 5
-        target: 4
-      - distance: 67.667
-        id: 20
-        source: 5
-        target: 8
-      - distance: 67.667
-        id: 21
-        source: 8
-        target: 5
-      - distance: 98.999
-        id: 22
-        source: 5
-        target: 9
-      - distance: 98.999
-        id: 23
-        source: 9
-        target: 5
-      - distance: 165.06599999999995
-        id: 24
-        source: 9
-        target: 13
-      - distance: 165.06599999999995
-        id: 25
-        source: 13
-        target: 9
-      - distance: 159.74699999999999
-        id: 26
-        source: 11
-        target: 14
-      - distance: 159.74699999999999
-        id: 27
-        source: 14
-        target: 11
-      - distance: 162.93200000000002
-        id: 28
-        source: 6
-        target: 11
-      - distance: 162.93200000000002
-        id: 29
-        source: 11
-        target: 6
-      - distance: 80.583
-        id: 30
-        source: 2
-        target: 14
-      - distance: 80.583
-        id: 31
-        source: 14
-        target: 2
-      - distance: 80.499
-        id: 32
-        source: 2
-        target: 15
-      - distance: 80.499
-        id: 33
-        source: 15
-        target: 2
-      - distance: 46.396
-        id: 34
-        source: 13
-        target: 15
-      - distance: 46.396
-        id: 35
-        source: 15
-        target: 13
-      - distance: 80.693
-        id: 36
-        source: 1
-        target: 10
-      - distance: 80.693
-        id: 37
-        source: 10
-        target: 1
-      - distance: 82.977
-        id: 38
-        source: 9
-        target: 10
-      - distance: 82.977
-        id: 39
-        source: 10
-        target: 9
-      - distance: 76.10099999999998
-        id: 40
-        source: 11
-        target: 12
-      - distance: 76.10099999999998
-        id: 41
-        source: 12
-        target: 11
-      - distance: 80.67999999999999
-        id: 42
-        source: 1
-        target: 11
-      - distance: 80.67999999999999
-        id: 43
-        source: 11
-        target: 1
+    - distance: 123.97200000000001
+      id: 0
+      source: 2
+      target: 1
+    - distance: 151.785
+      id: 1
+      source: 38
+      target: 4
+    - distance: 162.614
+      id: 2
+      source: 3
+      target: 2
+    - distance: 160.35299999999998
+      id: 3
+      source: 4
+      target: 3
+    - distance: 15.427
+      id: 4
+      source: 5
+      target: 38
+    - distance: 75.78099999999999
+      id: 5
+      source: 12
+      target: 11
+    - distance: 56.619
+      id: 6
+      source: 0
+      target: 14
+    - distance: 76.315
+      id: 7
+      source: 11
+      target: 10
+    - distance: 81.00600000000001
+      id: 8
+      source: 2
+      target: 12
+    - distance: 81.46100000000001
+      id: 9
+      source: 13
+      target: 2
+    - distance: 77.786
+      id: 10
+      source: 14
+      target: 13
+    - distance: 28.127
+      id: 11
+      source: 15
+      target: 0
+    - distance: 48.82299999999999
+      id: 12
+      source: 16
+      target: 15
+    - distance: 96.44099999999999
+      id: 13
+      source: 8
+      target: 22
+    - distance: 73.10000000000001
+      id: 14
+      source: 0
+      target: 8
+    - distance: 15.014
+      id: 15
+      source: 36
+      target: 34
+    - distance: 167.653
+      id: 16
+      source: 35
+      target: 36
+    - distance: 164.47899999999998
+      id: 17
+      source: 13
+      target: 23
+    - distance: 129.14600000000002
+      id: 18
+      source: 32
+      target: 13
+    - distance: 160.96499999999997
+      id: 19
+      source: 23
+      target: 35
+    - distance: 45.407999999999994
+      id: 20
+      source: 36
+      target: 37
+    - distance: 82.259
+      id: 21
+      source: 34
+      target: 5
+    - distance: 45.138999999999996
+      id: 22
+      source: 28
+      target: 34
+    - distance: 82.39
+      id: 23
+      source: 38
+      target: 36
+    - distance: 80.112
+      id: 24
+      source: 29
+      target: 1
+    - distance: 76.194
+      id: 25
+      source: 31
+      target: 29
+    - distance: 81.18599999999999
+      id: 26
+      source: 1
+      target: 32
+    - distance: 162.951
+      id: 27
+      source: 11
+      target: 25
+    - distance: 160.03099999999998
+      id: 28
+      source: 25
+      target: 33
+    - distance: 124.28600000000002
+      id: 29
+      source: 31
+      target: 11
+    - distance: 36.714000000000006
+      id: 30
+      source: 9
+      target: 8
+    - distance: 36.714
+      id: 31
+      source: 8
+      target: 9
+    - distance: 76.176
+      id: 32
+      source: 8
+      target: 7
+    - distance: 76.033
+      id: 33
+      source: 7
+      target: 6
+    - distance: 76.17600000000002
+      id: 34
+      source: 7
+      target: 8
+    - distance: 76.033
+      id: 35
+      source: 6
+      target: 7
+    - distance: 98.999
+      id: 36
+      source: 22
+      target: 9
+    - distance: 175.645
+      id: 37
+      source: 27
+      target: 37
+    - distance: 15.283
+      id: 38
+      source: 37
+      target: 28
+    - distance: 67.667
+      id: 39
+      source: 9
+      target: 14
+    - distance: 165.06599999999995
+      id: 40
+      source: 22
+      target: 27
+    - distance: 159.74699999999999
+      id: 41
+      source: 30
+      target: 24
+    - distance: 162.93200000000002
+      id: 42
+      source: 24
+      target: 12
+    - distance: 120.483
+      id: 43
+      source: 29
+      target: 21
+    - distance: 123.91
+      id: 44
+      source: 12
+      target: 29
+    - distance: 84.599
+      id: 45
+      source: 17
+      target: 6
+    - distance: 164.274
+      id: 46
+      source: 39
+      target: 20
+    - distance: 90.432
+      id: 47
+      source: 7
+      target: 39
+    - distance: 77.94399999999999
+      id: 48
+      source: 16
+      target: 7
+    - distance: 80.583
+      id: 49
+      source: 4
+      target: 30
+    - distance: 76.484
+      id: 50
+      source: 30
+      target: 33
+    - distance: 72.993
+      id: 51
+      source: 20
+      target: 27
+    - distance: 76.08000000000001
+      id: 52
+      source: 33
+      target: 19
+    - distance: 46.396
+      id: 53
+      source: 27
+      target: 35
+    - distance: 80.499
+      id: 54
+      source: 35
+      target: 4
+    - distance: 81.0
+      id: 55
+      source: 26
+      target: 18
+    - distance: 80.693
+      id: 56
+      source: 3
+      target: 23
+    - distance: 77.048
+      id: 57
+      source: 39
+      target: 17
+    - distance: 81.638
+      id: 58
+      source: 22
+      target: 39
+    - distance: 82.977
+      id: 59
+      source: 23
+      target: 22
+    - distance: 80.67999999999999
+      id: 60
+      source: 24
+      target: 3
+    - distance: 76.10099999999998
+      id: 61
+      source: 25
+      target: 24
+    - distance: 76.182
+      id: 62
+      source: 18
+      target: 25
+    - distance: 162.65
+      id: 63
+      source: 18
+      target: 10
+    - distance: 160.493
+      id: 64
+      source: 19
+      target: 18
     nodes:
-      - id: 0
-        position_x: -73.9998623
-        position_y: 40.7217942
-      - id: 1
-        position_x: -73.998812
-        position_y: 40.723021
-      - id: 2
-        position_x: -73.997785
-        position_y: 40.724235
-      - id: 3
-        position_x: -73.9965747
-        position_y: 40.7211736
-      - id: 4
-        position_x: -73.9973963
-        position_y: 40.7214592
-      - id: 5
-        position_x: -73.9977932
-        position_y: 40.7215953
-      - id: 6
-        position_x: -74.0006646
-        position_y: 40.7221954
-      - id: 7
-        position_x: -73.9990287
-        position_y: 40.7214242
-      - id: 8
-        position_x: -73.9982238
-        position_y: 40.7210819
-      - id: 9
-        position_x: -73.9971193
-        position_y: 40.7222994
-      - id: 10
-        position_x: -73.9979746
-        position_y: 40.7226691
-      - id: 11
-        position_x: -73.999609
-        position_y: 40.723423
-      - id: 12
-        position_x: -74.000367
-        position_y: 40.723795
-      - id: 13
-        position_x: -73.9964625
-        position_y: 40.7236896
-      - id: 14
-        position_x: -73.998585
-        position_y: 40.724632
-      - id: 15
-        position_x: -73.9969461
-        position_y: 40.7238889
+    - id: 0
+      position_x: -73.9976413
+      position_y: 40.7208288
+    - id: 1
+      position_x: -74.0006545
+      position_y: 40.7208548
+    - id: 2
+      position_x: -73.9998623
+      position_y: 40.7217942
+    - id: 3
+      position_x: -73.998812
+      position_y: 40.723021
+    - id: 4
+      position_x: -73.997785
+      position_y: 40.724235
+    - id: 5
+      position_x: -73.9967146
+      position_y: 40.7255012
+    - id: 6
+      position_x: -73.9957503
+      position_y: 40.7208958
+    - id: 7
+      position_x: -73.9965747
+      position_y: 40.7211736
+    - id: 8
+      position_x: -73.9973963
+      position_y: 40.7214592
+    - id: 9
+      position_x: -73.9977932
+      position_y: 40.7215953
+    - id: 10
+      position_x: -74.0021789
+      position_y: 40.7229396
+    - id: 11
+      position_x: -74.0014195
+      position_y: 40.7225657
+    - id: 12
+      position_x: -74.0006646
+      position_y: 40.7221954
+    - id: 13
+      position_x: -73.9990287
+      position_y: 40.7214242
+    - id: 14
+      position_x: -73.9982238
+      position_y: 40.7210819
+    - id: 15
+      position_x: -73.9973531
+      position_y: 40.7207019
+    - id: 16
+      position_x: -73.9968377
+      position_y: 40.7205016
+    - id: 17
+      position_x: -73.9954604
+      position_y: 40.7216242
+    - id: 18
+      position_x: -74.001127
+      position_y: 40.724166
+    - id: 19
+      position_x: -74.000101
+      position_y: 40.725382
+    - id: 20
+      position_x: -73.9957075
+      position_y: 40.7233679
+    - id: 21
+      position_x: -74.002221
+      position_y: 40.720341
+    - id: 22
+      position_x: -73.9971193
+      position_y: 40.7222994
+    - id: 23
+      position_x: -73.9979746
+      position_y: 40.7226691
+    - id: 24
+      position_x: -73.999609
+      position_y: 40.723423
+    - id: 25
+      position_x: -74.000367
+      position_y: 40.723795
+    - id: 26
+      position_x: -74.0019395
+      position_y: 40.7245552
+    - id: 27
+      position_x: -73.9964625
+      position_y: 40.7236896
+    - id: 28
+      position_x: -73.9952749
+      position_y: 40.7251518
+    - id: 29
+      position_x: -74.001447
+      position_y: 40.721252
+    - id: 30
+      position_x: -73.998585
+      position_y: 40.724632
+    - id: 31
+      position_x: -74.0022085
+      position_y: 40.7216214
+    - id: 32
+      position_x: -73.9998563
+      position_y: 40.7204467
+    - id: 33
+      position_x: -73.999345
+      position_y: 40.725008
+    - id: 34
+      position_x: -73.9957848
+      position_y: 40.725276
+    - id: 35
+      position_x: -73.9969461
+      position_y: 40.7238889
+    - id: 36
+      position_x: -73.9958807
+      position_y: 40.7251622
+    - id: 37
+      position_x: -73.9953692
+      position_y: 40.7250344
+    - id: 38
+      position_x: -73.9968134
+      position_y: 40.7253844
+    - id: 39
+      position_x: -73.9962656
+      position_y: 40.7219524
     type: list
   segments:
     list:
-      - capacity: 81.307
-        position_x: null
-        position_y: null
-        source: 0
-        target: 1
-        travel_time: 0.0040653500000000006
-      - capacity: 81.307
-        position_x: null
-        position_y: null
-        source: 1
-        target: 0
-        travel_time: 0.0040653500000000006
-      - capacity: 80.17649999999999
-        position_x: null
-        position_y: null
-        source: 1
-        target: 2
-        travel_time: 0.004008824999999999
-      - capacity: 80.17649999999999
-        position_x: null
-        position_y: null
-        source: 2
-        target: 1
-        travel_time: 0.004008824999999999
-      - capacity: 40.50300000000001
-        position_x: null
-        position_y: null
-        source: 0
-        target: 6
-        travel_time: 0.0020251500000000003
-      - capacity: 40.50300000000001
-        position_x: null
-        position_y: null
-        source: 6
-        target: 0
-        travel_time: 0.0020251500000000003
-      - capacity: 40.730500000000006
-        position_x: null
-        position_y: null
-        source: 0
-        target: 7
-        travel_time: 0.0020365250000000004
-      - capacity: 40.730500000000006
-        position_x: null
-        position_y: null
-        source: 7
-        target: 0
-        travel_time: 0.0020365250000000004
-      - capacity: 38.893
-        position_x: null
-        position_y: null
-        source: 7
-        target: 8
-        travel_time: 0.0019446500000000002
-      - capacity: 38.893
-        position_x: null
-        position_y: null
-        source: 8
-        target: 7
-        travel_time: 0.0019446500000000002
-      - capacity: 48.220499999999994
-        position_x: null
-        position_y: null
-        source: 4
-        target: 9
-        travel_time: 0.002411025
-      - capacity: 48.220499999999994
-        position_x: null
-        position_y: null
-        source: 9
-        target: 4
-        travel_time: 0.002411025
-      - capacity: 82.23949999999999
-        position_x: null
-        position_y: null
-        source: 7
-        target: 10
-        travel_time: 0.0041119749999999995
-      - capacity: 82.23949999999999
-        position_x: null
-        position_y: null
-        source: 10
-        target: 7
-        travel_time: 0.0041119749999999995
-      - capacity: 80.48249999999999
-        position_x: null
-        position_y: null
-        source: 10
-        target: 15
-        travel_time: 0.004024124999999999
-      - capacity: 80.48249999999999
-        position_x: null
-        position_y: null
-        source: 15
-        target: 10
-        travel_time: 0.004024124999999999
-      - capacity: 38.088
-        position_x: null
-        position_y: null
-        source: 3
-        target: 4
-        travel_time: 0.0019044
-      - capacity: 38.088
-        position_x: null
-        position_y: null
-        source: 4
-        target: 3
-        travel_time: 0.0019044
-      - capacity: 18.357000000000003
-        position_x: null
-        position_y: null
-        source: 4
-        target: 5
-        travel_time: 0.0009178500000000001
-      - capacity: 18.357000000000003
-        position_x: null
-        position_y: null
-        source: 5
-        target: 4
-        travel_time: 0.0009178500000000001
-      - capacity: 33.8335
-        position_x: null
-        position_y: null
-        source: 5
-        target: 8
-        travel_time: 0.0016916750000000001
-      - capacity: 33.8335
-        position_x: null
-        position_y: null
-        source: 8
-        target: 5
-        travel_time: 0.0016916750000000001
-      - capacity: 49.4995
-        position_x: null
-        position_y: null
-        source: 5
-        target: 9
-        travel_time: 0.002474975
-      - capacity: 49.4995
-        position_x: null
-        position_y: null
-        source: 9
-        target: 5
-        travel_time: 0.002474975
-      - capacity: 82.53299999999997
-        position_x: null
-        position_y: null
-        source: 9
-        target: 13
-        travel_time: 0.004126649999999998
-      - capacity: 82.53299999999997
-        position_x: null
-        position_y: null
-        source: 13
-        target: 9
-        travel_time: 0.004126649999999998
-      - capacity: 79.87349999999999
-        position_x: null
-        position_y: null
-        source: 11
-        target: 14
-        travel_time: 0.0039936749999999995
-      - capacity: 79.87349999999999
-        position_x: null
-        position_y: null
-        source: 14
-        target: 11
-        travel_time: 0.0039936749999999995
-      - capacity: 81.46600000000001
-        position_x: null
-        position_y: null
-        source: 6
-        target: 11
-        travel_time: 0.0040733
-      - capacity: 81.46600000000001
-        position_x: null
-        position_y: null
-        source: 11
-        target: 6
-        travel_time: 0.0040733
-      - capacity: 40.2915
-        position_x: null
-        position_y: null
-        source: 2
-        target: 14
-        travel_time: 0.0020145750000000002
-      - capacity: 40.2915
-        position_x: null
-        position_y: null
-        source: 14
-        target: 2
-        travel_time: 0.0020145750000000002
-      - capacity: 40.2495
-        position_x: null
-        position_y: null
-        source: 2
-        target: 15
-        travel_time: 0.002012475
-      - capacity: 40.2495
-        position_x: null
-        position_y: null
-        source: 15
-        target: 2
-        travel_time: 0.002012475
-      - capacity: 23.198
-        position_x: null
-        position_y: null
-        source: 13
-        target: 15
-        travel_time: 0.0011599
-      - capacity: 23.198
-        position_x: null
-        position_y: null
-        source: 15
-        target: 13
-        travel_time: 0.0011599
-      - capacity: 40.3465
-        position_x: null
-        position_y: null
-        source: 1
-        target: 10
-        travel_time: 0.002017325
-      - capacity: 40.3465
-        position_x: null
-        position_y: null
-        source: 10
-        target: 1
-        travel_time: 0.002017325
-      - capacity: 41.4885
-        position_x: null
-        position_y: null
-        source: 9
-        target: 10
-        travel_time: 0.0020744250000000004
-      - capacity: 41.4885
-        position_x: null
-        position_y: null
-        source: 10
-        target: 9
-        travel_time: 0.0020744250000000004
-      - capacity: 38.05049999999999
-        position_x: null
-        position_y: null
-        source: 11
-        target: 12
-        travel_time: 0.0019025249999999997
-      - capacity: 38.05049999999999
-        position_x: null
-        position_y: null
-        source: 12
-        target: 11
-        travel_time: 0.0019025249999999997
-      - capacity: 40.339999999999996
-        position_x: null
-        position_y: null
-        source: 1
-        target: 11
-        travel_time: 0.0020169999999999997
-      - capacity: 40.339999999999996
-        position_x: null
-        position_y: null
-        source: 11
-        target: 1
-        travel_time: 0.0020169999999999997
+    - capacity: 61.986000000000004
+      position_x: null
+      position_y: null
+      source: 2
+      target: 1
+      travel_time: 0.0030993
+    - capacity: 75.8925
+      position_x: null
+      position_y: null
+      source: 38
+      target: 4
+      travel_time: 0.0037946250000000003
+    - capacity: 81.307
+      position_x: null
+      position_y: null
+      source: 3
+      target: 2
+      travel_time: 0.0040653500000000006
+    - capacity: 80.17649999999999
+      position_x: null
+      position_y: null
+      source: 4
+      target: 3
+      travel_time: 0.004008824999999999
+    - capacity: 7.7135
+      position_x: null
+      position_y: null
+      source: 5
+      target: 38
+      travel_time: 0.000385675
+    - capacity: 37.890499999999996
+      position_x: null
+      position_y: null
+      source: 12
+      target: 11
+      travel_time: 0.0018945249999999998
+    - capacity: 28.3095
+      position_x: null
+      position_y: null
+      source: 0
+      target: 14
+      travel_time: 0.001415475
+    - capacity: 38.1575
+      position_x: null
+      position_y: null
+      source: 11
+      target: 10
+      travel_time: 0.0019078749999999998
+    - capacity: 40.50300000000001
+      position_x: null
+      position_y: null
+      source: 2
+      target: 12
+      travel_time: 0.0020251500000000003
+    - capacity: 40.730500000000006
+      position_x: null
+      position_y: null
+      source: 13
+      target: 2
+      travel_time: 0.0020365250000000004
+    - capacity: 38.893
+      position_x: null
+      position_y: null
+      source: 14
+      target: 13
+      travel_time: 0.0019446500000000002
+    - capacity: 14.0635
+      position_x: null
+      position_y: null
+      source: 15
+      target: 0
+      travel_time: 0.000703175
+    - capacity: 24.411499999999997
+      position_x: null
+      position_y: null
+      source: 16
+      target: 15
+      travel_time: 0.0012205749999999998
+    - capacity: 48.220499999999994
+      position_x: null
+      position_y: null
+      source: 8
+      target: 22
+      travel_time: 0.002411025
+    - capacity: 36.550000000000004
+      position_x: null
+      position_y: null
+      source: 0
+      target: 8
+      travel_time: 0.0018275000000000003
+    - capacity: 7.507
+      position_x: null
+      position_y: null
+      source: 36
+      target: 34
+      travel_time: 0.00037535
+    - capacity: 83.8265
+      position_x: null
+      position_y: null
+      source: 35
+      target: 36
+      travel_time: 0.004191325
+    - capacity: 82.23949999999999
+      position_x: null
+      position_y: null
+      source: 13
+      target: 23
+      travel_time: 0.0041119749999999995
+    - capacity: 64.57300000000001
+      position_x: null
+      position_y: null
+      source: 32
+      target: 13
+      travel_time: 0.0032286500000000004
+    - capacity: 80.48249999999999
+      position_x: null
+      position_y: null
+      source: 23
+      target: 35
+      travel_time: 0.004024124999999999
+    - capacity: 22.703999999999997
+      position_x: null
+      position_y: null
+      source: 36
+      target: 37
+      travel_time: 0.0011351999999999998
+    - capacity: 41.1295
+      position_x: null
+      position_y: null
+      source: 34
+      target: 5
+      travel_time: 0.002056475
+    - capacity: 22.569499999999998
+      position_x: null
+      position_y: null
+      source: 28
+      target: 34
+      travel_time: 0.0011284749999999999
+    - capacity: 41.195
+      position_x: null
+      position_y: null
+      source: 38
+      target: 36
+      travel_time: 0.00205975
+    - capacity: 40.056
+      position_x: null
+      position_y: null
+      source: 29
+      target: 1
+      travel_time: 0.0020028
+    - capacity: 38.097
+      position_x: null
+      position_y: null
+      source: 31
+      target: 29
+      travel_time: 0.00190485
+    - capacity: 40.592999999999996
+      position_x: null
+      position_y: null
+      source: 1
+      target: 32
+      travel_time: 0.00202965
+    - capacity: 81.4755
+      position_x: null
+      position_y: null
+      source: 11
+      target: 25
+      travel_time: 0.004073775
+    - capacity: 80.01549999999999
+      position_x: null
+      position_y: null
+      source: 25
+      target: 33
+      travel_time: 0.004000775
+    - capacity: 62.14300000000001
+      position_x: null
+      position_y: null
+      source: 31
+      target: 11
+      travel_time: 0.0031071500000000004
+    - capacity: 18.357000000000003
+      position_x: null
+      position_y: null
+      source: 9
+      target: 8
+      travel_time: 0.0009178500000000001
+    - capacity: 18.357
+      position_x: null
+      position_y: null
+      source: 8
+      target: 9
+      travel_time: 0.0009178499999999999
+    - capacity: 38.088
+      position_x: null
+      position_y: null
+      source: 8
+      target: 7
+      travel_time: 0.0019044
+    - capacity: 38.0165
+      position_x: null
+      position_y: null
+      source: 7
+      target: 6
+      travel_time: 0.001900825
+    - capacity: 38.08800000000001
+      position_x: null
+      position_y: null
+      source: 7
+      target: 8
+      travel_time: 0.0019044000000000005
+    - capacity: 38.0165
+      position_x: null
+      position_y: null
+      source: 6
+      target: 7
+      travel_time: 0.001900825
+    - capacity: 49.4995
+      position_x: null
+      position_y: null
+      source: 22
+      target: 9
+      travel_time: 0.002474975
+    - capacity: 87.8225
+      position_x: null
+      position_y: null
+      source: 27
+      target: 37
+      travel_time: 0.004391125000000001
+    - capacity: 7.6415
+      position_x: null
+      position_y: null
+      source: 37
+      target: 28
+      travel_time: 0.000382075
+    - capacity: 33.8335
+      position_x: null
+      position_y: null
+      source: 9
+      target: 14
+      travel_time: 0.0016916750000000001
+    - capacity: 82.53299999999997
+      position_x: null
+      position_y: null
+      source: 22
+      target: 27
+      travel_time: 0.004126649999999998
+    - capacity: 79.87349999999999
+      position_x: null
+      position_y: null
+      source: 30
+      target: 24
+      travel_time: 0.0039936749999999995
+    - capacity: 81.46600000000001
+      position_x: null
+      position_y: null
+      source: 24
+      target: 12
+      travel_time: 0.0040733
+    - capacity: 60.2415
+      position_x: null
+      position_y: null
+      source: 29
+      target: 21
+      travel_time: 0.0030120750000000003
+    - capacity: 61.955
+      position_x: null
+      position_y: null
+      source: 12
+      target: 29
+      travel_time: 0.00309775
+    - capacity: 42.2995
+      position_x: null
+      position_y: null
+      source: 17
+      target: 6
+      travel_time: 0.0021149750000000003
+    - capacity: 82.137
+      position_x: null
+      position_y: null
+      source: 39
+      target: 20
+      travel_time: 0.00410685
+    - capacity: 45.216
+      position_x: null
+      position_y: null
+      source: 7
+      target: 39
+      travel_time: 0.0022608
+    - capacity: 38.971999999999994
+      position_x: null
+      position_y: null
+      source: 16
+      target: 7
+      travel_time: 0.0019485999999999996
+    - capacity: 40.2915
+      position_x: null
+      position_y: null
+      source: 4
+      target: 30
+      travel_time: 0.0020145750000000002
+    - capacity: 38.242
+      position_x: null
+      position_y: null
+      source: 30
+      target: 33
+      travel_time: 0.0019121
+    - capacity: 36.4965
+      position_x: null
+      position_y: null
+      source: 20
+      target: 27
+      travel_time: 0.0018248249999999998
+    - capacity: 38.040000000000006
+      position_x: null
+      position_y: null
+      source: 33
+      target: 19
+      travel_time: 0.0019020000000000003
+    - capacity: 23.198
+      position_x: null
+      position_y: null
+      source: 27
+      target: 35
+      travel_time: 0.0011599
+    - capacity: 40.2495
+      position_x: null
+      position_y: null
+      source: 35
+      target: 4
+      travel_time: 0.002012475
+    - capacity: 40.5
+      position_x: null
+      position_y: null
+      source: 26
+      target: 18
+      travel_time: 0.002025
+    - capacity: 40.3465
+      position_x: null
+      position_y: null
+      source: 3
+      target: 23
+      travel_time: 0.002017325
+    - capacity: 38.524
+      position_x: null
+      position_y: null
+      source: 39
+      target: 17
+      travel_time: 0.0019262
+    - capacity: 40.819
+      position_x: null
+      position_y: null
+      source: 22
+      target: 39
+      travel_time: 0.00204095
+    - capacity: 41.4885
+      position_x: null
+      position_y: null
+      source: 23
+      target: 22
+      travel_time: 0.0020744250000000004
+    - capacity: 40.339999999999996
+      position_x: null
+      position_y: null
+      source: 24
+      target: 3
+      travel_time: 0.0020169999999999997
+    - capacity: 38.05049999999999
+      position_x: null
+      position_y: null
+      source: 25
+      target: 24
+      travel_time: 0.0019025249999999997
+    - capacity: 38.091
+      position_x: null
+      position_y: null
+      source: 18
+      target: 25
+      travel_time: 0.00190455
+    - capacity: 81.325
+      position_x: null
+      position_y: null
+      source: 18
+      target: 10
+      travel_time: 0.00406625
+    - capacity: 80.2465
+      position_x: null
+      position_y: null
+      source: 19
+      target: 18
+      travel_time: 0.004012325
+    type: list
+traffic:
+  include:
+    override: false
+    path: ../common/traffic_defaults.yaml
+  traffic_assignment:
+    convergence_threshold: 0.01
+    max_iterations: 15
+    update_weight: 0.1
+  travel_time_reward_factor: -50000.0
+  trips:
+    list:
+    - destination: 5
+      origin: 0
+      volume: 40
+    - destination: 0
+      origin: 5
+      volume: 40
+    - destination: 3
+      origin: 1
+      volume: 20
+    - destination: 2
+      origin: 4
+      volume: 30
+    - destination: 5
+      origin: 2
+      volume: 30
     type: list
