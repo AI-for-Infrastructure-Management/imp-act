@@ -405,7 +405,7 @@ class RoadEnvironment:
 
         reward = maintenance_reward + travel_time_reward
         if self.budget_overrun < 0:
-            reward += self.budget_penalty_factor * self.budget_overrun*0
+            reward += self.budget_penalty_factor * self.budget_overrun
 
 
         # Update variables after step is complete for up to date observations
