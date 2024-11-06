@@ -227,6 +227,8 @@ class RoadEnvironment:
 
         self.graph = config["topology"]["graph"]
         self.budget_penalty_factor = 0 
+        self.episode_counter = 0
+
 
         # Convert trips dataframe to list of tuples with correct vertex indices
         trips_df = config["traffic"]["trips"]
@@ -403,7 +405,7 @@ class RoadEnvironment:
 
         reward = maintenance_reward + travel_time_reward
         if self.budget_overrun < 0:
-            reward += self.budget_penalty_factor * self.budget_overrun
+            reward += self.budget_penalty_factor * self.budget_overrun*0
 
 
         # Update variables after step is complete for up to date observations
@@ -412,7 +414,9 @@ class RoadEnvironment:
 
         if self.timestep % self.budget_renewal_interval == 0:
             self.current_budget = self.budget_amount
-            self.budget_penalty_factor=self.update_budget_penalty_factor()
+            self.budget_penalty_factor=self.update_penalty_factor()
+            #self.episode_counter += 1
+         #   print(self.budget_penalty_factor)
 
         observation = self._get_observation()
 
@@ -431,6 +435,8 @@ class RoadEnvironment:
             "forced_replace_constraint_applied": self.forced_replace_constraint_applied,
             "applied_actions": actions,
         }
+        #if self.timestep >= self.max_timesteps and self.episode_counter % 100 == 0:
+
 
         return observation, reward, self.timestep >= self.max_timesteps, info
 
@@ -522,7 +528,11 @@ class RoadEnvironment:
         return total_cost
 
     def _apply_action_constraints(self, actions):
-        actions = [action.copy() for action in actions]
+        actions = [np.copy(action) for action in actions]
+
+        #actions = [action.clone() if isinstance(action, torch.Tensor) else action.copy() for action in actions]
+
+        #actions = [action.copy() for action in actions]
 
         actions = self._apply_forced_repair_constraint(actions)
         actions = self._apply_budget_constraint(actions)
@@ -594,6 +604,6 @@ class RoadEnvironment:
         return actions
     def update_penalty_factor(self):
         self.budget_penalty_factor += self.lr_budget_penalty_factor*self.budget_overrun
-        self.budget_penalty_factor=np.max(self.budget_penalty_factor,0)
+        self.budget_penalty_factor=max(self.budget_penalty_factor,0)
         return self.budget_penalty_factor
 
