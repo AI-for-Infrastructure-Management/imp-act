@@ -487,7 +487,7 @@ class RoadEnvironment:
             travel_time = edge["travel_time"]
             capacity = sum([seg.capacity for seg in edge["road_edge"].segments])
             usage = volume / capacity * 100
-            string += f"{id:^5} {int(volume):^5}({usage:^3.1f}%) {travel_time:^15.2f}\n"
+            string += f"{id:^5} {volume:^5.3f}({usage:^3.1f}%) {travel_time:^15.2f}\n"
 
         return string
 
