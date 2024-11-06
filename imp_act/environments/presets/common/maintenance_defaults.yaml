@@ -52,3 +52,4 @@ reward:
 budget_amount: 12_000_000
 budget_renewal_interval: 5
 forced_replace_worst_observation_count: 1
+lr_budget_penalty_factor: 0.000001
