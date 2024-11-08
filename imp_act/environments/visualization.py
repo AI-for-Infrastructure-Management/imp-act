@@ -6,10 +6,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import utils_nx_ig as mu
 
-from environments.config.environment_presets import small_environment_dict
-from environments.road_env import RoadEnvironment
+#from imp_act.environments.config.environment_presets import small_environment_dict
+#from imp_act.environments.road_env import RoadEnvironment
 from PIL import Image
 
 # plot dict for visualization with networkx
@@ -61,18 +60,27 @@ matplotlib_dict = {"pad_inches": 0.1}
 
 color_coding = {
     0: "tab:green",
-    1: "tab:pink",
+    1: "tab:olive",
     2: "tab:orange",
-    3: "tab:red",
+    3: "tab:pink",
+    4: "tab:red",
 }  # for maximum over states of the segments per edge
 
+def pickle_graph(g: ig.Graph, filename) -> None:
+    g.write_pickle(fname=filename)
+    return
+
+def unpickle_graph(filename) -> ig.Graph:
+    return ig.Graph.Read_Pickle(fname=filename)
+
+def convert_graph_to_nx(g: ig.Graph) -> nx.Graph:
+    return g.to_networkx()
 
 def update_dict(d: dict, my_dict: dict) -> dict:
     new_dict = d.copy()
     if my_dict != {}:
         new_dict.update(my_dict)
     return new_dict
-
 
 def update_multiple_dicts(g: nx.Graph, str_list: list, dict_list: list) -> list:
     return_list = list()
@@ -98,9 +106,23 @@ def update_multiple_dicts(g: nx.Graph, str_list: list, dict_list: list) -> list:
 
 def plot_prepare(g: nx.Graph, layout: str):
     if isinstance(g, ig.Graph):
-        g = mu.convert_graph_to_nx(g=g)
+        g = convert_graph_to_nx(g=g)
     fig, ax = plt.subplots(figsize=(10, 6))
-    pos = layout_dict[layout](g)
+    # if no predefined layout provided -> try node positions stored in graph
+    if layout not in layout_dict.keys():
+        # check if every node has position keys
+        if all(
+            [all(
+                [p in g._node[k].keys() for p in ['position_x', 'position_y']]
+                ) for k in g._node.keys()]
+            ):
+            # create dict of node positions
+            pos = {k: np.array([g._node[k][p] for p in ['position_x', 'position_y']]) for k in g._node.keys()}
+        else:
+            layout = "planar"
+            pos = layout_dict[layout](g)
+    else:
+        pos = layout_dict[layout](g)
     return fig, ax, pos, g
 
 
@@ -117,7 +139,7 @@ def only_graph_structure(
     my_edge_dict: dict = {},
     my_node_label_dict: dict = {},
     my_edge_label_dict: dict = {},
-) -> [dict, dict, dict, dict]:
+) -> list[dict]:
     # inject custom changes passed to the function
     str_list = ["nodes", "edges", "node_labels", "edge_labels"]
     dict_list = [my_node_dict, my_edge_dict, my_node_label_dict, my_edge_label_dict]
@@ -221,8 +243,8 @@ def only_volumes(g: nx.Graph, my_edge_dict: dict = {}) -> dict:
 
 
 def general_plot(
-    g: nx.Graph,
-    layout="planar",
+    g: nx.Graph | ig.Graph,
+    layout="positions",
     with_color: bool = False,
     use_cmap: bool = False,
     with_edge_labels: bool = False,
@@ -236,7 +258,7 @@ def general_plot(
     save_plot: bool = False,
     filename: str = None,
     return_stuff: bool = False,
-) -> None:
+) -> list | None:
 
     fig, ax, pos, g = plot_prepare(g=g, layout=layout)
     (
