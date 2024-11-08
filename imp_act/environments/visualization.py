@@ -104,7 +104,7 @@ def update_multiple_dicts(g: nx.Graph, str_list: list, dict_list: list) -> list:
     return return_list
 
 
-def plot_prepare(g: nx.Graph, layout: str):
+def plot_prepare(g: nx.Graph, layout: str) -> list:
     if isinstance(g, ig.Graph):
         g = convert_graph_to_nx(g=g)
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -241,6 +241,32 @@ def only_volumes(g: nx.Graph, my_edge_dict: dict = {}) -> dict:
     new_edge_dict = update_dict(d=my_edge_dict, my_dict={"width": width_list})
     return new_edge_dict
 
+# function that draws directed as well as undirected graphs
+def draw_edges(
+    g: nx.Graph, 
+    pos: dict, 
+    ax: mpl.axes.Axes, 
+    new_edge_dict: dict, 
+    curve_factor: float
+) -> None:
+    if g.is_directed():
+        # Draw edges with offsets for bidirectional edges
+        for i, (u, v) in enumerate(g.edges()):
+            # construct edge-specific dict
+            sub_dict = {}
+            for key, val in new_edge_dict.items():
+                sub_dict[key] = val[i] if isinstance(val, list) else val
+
+            # Check if there's a reverse edge
+            if (v, u) in g.edges() and u < v:
+                # Draw the two edges with curve
+                nx.draw_networkx_edges(g, pos, edgelist=[(u, v)], connectionstyle=f'arc3,rad={curve_factor}', arrows=True, **sub_dict)
+                nx.draw_networkx_edges(g, pos, edgelist=[(v, u)], connectionstyle=f'arc3,rad={curve_factor}', arrows=True, **sub_dict)
+            elif (v, u) not in g.edges():  # Draw normally if no bidirectional pair
+                nx.draw_networkx_edges(g, pos, edgelist=[(v, u)], **sub_dict)
+    else:
+        nx.draw_networkx_edges(G=g, pos=pos, ax=ax, **new_edge_dict)
+    return 
 
 def general_plot(
     g: nx.Graph | ig.Graph,
@@ -253,6 +279,7 @@ def general_plot(
     my_edge_dict: dict = {},
     my_node_label_dict: dict = {},
     my_edge_label_dict: dict = {},
+    curve_factor: float=0.05,
     title: bool = None,
     show_plot: bool = True,
     save_plot: bool = False,
@@ -287,7 +314,7 @@ def general_plot(
 
     nx.draw_networkx_nodes(G=g, pos=pos, **new_node_dict)
     nx.draw_networkx_labels(G=g, pos=pos, ax=ax, **new_node_label_dict)
-    nx.draw_networkx_edges(G=g, pos=pos, ax=ax, **new_edge_dict)
+    draw_edges(g=g, pos=pos, ax=ax, new_edge_dict=new_edge_dict, curve_factor=curve_factor)
     if new_edge_label_dict["edge_labels"] is not None:
         nx.draw_networkx_edge_labels(G=g, pos=pos, ax=ax, **new_edge_label_dict)
 
