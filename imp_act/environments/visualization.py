@@ -316,7 +316,8 @@ def draw_edge_labels(
 ) -> None:
     for (u, v) in g.edges():
         if (v, u) in g.edges():
-            t = 0.3
+            # this needs to be amended to parameters
+            t = new_edge_label_dict["label_pos"]
             cf = curve_factor
         else:
             t = 0.5
