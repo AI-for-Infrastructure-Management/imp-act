@@ -3,6 +3,7 @@ import os
 
 import igraph as ig
 import matplotlib as mpl
+from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -45,16 +46,35 @@ node_labels_dict = {
     "clip_on": True,
 }
 
+"""
 edge_labels_dict = {
     "edge_labels": None,
-    "label_pos": 0.5,
+    "label_pos": 0.3,
     "font_size": 10,
     "font_color": "k",
-    "horizontalalignment": "center",
-    "verticalalignment": "center",
+    "horizontalalignment": "right",
+    "verticalalignment": "bottom",
     "rotate": True,
     "clip_on": True,
 }
+"""
+
+edge_labels_dict = {
+    "label_pos": 0.3,
+    "text_dict": {
+        "fontsize": 10,
+        "color": "k",
+        "ha": "center",
+        "va": "center",
+        "bbox": {
+            "boxstyle": "round,pad=0.0",    # Rounded box with tight padding
+            "ec": "none",                      # Edge color
+            "fc": "white",                     # Background color
+            "alpha": 0.8,                       # Transparency for better line visibility
+        }
+    }
+}
+
 
 matplotlib_dict = {"pad_inches": 0.1}
 
@@ -103,6 +123,19 @@ def update_multiple_dicts(g: nx.Graph, str_list: list, dict_list: list) -> list:
             return_list.append(update_dict(d=edge_labels_dict, my_dict=my_dict))
     return return_list
 
+def bezier_point(
+        start: np.ndarray, end: np.ndarray, control: np.ndarray, t: float
+    ) -> list[np.ndarray, np.ndarray]:
+    """
+    Calculate a point on a quadratic Bezier curve at position t.
+    start: starting point (x, y)
+    end: ending point (x, y)
+    control: control point (x, y)
+    t: position along the curve, between 0 and 1
+    """
+    point = (1 - t)**2 * start + 2 * (1 - t) * t * control + t**2 * end
+    tangent = 2 * (1 - t) * (control - start) + 2 * t * (end - control)
+    return point, tangent
 
 def plot_prepare(g: nx.Graph, layout: str) -> list:
     if isinstance(g, ig.Graph):
@@ -126,9 +159,16 @@ def plot_prepare(g: nx.Graph, layout: str) -> list:
     return fig, ax, pos, g
 
 
-def plot_ending(title: str, show_plot: bool, save_plot: bool, filename: str) -> None:
+def plot_ending(
+        title: str, 
+        show_plot: bool=False, 
+        equal_axis: bool=True,
+        save_plot: bool=False, 
+        filename: str='plot.png'
+    ) -> None:
     plt.title(title, fontsize=14) if title is not None else None
     plt.savefig(filename, pad_inches=0) if save_plot else None
+    plt.axis('equal') if equal_axis else None
     plt.show() if show_plot else None
     return
 
@@ -153,7 +193,7 @@ def only_graph_structure(
 
 
 def only_edge_colors(
-    g: nx.Graph, ax: plt.axes, use_cmap=False, my_edge_dict: dict = {}
+    g: nx.Graph, ax: Axes, use_cmap=False, my_edge_dict: dict = {}
 ) -> dict:
     num_states = (
         next(iter(next(iter(g.adjacency()))[1].values()))["road_edge"]
@@ -210,7 +250,6 @@ def only_edge_labels(g: nx.Graph, my_edge_label_dict: dict = {}) -> dict:
         .segments[0]
         .number_of_states
     )
-
     edge_states = list()
     edge_labels = {}
     for e in g.edges():
@@ -225,8 +264,8 @@ def only_edge_labels(g: nx.Graph, my_edge_label_dict: dict = {}) -> dict:
             )
         edge_labels[e] = label_string[:-1]
     new_edge_label_dict = update_dict(
-        d=update_dict(d=edge_labels_dict, my_dict={"edge_labels": edge_labels}),
-        my_dict=my_edge_label_dict,
+        d=update_dict(d=edge_labels_dict, my_dict=my_edge_label_dict),
+        my_dict={"edge_labels": edge_labels},
     )
     return new_edge_label_dict
 
@@ -245,7 +284,7 @@ def only_volumes(g: nx.Graph, my_edge_dict: dict = {}) -> dict:
 def draw_edges(
     g: nx.Graph, 
     pos: dict, 
-    ax: mpl.axes.Axes, 
+    ax: Axes, 
     new_edge_dict: dict, 
     curve_factor: float
 ) -> None:
@@ -268,6 +307,42 @@ def draw_edges(
         nx.draw_networkx_edges(G=g, pos=pos, ax=ax, **new_edge_dict)
     return 
 
+def draw_edge_labels(
+    g: nx.Graph, 
+    pos: dict, 
+    ax: Axes,  
+    new_edge_label_dict: dict, 
+    curve_factor: float,
+) -> None:
+    for (u, v) in g.edges():
+        if (v, u) in g.edges():
+            t = 0.3
+            cf = curve_factor
+        else:
+            t = 0.5
+            cf = 0.0
+        label = new_edge_label_dict['edge_labels'][(u,v)]
+        node_pos_u = np.array(pos[u])
+        node_pos_v = np.array(pos[v])
+        midpoint = (node_pos_u + node_pos_v) / 2
+        direction = np.array([node_pos_v[1] - node_pos_u[1], node_pos_u[0] - node_pos_v[0]])
+        control_point = midpoint + cf * direction
+        label_pos, tangent = bezier_point(node_pos_u, node_pos_v, control_point, t=t)
+        # Calculate angle for text rotation
+        angle = np.degrees(np.arctan2(tangent[1], tangent[0]))
+        if angle < -90 or angle > 90:
+            angle += 180
+        plt.text(
+            label_pos[0], 
+            label_pos[1], 
+            label,
+            rotation=angle, 
+            rotation_mode="anchor", 
+            **new_edge_label_dict['text_dict'], 
+        )
+    return
+
+
 def general_plot(
     g: nx.Graph | ig.Graph,
     layout="positions",
@@ -282,6 +357,7 @@ def general_plot(
     curve_factor: float=0.05,
     title: bool = None,
     show_plot: bool = True,
+    equal_axis: bool = True,
     save_plot: bool = False,
     filename: str = None,
     return_stuff: bool = False,
@@ -316,10 +392,17 @@ def general_plot(
     nx.draw_networkx_labels(G=g, pos=pos, ax=ax, **new_node_label_dict)
     draw_edges(g=g, pos=pos, ax=ax, new_edge_dict=new_edge_dict, curve_factor=curve_factor)
     if new_edge_label_dict["edge_labels"] is not None:
-        nx.draw_networkx_edge_labels(G=g, pos=pos, ax=ax, **new_edge_label_dict)
+        draw_edge_labels(
+            g=g, 
+            pos=pos, 
+            ax=ax, 
+            new_edge_label_dict=new_edge_label_dict, 
+            curve_factor=curve_factor
+        )
+        #nx.draw_networkx_edge_labels(G=g, pos=pos, ax=ax, **new_edge_label_dict)
 
     plot_ending(
-        title=title, show_plot=show_plot, save_plot=save_plot, filename=filename
+        title=title, show_plot=show_plot, equal_axis=equal_axis, save_plot=save_plot, filename=filename
     )
     return (
         [
