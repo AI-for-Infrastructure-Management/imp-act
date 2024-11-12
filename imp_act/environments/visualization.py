@@ -4,16 +4,16 @@ import os
 import igraph as ig
 import matplotlib as mpl
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
+from imp_act import make
+
 #from imp_act.environments.config.environment_presets import small_environment_dict
 #from imp_act.environments.road_env import RoadEnvironment
 from PIL import Image
-
-# plot dict for visualization with networkx
-standard_dict = {"with_labels": True}
 
 layout_dict = {
     "shell": nx.shell_layout,
@@ -60,6 +60,7 @@ edge_labels_dict = {
 """
 
 edge_labels_dict = {
+    "edge_labels": None,
     "label_pos": 0.3,
     "text_dict": {
         "fontsize": 10,
@@ -75,6 +76,10 @@ edge_labels_dict = {
     }
 }
 
+save_dict = {
+    "bbox_inches": "tight", 
+    "pad_inches": 0.2, 
+}
 
 matplotlib_dict = {"pad_inches": 0.1}
 
@@ -160,6 +165,7 @@ def plot_prepare(g: nx.Graph, layout: str) -> list:
 
 
 def plot_ending(
+        fig: Figure,
         title: str, 
         show_plot: bool=False, 
         equal_axis: bool=True,
@@ -167,8 +173,8 @@ def plot_ending(
         filename: str='plot.png'
     ) -> None:
     plt.title(title, fontsize=14) if title is not None else None
-    plt.savefig(filename, pad_inches=0) if save_plot else None
     plt.axis('equal') if equal_axis else None
+    plt.savefig(filename, dpi=fig.dpi, **save_dict) if save_plot else None
     plt.show() if show_plot else None
     return
 
@@ -315,13 +321,12 @@ def draw_edge_labels(
     curve_factor: float,
 ) -> None:
     for (u, v) in g.edges():
-        if (v, u) in g.edges():
-            # this needs to be amended to parameters
-            t = new_edge_label_dict["label_pos"]
-            cf = curve_factor
-        else:
-            t = 0.5
-            cf = 0.0
+        t = 0.5
+        cf = 0.0
+        if g.is_directed():
+            if (v, u) in g.edges():
+                t = new_edge_label_dict["label_pos"]
+                cf = curve_factor
         label = new_edge_label_dict['edge_labels'][(u,v)]
         node_pos_u = np.array(pos[u])
         node_pos_v = np.array(pos[v])
@@ -340,7 +345,7 @@ def draw_edge_labels(
             rotation=angle, 
             rotation_mode="anchor", 
             **new_edge_label_dict['text_dict'], 
-        )
+        )   
     return
 
 
@@ -400,10 +405,13 @@ def general_plot(
             new_edge_label_dict=new_edge_label_dict, 
             curve_factor=curve_factor
         )
-        #nx.draw_networkx_edge_labels(G=g, pos=pos, ax=ax, **new_edge_label_dict)
-
     plot_ending(
-        title=title, show_plot=show_plot, equal_axis=equal_axis, save_plot=save_plot, filename=filename
+        fig=fig,
+        title=title, 
+        show_plot=show_plot, 
+        equal_axis=equal_axis, 
+        save_plot=save_plot, 
+        filename=filename
     )
     return (
         [
@@ -422,51 +430,71 @@ def general_plot(
 
 
 def vis_one_episode(
-    frame_folder: str = "./tmp_pic_folder", frame_type: str = ".png", delete=True
+    env_name: str = "ToyExample-v2",
+    frame_folder: str = "./tmp_pic_folder", 
+    frame_type: str = ".png", 
+    gif_name: str | None = None,
+    delete=True,
+    layout="positions",
+    with_color: bool = True,
+    with_edge_labels: bool = True,
+    with_volumes: bool = False,
+    curve_factor: float=0.05,
 ):
     if os.path.exists(frame_folder):
         delete_folder = False
     else:
         os.mkdir(frame_folder)
         delete_folder = True
-
     path_list = list()
-
     frame_type = "." + frame_type if "." not in frame_type else frame_type
-    # find highest power of 10 in max_timesteps (for storing digits):
-    digits = 1
-    while 10**digits < small_environment_dict["max_timesteps"]:
-        digits += 1
+
+    if gif_name is None:
+        gif_name = '_'.join([env_name, "traj.gif"])
 
     # create env
-    env = RoadEnvironment(**small_environment_dict)
-
+    env = make(environment_name=env_name)
     obs = env.reset()
-    actions = [[1, 1] for _ in range(4)]
+
+    # find highest power of 10 in max_timesteps (for storing digits):
+    digits = 1
+    while 10**digits < env.max_timesteps:
+        digits += 1
+
+    # select action 1 at every timestep for every segment
+    act = 1
+    actions = [
+        [act for _ in edge["road_edge"].segments] for edge in env.graph.es
+    ]
+    
     time = 0
     pic_name = os.path.join(frame_folder, f"pic{time:0{digits}d}" + frame_type)
     path_list.append(pic_name)
     general_plot(
         g=env.graph,
-        with_color=True,
-        with_edge_labels=True,
-        with_volumes=True,
+        layout=layout,
+        with_color=with_color,
+        with_edge_labels=with_edge_labels,
+        with_volumes=with_volumes,
+        curve_factor=curve_factor,
         title="t: 0",
         show_plot=False,
         save_plot=True,
         filename=pic_name,
     )
 
-    while time < small_environment_dict["max_timesteps"]:
+    while time < env.max_timesteps:
         time += 1
         obs, cost, done, info = env.step(actions)
         pic_name = os.path.join(frame_folder, f"pic{time:0{digits}d}" + frame_type)
         path_list.append(pic_name)
         general_plot(
             g=env.graph,
-            with_color=True,
-            with_edge_labels=True,
-            with_volumes=True,
+            layout=layout,
+            with_color=with_color,
+            with_edge_labels=with_edge_labels,
+            with_volumes=with_volumes,
+            curve_factor=curve_factor,
             title=f"t: {time}",
             show_plot=False,
             save_plot=True,
@@ -475,7 +503,7 @@ def vis_one_episode(
         if done:
             break
 
-    save_frames_as_gif(frame_folder=frame_folder)
+    save_frames_as_gif(frame_folder=frame_folder, savename=gif_name)
     if delete:
         [os.remove(path) for path in path_list]
     if delete_folder:
@@ -483,13 +511,13 @@ def vis_one_episode(
     return
 
 
-def save_frames_as_gif(frame_folder: str) -> None:
+def save_frames_as_gif(frame_folder: str, savename: str) -> None:
     frames = [
         Image.open(image) for image in glob.glob(os.path.join(frame_folder, "*.png"))
     ]
     frame_one = frames[0]
     frame_one.save(
-        "one_traj.gif",
+        os.path.join('./env_trajectories', savename),
         format="GIF",
         append_images=frames,
         save_all=True,
@@ -500,8 +528,6 @@ def save_frames_as_gif(frame_folder: str) -> None:
 
 
 # special plotting function which make use of general_plot. Not really necessary, but maybe someone wants to use these instead
-
-
 def plot_only_graph_structure(
     g: nx.Graph,
     layout="planar",
