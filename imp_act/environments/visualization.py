@@ -1,6 +1,5 @@
 import glob
 import os
-
 import igraph as ig
 import matplotlib as mpl
 from matplotlib.axes import Axes
@@ -8,12 +7,9 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from PIL import Image
 
 from imp_act import make
-
-#from imp_act.environments.config.environment_presets import small_environment_dict
-#from imp_act.environments.road_env import RoadEnvironment
-from PIL import Image
 
 layout_dict = {
     "shell": nx.shell_layout,
