@@ -550,6 +550,7 @@ def vis_one_episode(
     with_color: bool = True,
     with_edge_labels: bool = True,
     with_volumes: bool = False,
+    with_progress_bar: bool = True,
     curve_factor: float=0.05,
 ):
     if os.path.exists(frame_folder):
@@ -582,11 +583,12 @@ def vis_one_episode(
     pic_name = os.path.join(frame_folder, f"pic{time:0{digits}d}" + frame_type)
     path_list.append(pic_name)
     general_plot(
-        g=env.graph,
+        env=env,
         layout=layout,
         with_color=with_color,
         with_edge_labels=with_edge_labels,
         with_volumes=with_volumes,
+        with_progress_bar=with_progress_bar,
         curve_factor=curve_factor,
         title="t: 0",
         show_plot=False,
@@ -600,11 +602,12 @@ def vis_one_episode(
         pic_name = os.path.join(frame_folder, f"pic{time:0{digits}d}" + frame_type)
         path_list.append(pic_name)
         general_plot(
-            g=env.graph,
+            env=env,
             layout=layout,
             with_color=with_color,
             with_edge_labels=with_edge_labels,
             with_volumes=with_volumes,
+            with_progress_bar=with_progress_bar,
             curve_factor=curve_factor,
             title=f"t: {time}",
             show_plot=False,
