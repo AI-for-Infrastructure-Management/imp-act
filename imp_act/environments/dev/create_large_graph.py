@@ -2,8 +2,9 @@ import argparse
 import os
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -43,7 +44,14 @@ def plot_network(G, pos, title, path, args):
             (x_max, y_min),
         ]
         # Create a Polygon patch
-        polygon = patches.Polygon(box_points, closed=True, edgecolor='r', linewidth=2, facecolor='none',  zorder=10)
+        polygon = patches.Polygon(
+            box_points,
+            closed=True,
+            edgecolor="r",
+            linewidth=2,
+            facecolor="none",
+            zorder=10,
+        )
 
         # Add the patch to the Axes
         ax.add_patch(polygon)
@@ -162,7 +170,7 @@ def export_coordinate_range(args):
     edges_df = pd.read_csv(os.path.join(args.data_dir, edges_file_name))
 
     # Create folder for output
-    folder_name = '_'.join([str(c) for c in args.coordinate_range])
+    folder_name = "_".join([str(c) for c in args.coordinate_range])
     output_path = Path(args.output_dir, f"coordinate_ranges/{folder_name}")
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -179,6 +187,7 @@ def export_coordinate_range(args):
     ]
 
     export_graph(filtered_nodes, filtered_edges, output_path, args)
+
 
 def export_country(args):
     print(f"Exporting graph for {args.country}")
@@ -198,6 +207,7 @@ def export_country(args):
     ]
 
     export_graph(filtered_nodes, filtered_edges, country_output_path, args)
+
 
 def export_graph(filtered_nodes, filtered_edges, output_path, args):
     nodes_df = pd.read_csv(os.path.join(args.data_dir, nodes_file_name))
@@ -234,7 +244,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         pos_filtered,
         f"Network for {args.country} (N: {len(G_filtered.nodes)}, E: {len(G_filtered.edges)})",
         output_path,
-        args
+        args,
     )
 
     # Merge nodes with only two edges
@@ -263,7 +273,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         pos_filtered,
         f"Reduced Network for {args.country} (N: {len(G_reduced_3.nodes)}, E: {len(G_reduced_3.edges)})",
         output_path,
-        args
+        args,
     )
 
     # rename attribute "Distance" to "distance" and make sure it is a float
@@ -285,10 +295,11 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         if "Traffic_flow_trucks_2030" in G_reduced_3.edges[edge].keys():
             del G_reduced_3.edges[edge]["Traffic_flow_trucks_2030"]
 
+    # Make the graph directed
+    G_reduced_3 = G_reduced_3.to_directed()
+
     # Export graph to graphml
-    nx.write_graphml_lxml(
-        G_reduced_3, f"{output_path.absolute()}/graph.graphml"
-    )
+    nx.write_graphml_lxml(G_reduced_3, f"{output_path.absolute()}/graph.graphml")
 
     # store new edge information as yaml
     with open(f"{output_path.absolute()}/new-edges.yaml", "w") as file:
@@ -297,28 +308,49 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
     print(f"\tNumber of nodes: {len(G_reduced_3.nodes)}")
     print(f"\tNumber of edges: {len(G_reduced_3.edges)}")
 
-    travel_time = args.segment_length / args.segment_speed
-
     total_number_of_segments = 0
     segments = []
     for edge in G_reduced_3.edges():
         node_a = G_reduced_3.nodes()[edge[0]]
         node_b = G_reduced_3.nodes()[edge[1]]
-        no_segments = int(
-            np.ceil(G_reduced_3.edges[edge]["distance"] / args.segment_length)
-        )
+        if args.segment_length is not None:  # split edges into segments
+            no_segments = int(
+                np.ceil(G_reduced_3.edges[edge]["distance"] / args.segment_length)
+            )
 
-        # linear interpolation of coordinates
-        x_coordinates = np.linspace(
-            node_a["position_x"], node_b["position_x"], no_segments
-        )
-        y_coordinates = np.linspace(
-            node_a["position_y"], node_b["position_y"], no_segments
-        )
+            # linear interpolation of coordinates
+            x_coordinates = np.linspace(
+                node_a["position_x"], node_b["position_x"], no_segments
+            )
+            y_coordinates = np.linspace(
+                node_a["position_y"], node_b["position_y"], no_segments
+            )
 
-        for x, y in zip(x_coordinates, y_coordinates):
+            for x, y in zip(x_coordinates, y_coordinates):
+                segments.append(
+                    (
+                        edge[0],
+                        edge[1],
+                        x,
+                        y,
+                        args.segment_capacity,
+                        args.segment_speed,
+                        args.segment_length,
+                    )
+                )
+        else:  # one segment per edge
+            no_segments = 1
+            (x, y) = (node_a["position_x"], node_a["position_y"])
             segments.append(
-                (edge[0], edge[1], x, y, args.segment_capacity, travel_time)
+                (
+                    edge[0],
+                    edge[1],
+                    x,
+                    y,
+                    args.segment_capacity,
+                    args.segment_speed,
+                    G_reduced_3.edges[edge]["distance"],
+                )
             )
 
         total_number_of_segments += no_segments
@@ -332,7 +364,8 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
             "position_x",
             "position_y",
             "capacity",
-            "travel_time",
+            "travel_speed",
+            "segment_length",
         ],
     )
     # save
@@ -530,13 +563,6 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         ]
         truck_traffic_df_filtered = truck_traffic_df_filtered.drop(drop, axis=1)
 
-        # sort origin_node_reduced and destination_node_reduced by id (The order of origin destination are irrelevant for the traffic assignment. So this reduces the number of duplicates)
-        for index, row in truck_traffic_df_filtered.iterrows():
-            if row["origin_node_reduced"] > row["destination_node_reduced"]:
-                truck_traffic_df_filtered.loc[
-                    index, ["origin_node_reduced", "destination_node_reduced"]
-                ] = (row["destination_node_reduced"], row["origin_node_reduced"])
-
         # aggregate duplicates (same origin and destination) by adding up the volume
         # Traffic_flow_trucks_2010	Traffic_flow_trucks_2019	Traffic_flow_trucks_2030	Traffic_flow_tons_2010	Traffic_flow_tons_2019	Traffic_flow_tons_2030
         truck_traffic_df_filtered = (
@@ -679,39 +705,48 @@ def main(args):
         export_coordinate_range(args)
 
     else:
-        raise ValueError(f"Use --country [CODE] or --coordinate_range [min_x max_x min_y max_y] to specify export area.")
+        raise ValueError(
+            "Use --country [CODE] or --coordinate_range [min_x max_x min_y max_y] to specify export area."
+        )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--country", "-c", type=str, default=None)
-    parser.add_argument("--coordinate_range", "-cr", type=float, nargs=4, default=None, help="Coordinate range to filter for. Format: min_x max_x min_y max_y")
     parser.add_argument(
-        "--segment_length",
+        "--coordinate-range",
+        "-cr",
+        type=float,
+        nargs=4,
+        default=None,
+        help="Coordinate range to filter for. Format: min_x max_x min_y max_y",
+    )
+    parser.add_argument(
+        "--segment-length",
         "-sl",
         type=float,
-        default=10.0,
+        default=None,
         help="Length of a segment in km",
     )
     parser.add_argument(
-        "--segment_capacity",
+        "--segment-capacity",
         "-sc",
         type=float,
         default=9e6,
         help="Capacity of a segment in trucks per year",
     )
     parser.add_argument(
-        "--segment_speed",
+        "--segment-speed",
         "-ss",
         type=float,
         default=100.0,
         help="Travel speed on a segment in km/h",
     )
     parser.add_argument(
-        "--pruning_threshold",
+        "--pruning-threshold",
         "-p",
         type=float,
-        default=10.0,
+        default=1.0,
         help="Threshold for pruning edges in km",
     )
     parser.add_argument(
@@ -723,6 +758,8 @@ if __name__ == "__main__":
         type=str,
         default="imp_act/environments/dev/output",
     )
+
+    parser.add_argument("--directed", type=bool, default=True)
 
     parser.add_argument("--skip-traffic", action="store_true", default=False)
 

@@ -42,6 +42,11 @@ def large_environment():
 
 
 @pytest.fixture
+def cologne_environment():
+    return make("Cologne-v1")
+
+
+@pytest.fixture
 def random_time_seed():
     return int(time())
 

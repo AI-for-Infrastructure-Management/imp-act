@@ -283,13 +283,19 @@ class RoadEnvironment:
         for nodes, edge_segments in config["topology"]["segments"].items():
             segments = []
             for segment in edge_segments:
+                if segment.get("travel_time") is None:
+                    base_travel_time = (
+                        segment["segment_length"] / segment["travel_speed"]
+                    )
+                else:
+                    base_travel_time = segment["travel_time"]
                 segments.append(
                     RoadSegment(
                         random_generator=self.random_generator,
                         position_x=segment["position_x"],
                         position_y=segment["position_y"],
                         capacity=segment["capacity"],
-                        base_travel_time=segment["travel_time"],
+                        base_travel_time=base_travel_time,
                         config=config,
                     )
                 )

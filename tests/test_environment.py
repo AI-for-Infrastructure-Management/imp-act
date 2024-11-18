@@ -11,6 +11,7 @@ environment_fixtures = [
     "small_environment",
     "medium_environment",
     "large_environment",
+    "cologne_environment",
 ]
 
 
