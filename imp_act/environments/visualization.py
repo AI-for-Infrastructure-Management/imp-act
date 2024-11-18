@@ -2,6 +2,7 @@ import glob
 import os
 import igraph as ig
 import matplotlib as mpl
+import matplotlib.patches as patches
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
@@ -10,6 +11,7 @@ import numpy as np
 from PIL import Image
 
 from imp_act import make
+from imp_act.environments.road_env import RoadEnvironment
 
 layout_dict = {
     "shell": nx.shell_layout,
@@ -42,19 +44,6 @@ node_labels_dict = {
     "clip_on": True,
 }
 
-"""
-edge_labels_dict = {
-    "edge_labels": None,
-    "label_pos": 0.3,
-    "font_size": 10,
-    "font_color": "k",
-    "horizontalalignment": "right",
-    "verticalalignment": "bottom",
-    "rotate": True,
-    "clip_on": True,
-}
-"""
-
 edge_labels_dict = {
     "edge_labels": None,
     "label_pos": 0.3,
@@ -69,6 +58,32 @@ edge_labels_dict = {
             "fc": "white",                     # Background color
             "alpha": 0.8,                       # Transparency for better line visibility
         }
+    }
+}
+
+budget_bar_dict = {
+    "bar_shape_dict": { # in fractions of axis bbox
+        "bottom": 1.03,
+        "width": 0.6,
+        "height": 0.03,
+        "padding": 0.01,
+    },
+    "bar_fill_dict": {
+        "color": "grey", 
+        "alpha": 0.8,
+    },
+    "bar_border_dict": {
+        "edgecolor": "black",
+    },
+    "percent_text_dict":{
+        "fontsize": 10,
+        "ha": "right", 
+        "va": "center", 
+    },
+    "fraction_text_dict": {
+        "fontsize": 10,
+        "ha": "left", 
+        "va": "center", 
     }
 }
 
@@ -162,6 +177,7 @@ def plot_prepare(g: nx.Graph, layout: str) -> list:
 
 def plot_ending(
         fig: Figure,
+        ax: Axes,
         title: str, 
         show_plot: bool=False, 
         equal_axis: bool=True,
@@ -169,7 +185,7 @@ def plot_ending(
         filename: str='plot.png'
     ) -> None:
     plt.title(title, fontsize=14) if title is not None else None
-    plt.axis('equal') if equal_axis else None
+    ax.axis('equal') if equal_axis else None
     plt.savefig(filename, dpi=fig.dpi, **save_dict) if save_plot else None
     plt.show() if show_plot else None
     return
@@ -345,17 +361,101 @@ def draw_edge_labels(
     return
 
 
+def draw_progress_bar(
+    fig: Figure,  
+    ax: Axes,
+    current_budget: float, 
+    total_budget: float,
+    new_bar_dict: dict, 
+):
+
+    ## Create a new axis for the progress bar
+    # get bounding box for graph axis
+    ax_bbox = ax.get_position()
+    # set coordinates for the bar (centered above graph axis)
+    x_start = ax_bbox.x0 + (1-new_bar_dict["bar_shape_dict"]["width"]) * ax_bbox.width/2
+    y_start = new_bar_dict["bar_shape_dict"]["bottom"] * ax_bbox.y1
+    width = new_bar_dict["bar_shape_dict"]["width"] * ax_bbox.width
+    height = new_bar_dict["bar_shape_dict"]["height"] * ax_bbox.y1
+    shape_list = [x_start, y_start, width, height]
+
+    """
+    # Center the bar horizontally in figure
+    left_margin = (1 - new_bar_dict["bar_shape_dict"]["width"]) / 2
+    shape_list = [left_margin] + [new_bar_dict["bar_shape_dict"][key] for key in ["bottom", "width", "height"]]
+    """
+
+    bar_ax = fig.add_axes(shape_list)
+    bar_ax.set_xlim(0, 1)
+    bar_ax.set_ylim(0, 1)
+    bar_ax.axis('off')  # Turn off the axes
+
+    ## Draw the bar
+    # filled portion
+    progress = current_budget / total_budget
+    bar_ax.add_patch(
+        mpl.patches.Rectangle(
+            xy=(0, 0), 
+            width=progress, 
+            height=1, 
+            transform=bar_ax.transAxes, 
+            **new_bar_dict["bar_fill_dict"]
+        )
+    )
+
+    # Draw the border of the bar
+    bar_ax.add_patch(
+        patches.Rectangle(
+            xy=(0, 0), 
+            width=1, 
+            height=1, 
+            fill=False, 
+            transform=bar_ax.transAxes,
+            **new_bar_dict["bar_border_dict"]
+        )
+    )
+
+    text_height = y_start + height / 2
+    # Add the percentage label (left of the bar)
+    fig.text(
+        x = x_start - new_bar_dict["bar_shape_dict"]["padding"] * width, 
+        y = text_height,
+        s = f"{int(progress*100)}%", 
+        **new_bar_dict["percent_text_dict"]
+    )
+
+    # Add the value label (right of the bar)
+    if total_budget > 1000:
+        pc = int(np.floor(np.log10(current_budget)))
+        fc = current_budget / (10**pc)
+        pt = int(np.floor(np.log10(current_budget)))
+        ft = current_budget / (10**pt)
+        #s = rf"${fc:.1f}\cdot 10^{pc}$ / ${ft:.1f}\cdot 10^{pt}$"
+        s = f"{fc:.1f}e{pc} / {ft:.1f}e{pt}"
+    else:
+        s = f"{int(current_budget)}/{int(total_budget)}"
+    fig.text(
+        x = x_start + (1 + new_bar_dict["bar_shape_dict"]["padding"]) * width, 
+        y = text_height,
+        s = s,
+        **new_bar_dict["fraction_text_dict"]
+    )
+    return
+
+
 def general_plot(
-    g: nx.Graph | ig.Graph,
+    env: RoadEnvironment,
     layout="positions",
     with_color: bool = False,
     use_cmap: bool = False,
     with_edge_labels: bool = False,
     with_volumes: bool = False,
+    with_progress_bar: bool = False,
     my_node_dict: dict = {},
     my_edge_dict: dict = {},
     my_node_label_dict: dict = {},
     my_edge_label_dict: dict = {},
+    my_bar_dict: dict = {},
     curve_factor: float=0.05,
     title: bool = None,
     show_plot: bool = True,
@@ -364,8 +464,8 @@ def general_plot(
     filename: str = None,
     return_stuff: bool = False,
 ) -> list | None:
-
-    fig, ax, pos, g = plot_prepare(g=g, layout=layout)
+    ## add here new bar dict
+    fig, ax, pos, g = plot_prepare(g=env.graph, layout=layout)
     (
         new_node_dict,
         new_edge_dict,
@@ -401,8 +501,23 @@ def general_plot(
             new_edge_label_dict=new_edge_label_dict, 
             curve_factor=curve_factor
         )
+    if with_progress_bar:
+        # check that env has budget
+        if hasattr(env, "current_budget") and hasattr(env, "budget_amount"):
+            new_bar_dict = update_dict(d=budget_bar_dict, my_dict=my_bar_dict)
+            # check current and total budget
+            draw_progress_bar(
+                fig=fig,
+                ax=ax,
+                current_budget=env.current_budget,
+                total_budget=env.budget_amount,
+                new_bar_dict=new_bar_dict
+            )
+        else:
+            print("Passed environment does not have attributes 'budget_amount' and/or 'current_budget")
     plot_ending(
         fig=fig,
+        ax=ax,
         title=title, 
         show_plot=show_plot, 
         equal_axis=equal_axis, 
