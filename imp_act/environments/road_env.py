@@ -327,6 +327,11 @@ class RoadEnvironment:
 
         self.travel_time_reward_factor = config["traffic"]["travel_time_reward_factor"]
 
+        # Travel time precomputation
+        self.ta_computation = config["traffic"]["travel_time_computation"]
+        if self.ta_computation == "delays":
+            self.delays = config["traffic"]["delays"]
+
         self.reset(reset_edges=False)
 
         self.base_total_travel_time = self._get_total_travel_time()
@@ -441,9 +446,13 @@ class RoadEnvironment:
 
         total_travel_time = self._get_total_travel_time()
 
-        travel_time_reward = self.travel_time_reward_factor * (
-            total_travel_time - self.base_total_travel_time
-        )
+        if self.ta_computation == "delays":
+            delays = self._compute_delays(actions)
+            travel_time_reward = self.travel_time_reward_factor * delays
+        else:
+            travel_time_reward = self.travel_time_reward_factor * (
+                total_travel_time - self.base_total_travel_time
+            )
 
         reward = maintenance_reward + travel_time_reward
 
@@ -678,3 +687,14 @@ class RoadEnvironment:
         self.current_budget -= total_upfront_cost + np.sum(adjusted_costs)
 
         return actions
+    
+    def _compute_delays(self, actions):
+        delays = 0
+        for i, edge in enumerate(self.graph.es):
+            segments = edge["road_edge"].segments
+            edge_actions = actions[i]
+            for j, _ in enumerate(segments):
+                segment_action = edge_actions[j]
+                delay = self.delays[i][j][segment_action]
+                delays += delay
+        return delays
