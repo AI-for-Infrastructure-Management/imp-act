@@ -122,6 +122,7 @@ class EnvironmentLoader:
                 f"Deterioration type {maintenance['terminal_state_reward']['type']} not supported"
             )
 
+        # traffic
         traffic = config["traffic"]
         if traffic["base_travel_time_factors"]["type"] == "list":
             traffic["base_travel_time_factors"] = np.array(
@@ -138,6 +139,17 @@ class EnvironmentLoader:
             raise ValueError(
                 f"Deterioration type {traffic['capacity_factors']['type']} not supported"
             )
+        if traffic["travel_time_computation"] == "delays":
+            if traffic["delays"]["type"] == "file":
+                path = Path(traffic["delays"]["path"])
+                traffic["delays"] = yaml.load(open(path, "r"), Loader=yaml.FullLoader)
+            elif traffic["delays"]["type"] == "list":
+                traffic["delays"] = traffic["delays"]["list"]
+            else:
+                raise ValueError(
+                    f"Type {traffic['delays']['type']} not supported"
+                )
+            
 
         # sanity check of maintenance and traffic model parameters
         self._check_model_params_maintenance(config)

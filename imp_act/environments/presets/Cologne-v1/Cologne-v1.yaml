@@ -6,6 +6,10 @@ maintenance:
       
 traffic:
   travel_time_reward_factor: -500.0
+  travel_time_computation: "delays" # "delays" or "ta" or "static_ta"
+  delays:
+    type: "file"
+    path: "./delays.yaml"
   trips:
     path: ./traffic.csv
     type: file
