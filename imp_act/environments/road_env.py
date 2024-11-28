@@ -444,12 +444,14 @@ class RoadEnvironment:
         for i, edge in enumerate(self.graph.es):
             maintenance_reward += edge["road_edge"].step(actions[i])
 
-        total_travel_time = self._get_total_travel_time()
+        
 
         if self.ta_computation == "delays":
             delays = self._compute_delays(actions)
             travel_time_reward = self.travel_time_reward_factor * delays
+            total_travel_time = self.base_total_travel_time + delays
         else:
+            total_travel_time = self._get_total_travel_time()
             travel_time_reward = self.travel_time_reward_factor * (
                 total_travel_time - self.base_total_travel_time
             )
