@@ -7,6 +7,8 @@ maintenance:
 traffic:
   travel_time_reward_factor: -50000.0
   traffic_assignment:
+    reuse_initial_volumes: false
+    initial_max_iterations: 15
     max_iterations: 15
     convergence_threshold: 0.01
     update_weight: 0.1
