@@ -312,6 +312,9 @@ class RoadEnvironment:
         self.budget_amount = float(self.budget_amount)
         self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
         assert type(self.budget_renewal_interval) == int
+        self.hard_constraint = config["maintenance"].get("Budget_hard_Constraint", True)  # Default to True
+        assert isinstance(self.hard_constraint, bool),
+
 
         # Traffic assignment parameters
         ta_conf = config["traffic"]["traffic_assignment"]
@@ -427,6 +430,7 @@ class RoadEnvironment:
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
+        initial_budget = self.current_budget
         actions = self._apply_action_constraints(actions)
 
         maintenance_reward = 0
@@ -449,6 +453,7 @@ class RoadEnvironment:
             self.current_budget = self.budget_amount
 
         observation = self._get_observation()
+        budget_difference = initial_budget - self.current_budget
 
         info = {
             "edge_states": self._get_states(),
@@ -462,6 +467,8 @@ class RoadEnvironment:
             "budget_constraints_applied": self.budget_constraint_applied,
             "forced_replace_constraint_applied": self.forced_replace_constraint_applied,
             "applied_actions": actions,
+            "budget_difference": budget_difference,
+            "current_budget": self.current_budget,
         }
 
         done = self.timestep >= self.max_timesteps
@@ -638,7 +645,7 @@ class RoadEnvironment:
         # if we do not have enough budget to take all actions,
         # we prioritize actions and select a random possible set of actions
         # that satisfies the budget
-        if total_adjusted_cost > remaining_budget:
+        if total_adjusted_cost > remaining_budget and self.hard_constraint:
 
             self.budget_constraint_applied = True
 
