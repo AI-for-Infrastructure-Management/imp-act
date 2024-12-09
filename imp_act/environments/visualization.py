@@ -223,7 +223,17 @@ def only_edge_colors(
         .number_of_states
     )
 
-    # add here check for plot_beliefs that it is only possible for single segment edges!!
+    # check for plot_beliefs that it is only possible for single segment edges!!
+    if plot_beliefs:
+        for e in g.edges():
+            if len([1 for s in g.edges[e]["road_edge"].segments]) > 1:
+                print(
+                    "More than 1 segment in at least 1 edge. ", 
+                    "Belief visualization does not work with multi-segment edges",
+                    " -> defaults to max(states) instead"
+                )
+                plot_beliefs = False
+                break
 
     edge_colors = list()
     if use_cmap:
@@ -269,7 +279,7 @@ def only_edge_colors(
         if isinstance(color, str):
             color = next(k for k, v in color_coding.items() if v == color)
         edge_colors_rgba.append(cmap(norm(color)))
-
+    print(edge_colors, edge_colors_rgba)
     # overwrite edge dict
     new_edge_dict = update_dict(
         d=my_edge_dict,
