@@ -211,7 +211,11 @@ def only_graph_structure(
 
 
 def only_edge_colors(
-    g: nx.Graph, ax: Axes, use_cmap=False, my_edge_dict: dict = {}
+    g: nx.Graph, 
+    ax: Axes, 
+    use_cmap: bool=False, 
+    plot_beliefs: bool = True, 
+    my_edge_dict: dict = {}
 ) -> dict:
     num_states = (
         next(iter(next(iter(g.adjacency()))[1].values()))["road_edge"]
@@ -219,45 +223,70 @@ def only_edge_colors(
         .number_of_states
     )
 
+    # add here check for plot_beliefs that it is only possible for single segment edges!!
+
     edge_colors = list()
     if use_cmap:
-        for e in g.edges():
-            edge_colors.append(max([s.state for s in g.edges[e]["road_edge"].segments]))
-        # new_edge_dict = update_dict(d=new_edge_dict, my_dict={'edge_color': edge_colors, 'edge_vmax': num_states})
-        new_edge_dict = update_dict(
-            d=my_edge_dict, my_dict={"edge_color": edge_colors, "edge_vmax": num_states}
-        )
+        if plot_beliefs:
+            # calculate expected state
+            for e in g.edges():
+                s_vec = []
+                for s in g.edges[e]["road_edge"].segments:
+                    s_vec.append(s.belief * np.arange(num_states))
+                edge_colors.append(np.sum(s_vec))
+        else:
+            for e in g.edges():
+                edge_colors.append(max([s.state for s in g.edges[e]["road_edge"].segments]))
         cmap = edge_dict["edge_cmap"]
     else:
-        for e in g.edges():
-            edge_colors.append(
-                color_coding[max([s.state for s in g.edges[e]["road_edge"].segments])]
-            )
+        if plot_beliefs:
+            # calculate expected state
+            for e in g.edges():
+                s_vec = []
+                for s in g.edges[e]["road_edge"].segments:
+                    s_vec.append(s.belief * np.arange(num_states))
+                edge_colors.append(np.sum(s_vec))
+        else:
+            for e in g.edges():
+                edge_colors.append(
+                    color_coding[max([s.state for s in g.edges[e]["road_edge"].segments])]
+                )
         # new_edge_dict = update_dict(d=new_edge_dict, my_dict={'edge_color': edge_colors, 'edge_cmap':None, 'edge_vmin':0, 'edge_vmax': None})
-        new_edge_dict = update_dict(
-            d=my_edge_dict,
-            my_dict={
-                "edge_color": edge_colors,
-                "edge_cmap": None,
-                "edge_vmin": 0,
-                "edge_vmax": None,
-            },
-        )
         cmap = plt.get_cmap("viridis", num_states)
         colors = cmap.colors
         for k, v in zip(color_coding.keys(), color_coding.values()):
             colors[k, :] = list(mpl.colors.to_rgba(v))
         cmap = mpl.colors.LinearSegmentedColormap.from_list(
-            "Custom cmap", colors, cmap.N
+            "Custom cmap", colors, #cmap.N
         )
-    norm = mpl.colors.Normalize(vmin=0, vmax=num_states)
+    norm = mpl.colors.Normalize(vmin=0, vmax=num_states-1)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
+
+    # create rgba values via transformation to custom cmap
+    edge_colors_rgba = []
+    for color in edge_colors:
+        if isinstance(color, str):
+            color = next(k for k, v in color_coding.items() if v == color)
+        edge_colors_rgba.append(cmap(norm(color)))
+
+    # overwrite edge dict
+    new_edge_dict = update_dict(
+        d=my_edge_dict,
+        my_dict={
+            "edge_color": edge_colors_rgba,
+            "edge_cmap": None,
+            "edge_vmin": 0,
+            "edge_vmax": None,
+        },
+    )
+    
+    # create color bar
     plt.colorbar(
         sm,
         ax=ax,
         ticks=np.linspace(0, num_states - 1, num_states),
-        boundaries=np.arange(-0.5, num_states, 1),
+        boundaries=np.arange(-0.5, num_states, 1) if not plot_beliefs else None,
     )
     return new_edge_dict
 
@@ -448,6 +477,7 @@ def general_plot(
     layout="positions",
     with_color: bool = False,
     use_cmap: bool = False,
+    plot_beliefs: bool = True,
     with_edge_labels: bool = False,
     with_volumes: bool = False,
     with_progress_bar: bool = False,
@@ -481,7 +511,7 @@ def general_plot(
     # overwrite the respective dicts based on the desired inputs
     if with_color:
         new_edge_dict = only_edge_colors(
-            g=g, ax=ax, use_cmap=use_cmap, my_edge_dict=new_edge_dict
+            g=g, ax=ax, use_cmap=use_cmap, plot_beliefs=plot_beliefs, my_edge_dict=new_edge_dict
         )
     if with_volumes:
         new_edge_dict = only_volumes(g=g, my_edge_dict=new_edge_dict)
@@ -489,7 +519,7 @@ def general_plot(
         new_edge_label_dict = only_edge_labels(
             g=g, my_edge_label_dict=my_edge_label_dict
         )
-
+    print(new_edge_dict)
     nx.draw_networkx_nodes(G=g, pos=pos, **new_node_dict)
     nx.draw_networkx_labels(G=g, pos=pos, ax=ax, **new_node_label_dict)
     draw_edges(g=g, pos=pos, ax=ax, new_edge_dict=new_edge_dict, curve_factor=curve_factor)
