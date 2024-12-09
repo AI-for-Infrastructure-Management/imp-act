@@ -279,7 +279,7 @@ def only_edge_colors(
         if isinstance(color, str):
             color = next(k for k, v in color_coding.items() if v == color)
         edge_colors_rgba.append(cmap(norm(color)))
-    print(edge_colors, edge_colors_rgba)
+
     # overwrite edge dict
     new_edge_dict = update_dict(
         d=my_edge_dict,
@@ -301,25 +301,71 @@ def only_edge_colors(
     return new_edge_dict
 
 
-def only_edge_labels(g: nx.Graph, my_edge_label_dict: dict = {}) -> dict:
+def only_edge_labels(
+    g: nx.Graph, 
+    label_type: str = "action", 
+    input_list: list = [],
+    my_edge_label_dict: dict = {}
+) -> dict:
+    if (label_type == "action") and len(input_list) == 0:
+        print(
+            "No action list was provided for the edge labels",
+            "-> defaults to state description"
+        )
+        label_type = "state"
+
     num_states = (
         next(iter(next(iter(g.adjacency()))[1].values()))["road_edge"]
         .segments[0]
         .number_of_states
     )
+
+    num_actions = (
+        g.edges[next(iter(g.edges()))]["road_edge"].segments[0].observation_tables.shape[0]
+    )
+
+    max_num_segments = 1
+    for e in g.edges():
+        if len([1 for s in g.edges[e]["road_edge"].segments]) > 1:
+            max_num_segments = 2
+
     edge_states = list()
     edge_labels = {}
-    for e in g.edges():
-        edge_states.append([s.state for s in g.edges[e]["road_edge"].segments])
-        el = [0] * num_states
-        for s in edge_states[-1]:
-            el[s] += 1
-        label_string = ""
-        for k in range(num_states):
-            label_string = (
-                label_string + rf"$S_{k}$:{el[k]} " if el[k] > 0 else label_string
-            )
-        edge_labels[e] = label_string[:-1]
+    if label_type == "state":
+        # counts the number of segments in each state and combines it to a string
+        for e in g.edges():
+            edge_states.append([s.state for s in g.edges[e]["road_edge"].segments])
+            el = [0] * num_states
+            for s in edge_states[-1]:
+                el[s] += 1
+            label_string = ""
+            for k in range(num_states):
+                if max_num_segments > 1:
+                    label_string = (
+                        label_string + rf"$S_{k}$:{el[k]} " if el[k] > 0 else label_string
+                    )
+                else:
+                    label_string = (
+                        label_string + f"S{k} " if el[k] > 0 else label_string
+                    )
+            edge_labels[e] = label_string[:-1]
+    elif label_type == "action":
+        # counts the number of segments in each state and combines it to a string
+        for i, e in enumerate(g.edges()):
+            al = [0] * num_actions
+            for a in input_list[i]:
+                al[a] += 1
+            label_string = ""
+            for k in range(num_actions):
+                if max_num_segments > 1:
+                    label_string = (
+                        label_string + rf"$A_{k}$:{al[k]} " if (k > 0) and (al[k] > 0) else label_string
+                    )
+                else:
+                    label_string = (
+                    label_string + f"A{k} " if (k > 0) and (al[k] > 0) else label_string
+                )
+            edge_labels[e] = label_string[:-1]
     new_edge_label_dict = update_dict(
         d=update_dict(d=edge_labels_dict, my_dict=my_edge_label_dict),
         my_dict={"edge_labels": edge_labels},
@@ -489,6 +535,8 @@ def general_plot(
     use_cmap: bool = False,
     plot_beliefs: bool = True,
     with_edge_labels: bool = False,
+    label_type: str = "action",
+    label_input_list: list = [], 
     with_volumes: bool = False,
     with_progress_bar: bool = False,
     my_node_dict: dict = {},
@@ -527,9 +575,12 @@ def general_plot(
         new_edge_dict = only_volumes(g=g, my_edge_dict=new_edge_dict)
     if with_edge_labels:
         new_edge_label_dict = only_edge_labels(
-            g=g, my_edge_label_dict=my_edge_label_dict
+            g=g, 
+            label_type=label_type, 
+            input_list=label_input_list, 
+            my_edge_label_dict=my_edge_label_dict,
         )
-    print(new_edge_dict)
+
     nx.draw_networkx_nodes(G=g, pos=pos, **new_node_dict)
     nx.draw_networkx_labels(G=g, pos=pos, ax=ax, **new_node_label_dict)
     draw_edges(g=g, pos=pos, ax=ax, new_edge_dict=new_edge_dict, curve_factor=curve_factor)
