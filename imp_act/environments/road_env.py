@@ -660,7 +660,7 @@ class RoadEnvironment:
         topology_info = {
             "adjacency_matrix": adjacency_matrix,
             "graph": graph,
-            "number_o_vertices": graph.vcount(),
+            "number_of_vertices": graph.vcount(),
             "number_of_edges": graph.ecount(),
             "edges_origin_destination": edges_origin_destination,
             "segments_per_edge": segments_per_edge,
