@@ -599,9 +599,17 @@ class RoadEnvironment:
 
         edges_origin_destination = []
         segments_per_edge = []
+        segment_lengths = []
+        segment_capacities = []
         for edge in self.graph.es:
             segments_per_edge.append(len(edge["road_edge"].segments))
             edges_origin_destination.append([edge.source, edge.target])
+            segment_lengths.append(
+                [segment.segment_length for segment in edge["road_edge"].segments]
+            )
+            segment_capacities.append(
+                [segment.capacity for segment in edge["road_edge"].segments]
+            )
 
         graph = ig.Graph(edges_origin_destination, directed=True)
 
@@ -612,6 +620,8 @@ class RoadEnvironment:
             "number_of_edges": graph.ecount(),
             "edges_origin_destination": edges_origin_destination,
             "segments_per_edge": segments_per_edge,
+            "segment_lengths": segment_lengths,
+            "segment_capacities": segment_capacities,
         }
 
         return topology_info
