@@ -1,13 +1,14 @@
 import glob
 import os
+
 import igraph as ig
 import matplotlib as mpl
 import matplotlib.patches as patches
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from PIL import Image
 
 from imp_act import make
@@ -53,43 +54,43 @@ edge_labels_dict = {
         "ha": "center",
         "va": "center",
         "bbox": {
-            "boxstyle": "round,pad=0.0",    # Rounded box with tight padding
-            "ec": "none",                      # Edge color
-            "fc": "white",                     # Background color
-            "alpha": 0.8,                       # Transparency for better line visibility
-        }
-    }
+            "boxstyle": "round,pad=0.0",  # Rounded box with tight padding
+            "ec": "none",  # Edge color
+            "fc": "white",  # Background color
+            "alpha": 0.8,  # Transparency for better line visibility
+        },
+    },
 }
 
 budget_bar_dict = {
-    "bar_shape_dict": { # in fractions of axis bbox
+    "bar_shape_dict": {  # in fractions of axis bbox
         "bottom": 1.03,
         "width": 0.6,
         "height": 0.03,
         "padding": 0.01,
     },
     "bar_fill_dict": {
-        "color": "grey", 
+        "color": "grey",
         "alpha": 0.8,
     },
     "bar_border_dict": {
         "edgecolor": "black",
     },
-    "percent_text_dict":{
+    "percent_text_dict": {
         "fontsize": 10,
-        "ha": "right", 
-        "va": "center", 
+        "ha": "right",
+        "va": "center",
     },
     "fraction_text_dict": {
         "fontsize": 10,
-        "ha": "left", 
-        "va": "center", 
-    }
+        "ha": "left",
+        "va": "center",
+    },
 }
 
 save_dict = {
-    "bbox_inches": "tight", 
-    "pad_inches": 0.2, 
+    "bbox_inches": "tight",
+    "pad_inches": 0.2,
 }
 
 matplotlib_dict = {"pad_inches": 0.1}
@@ -102,21 +103,26 @@ color_coding = {
     4: "tab:red",
 }  # for maximum over states of the segments per edge
 
+
 def pickle_graph(g: ig.Graph, filename) -> None:
     g.write_pickle(fname=filename)
     return
 
+
 def unpickle_graph(filename) -> ig.Graph:
     return ig.Graph.Read_Pickle(fname=filename)
 
+
 def convert_graph_to_nx(g: ig.Graph) -> nx.Graph:
     return g.to_networkx()
+
 
 def update_dict(d: dict, my_dict: dict) -> dict:
     new_dict = d.copy()
     if my_dict != {}:
         new_dict.update(my_dict)
     return new_dict
+
 
 def update_multiple_dicts(g: nx.Graph, str_list: list, dict_list: list) -> list:
     return_list = list()
@@ -139,9 +145,10 @@ def update_multiple_dicts(g: nx.Graph, str_list: list, dict_list: list) -> list:
             return_list.append(update_dict(d=edge_labels_dict, my_dict=my_dict))
     return return_list
 
+
 def bezier_point(
-        start: np.ndarray, end: np.ndarray, control: np.ndarray, t: float
-    ) -> list[np.ndarray, np.ndarray]:
+    start: np.ndarray, end: np.ndarray, control: np.ndarray, t: float
+) -> list[np.ndarray, np.ndarray]:
     """
     Calculate a point on a quadratic Bezier curve at position t.
     start: starting point (x, y)
@@ -149,9 +156,10 @@ def bezier_point(
     control: control point (x, y)
     t: position along the curve, between 0 and 1
     """
-    point = (1 - t)**2 * start + 2 * (1 - t) * t * control + t**2 * end
+    point = (1 - t) ** 2 * start + 2 * (1 - t) * t * control + t**2 * end
     tangent = 2 * (1 - t) * (control - start) + 2 * t * (end - control)
     return point, tangent
+
 
 def plot_prepare(g: nx.Graph, layout: str) -> list:
     if isinstance(g, ig.Graph):
@@ -161,12 +169,16 @@ def plot_prepare(g: nx.Graph, layout: str) -> list:
     if layout not in layout_dict.keys():
         # check if every node has position keys
         if all(
-            [all(
-                [p in g._node[k].keys() for p in ['position_x', 'position_y']]
-                ) for k in g._node.keys()]
-            ):
+            [
+                all([p in g._node[k].keys() for p in ["position_x", "position_y"]])
+                for k in g._node.keys()
+            ]
+        ):
             # create dict of node positions
-            pos = {k: np.array([g._node[k][p] for p in ['position_x', 'position_y']]) for k in g._node.keys()}
+            pos = {
+                k: np.array([g._node[k][p] for p in ["position_x", "position_y"]])
+                for k in g._node.keys()
+            }
         else:
             layout = "planar"
             pos = layout_dict[layout](g)
@@ -176,16 +188,16 @@ def plot_prepare(g: nx.Graph, layout: str) -> list:
 
 
 def plot_ending(
-        fig: Figure,
-        ax: Axes,
-        title: str, 
-        show_plot: bool=False, 
-        equal_axis: bool=True,
-        save_plot: bool=False, 
-        filename: str='plot.png'
-    ) -> None:
+    fig: Figure,
+    ax: Axes,
+    title: str,
+    show_plot: bool = False,
+    equal_axis: bool = True,
+    save_plot: bool = False,
+    filename: str = "plot.png",
+) -> None:
     plt.title(title, fontsize=14) if title is not None else None
-    ax.axis('equal') if equal_axis else None
+    ax.axis("equal") if equal_axis else None
     plt.savefig(filename, dpi=fig.dpi, **save_dict) if save_plot else None
     plt.show() if show_plot else None
     return
@@ -211,11 +223,11 @@ def only_graph_structure(
 
 
 def only_edge_colors(
-    g: nx.Graph, 
-    ax: Axes, 
-    use_cmap: bool=False, 
-    plot_beliefs: bool = True, 
-    my_edge_dict: dict = {}
+    g: nx.Graph,
+    ax: Axes,
+    use_cmap: bool = False,
+    plot_beliefs: bool = True,
+    my_edge_dict: dict = {},
 ) -> dict:
     num_states = (
         next(iter(next(iter(g.adjacency()))[1].values()))["road_edge"]
@@ -228,9 +240,9 @@ def only_edge_colors(
         for e in g.edges():
             if len([1 for s in g.edges[e]["road_edge"].segments]) > 1:
                 print(
-                    "More than 1 segment in at least 1 edge. ", 
+                    "More than 1 segment in at least 1 edge. ",
                     "Belief visualization does not work with multi-segment edges",
-                    " -> defaults to max(states) instead"
+                    " -> defaults to max(states) instead",
                 )
                 plot_beliefs = False
                 break
@@ -246,7 +258,9 @@ def only_edge_colors(
                 edge_colors.append(np.sum(s_vec))
         else:
             for e in g.edges():
-                edge_colors.append(max([s.state for s in g.edges[e]["road_edge"].segments]))
+                edge_colors.append(
+                    max([s.state for s in g.edges[e]["road_edge"].segments])
+                )
         cmap = edge_dict["edge_cmap"]
     else:
         if plot_beliefs:
@@ -259,7 +273,9 @@ def only_edge_colors(
         else:
             for e in g.edges():
                 edge_colors.append(
-                    color_coding[max([s.state for s in g.edges[e]["road_edge"].segments])]
+                    color_coding[
+                        max([s.state for s in g.edges[e]["road_edge"].segments])
+                    ]
                 )
         # new_edge_dict = update_dict(d=new_edge_dict, my_dict={'edge_color': edge_colors, 'edge_cmap':None, 'edge_vmin':0, 'edge_vmax': None})
         cmap = plt.get_cmap("viridis", num_states)
@@ -267,9 +283,10 @@ def only_edge_colors(
         for k, v in zip(color_coding.keys(), color_coding.values()):
             colors[k, :] = list(mpl.colors.to_rgba(v))
         cmap = mpl.colors.LinearSegmentedColormap.from_list(
-            "Custom cmap", colors, #cmap.N
+            "Custom cmap",
+            colors,  # cmap.N
         )
-    norm = mpl.colors.Normalize(vmin=0, vmax=num_states-1)
+    norm = mpl.colors.Normalize(vmin=0, vmax=num_states - 1)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
 
@@ -290,7 +307,7 @@ def only_edge_colors(
             "edge_vmax": None,
         },
     )
-    
+
     # create color bar
     plt.colorbar(
         sm,
@@ -302,15 +319,15 @@ def only_edge_colors(
 
 
 def only_edge_labels(
-    g: nx.Graph, 
-    label_type: str = "action", 
+    g: nx.Graph,
+    label_type: str = "action",
     input_list: list = [],
-    my_edge_label_dict: dict = {}
+    my_edge_label_dict: dict = {},
 ) -> dict:
     if (label_type == "action") and len(input_list) == 0:
         print(
             "No action list was provided for the edge labels",
-            "-> defaults to state description"
+            "-> defaults to state description",
         )
         label_type = "state"
 
@@ -321,7 +338,9 @@ def only_edge_labels(
     )
 
     num_actions = (
-        g.edges[next(iter(g.edges()))]["road_edge"].segments[0].observation_tables.shape[0]
+        g.edges[next(iter(g.edges()))]["road_edge"]
+        .segments[0]
+        .observation_tables.shape[0]
     )
 
     max_num_segments = 1
@@ -342,7 +361,9 @@ def only_edge_labels(
             for k in range(num_states):
                 if max_num_segments > 1:
                     label_string = (
-                        label_string + rf"$S_{k}$:{el[k]} " if el[k] > 0 else label_string
+                        label_string + rf"$S_{k}$:{el[k]} "
+                        if el[k] > 0
+                        else label_string
                     )
                 else:
                     label_string = (
@@ -359,12 +380,16 @@ def only_edge_labels(
             for k in range(num_actions):
                 if max_num_segments > 1:
                     label_string = (
-                        label_string + rf"$A_{k}$:{al[k]} " if (k > 0) and (al[k] > 0) else label_string
+                        label_string + rf"$A_{k}$:{al[k]} "
+                        if (k > 0) and (al[k] > 0)
+                        else label_string
                     )
                 else:
                     label_string = (
-                    label_string + f"A{k} " if (k > 0) and (al[k] > 0) else label_string
-                )
+                        label_string + f"A{k} "
+                        if (k > 0) and (al[k] > 0)
+                        else label_string
+                    )
             edge_labels[e] = label_string[:-1]
     new_edge_label_dict = update_dict(
         d=update_dict(d=edge_labels_dict, my_dict=my_edge_label_dict),
@@ -383,13 +408,10 @@ def only_volumes(g: nx.Graph, my_edge_dict: dict = {}) -> dict:
     new_edge_dict = update_dict(d=my_edge_dict, my_dict={"width": width_list})
     return new_edge_dict
 
+
 # function that draws directed as well as undirected graphs
 def draw_edges(
-    g: nx.Graph, 
-    pos: dict, 
-    ax: Axes, 
-    new_edge_dict: dict, 
-    curve_factor: float
+    g: nx.Graph, pos: dict, ax: Axes, new_edge_dict: dict, curve_factor: float
 ) -> None:
     if g.is_directed():
         # Draw edges with offsets for bidirectional edges
@@ -402,19 +424,34 @@ def draw_edges(
             # Check if there's a reverse edge
             if (v, u) in g.edges() and u < v:
                 # Draw the two edges with curve
-                nx.draw_networkx_edges(g, pos, edgelist=[(u, v)], connectionstyle=f'arc3,rad={curve_factor}', arrows=True, **sub_dict)
-                nx.draw_networkx_edges(g, pos, edgelist=[(v, u)], connectionstyle=f'arc3,rad={curve_factor}', arrows=True, **sub_dict)
+                nx.draw_networkx_edges(
+                    g,
+                    pos,
+                    edgelist=[(u, v)],
+                    connectionstyle=f"arc3,rad={curve_factor}",
+                    arrows=True,
+                    **sub_dict,
+                )
+                nx.draw_networkx_edges(
+                    g,
+                    pos,
+                    edgelist=[(v, u)],
+                    connectionstyle=f"arc3,rad={curve_factor}",
+                    arrows=True,
+                    **sub_dict,
+                )
             elif (v, u) not in g.edges():  # Draw normally if no bidirectional pair
                 nx.draw_networkx_edges(g, pos, edgelist=[(v, u)], **sub_dict)
     else:
         nx.draw_networkx_edges(G=g, pos=pos, ax=ax, **new_edge_dict)
-    return 
+    return
+
 
 def draw_edge_labels(
-    g: nx.Graph, 
-    pos: dict, 
-    ax: Axes,  
-    new_edge_label_dict: dict, 
+    g: nx.Graph,
+    pos: dict,
+    ax: Axes,
+    new_edge_label_dict: dict,
     curve_factor: float,
 ) -> None:
     for (u, v) in g.edges():
@@ -424,11 +461,13 @@ def draw_edge_labels(
             if (v, u) in g.edges():
                 t = new_edge_label_dict["label_pos"]
                 cf = curve_factor
-        label = new_edge_label_dict['edge_labels'][(u,v)]
+        label = new_edge_label_dict["edge_labels"][(u, v)]
         node_pos_u = np.array(pos[u])
         node_pos_v = np.array(pos[v])
         midpoint = (node_pos_u + node_pos_v) / 2
-        direction = np.array([node_pos_v[1] - node_pos_u[1], node_pos_u[0] - node_pos_v[0]])
+        direction = np.array(
+            [node_pos_v[1] - node_pos_u[1], node_pos_u[0] - node_pos_v[0]]
+        )
         control_point = midpoint + cf * direction
         label_pos, tangent = bezier_point(node_pos_u, node_pos_v, control_point, t=t)
         # Calculate angle for text rotation
@@ -436,29 +475,31 @@ def draw_edge_labels(
         if angle < -90 or angle > 90:
             angle += 180
         plt.text(
-            label_pos[0], 
-            label_pos[1], 
+            label_pos[0],
+            label_pos[1],
             label,
-            rotation=angle, 
-            rotation_mode="anchor", 
-            **new_edge_label_dict['text_dict'], 
-        )   
+            rotation=angle,
+            rotation_mode="anchor",
+            **new_edge_label_dict["text_dict"],
+        )
     return
 
 
 def draw_progress_bar(
-    fig: Figure,  
+    fig: Figure,
     ax: Axes,
-    current_budget: float, 
+    current_budget: float,
     total_budget: float,
-    new_bar_dict: dict, 
+    new_bar_dict: dict,
 ):
 
     ## Create a new axis for the progress bar
     # get bounding box for graph axis
     ax_bbox = ax.get_position()
     # set coordinates for the bar (centered above graph axis)
-    x_start = ax_bbox.x0 + (1-new_bar_dict["bar_shape_dict"]["width"]) * ax_bbox.width/2
+    x_start = (
+        ax_bbox.x0 + (1 - new_bar_dict["bar_shape_dict"]["width"]) * ax_bbox.width / 2
+    )
     y_start = new_bar_dict["bar_shape_dict"]["bottom"] * ax_bbox.y1
     width = new_bar_dict["bar_shape_dict"]["width"] * ax_bbox.width
     height = new_bar_dict["bar_shape_dict"]["height"] * ax_bbox.y1
@@ -473,40 +514,40 @@ def draw_progress_bar(
     bar_ax = fig.add_axes(shape_list)
     bar_ax.set_xlim(0, 1)
     bar_ax.set_ylim(0, 1)
-    bar_ax.axis('off')  # Turn off the axes
+    bar_ax.axis("off")  # Turn off the axes
 
     ## Draw the bar
     # filled portion
     progress = current_budget / total_budget
     bar_ax.add_patch(
         mpl.patches.Rectangle(
-            xy=(0, 0), 
-            width=progress, 
-            height=1, 
-            transform=bar_ax.transAxes, 
-            **new_bar_dict["bar_fill_dict"]
+            xy=(0, 0),
+            width=progress,
+            height=1,
+            transform=bar_ax.transAxes,
+            **new_bar_dict["bar_fill_dict"],
         )
     )
 
     # Draw the border of the bar
     bar_ax.add_patch(
         patches.Rectangle(
-            xy=(0, 0), 
-            width=1, 
-            height=1, 
-            fill=False, 
+            xy=(0, 0),
+            width=1,
+            height=1,
+            fill=False,
             transform=bar_ax.transAxes,
-            **new_bar_dict["bar_border_dict"]
+            **new_bar_dict["bar_border_dict"],
         )
     )
 
     text_height = y_start + height / 2
     # Add the percentage label (left of the bar)
     fig.text(
-        x = x_start - new_bar_dict["bar_shape_dict"]["padding"] * width, 
-        y = text_height,
-        s = f"{int(progress*100)}%", 
-        **new_bar_dict["percent_text_dict"]
+        x=x_start - new_bar_dict["bar_shape_dict"]["padding"] * width,
+        y=text_height,
+        s=f"{int(progress*100)}%",
+        **new_bar_dict["percent_text_dict"],
     )
 
     # Add the value label (right of the bar)
@@ -515,15 +556,15 @@ def draw_progress_bar(
         fc = current_budget / (10**pc)
         pt = int(np.floor(np.log10(current_budget)))
         ft = current_budget / (10**pt)
-        #s = rf"${fc:.1f}\cdot 10^{pc}$ / ${ft:.1f}\cdot 10^{pt}$"
+        # s = rf"${fc:.1f}\cdot 10^{pc}$ / ${ft:.1f}\cdot 10^{pt}$"
         s = f"{fc:.1f}e{pc} / {ft:.1f}e{pt}"
     else:
         s = f"{int(current_budget)}/{int(total_budget)}"
     fig.text(
-        x = x_start + (1 + new_bar_dict["bar_shape_dict"]["padding"]) * width, 
-        y = text_height,
-        s = s,
-        **new_bar_dict["fraction_text_dict"]
+        x=x_start + (1 + new_bar_dict["bar_shape_dict"]["padding"]) * width,
+        y=text_height,
+        s=s,
+        **new_bar_dict["fraction_text_dict"],
     )
     return
 
@@ -536,7 +577,7 @@ def general_plot(
     plot_beliefs: bool = True,
     with_edge_labels: bool = False,
     label_type: str = "action",
-    label_input_list: list = [], 
+    label_input_list: list = [],
     with_volumes: bool = False,
     with_progress_bar: bool = False,
     my_node_dict: dict = {},
@@ -544,7 +585,7 @@ def general_plot(
     my_node_label_dict: dict = {},
     my_edge_label_dict: dict = {},
     my_bar_dict: dict = {},
-    curve_factor: float=0.05,
+    curve_factor: float = 0.05,
     title: bool = None,
     show_plot: bool = True,
     equal_axis: bool = True,
@@ -569,28 +610,34 @@ def general_plot(
     # overwrite the respective dicts based on the desired inputs
     if with_color:
         new_edge_dict = only_edge_colors(
-            g=g, ax=ax, use_cmap=use_cmap, plot_beliefs=plot_beliefs, my_edge_dict=new_edge_dict
+            g=g,
+            ax=ax,
+            use_cmap=use_cmap,
+            plot_beliefs=plot_beliefs,
+            my_edge_dict=new_edge_dict,
         )
     if with_volumes:
         new_edge_dict = only_volumes(g=g, my_edge_dict=new_edge_dict)
     if with_edge_labels:
         new_edge_label_dict = only_edge_labels(
-            g=g, 
-            label_type=label_type, 
-            input_list=label_input_list, 
+            g=g,
+            label_type=label_type,
+            input_list=label_input_list,
             my_edge_label_dict=my_edge_label_dict,
         )
 
     nx.draw_networkx_nodes(G=g, pos=pos, **new_node_dict)
     nx.draw_networkx_labels(G=g, pos=pos, ax=ax, **new_node_label_dict)
-    draw_edges(g=g, pos=pos, ax=ax, new_edge_dict=new_edge_dict, curve_factor=curve_factor)
+    draw_edges(
+        g=g, pos=pos, ax=ax, new_edge_dict=new_edge_dict, curve_factor=curve_factor
+    )
     if new_edge_label_dict["edge_labels"] is not None:
         draw_edge_labels(
-            g=g, 
-            pos=pos, 
-            ax=ax, 
-            new_edge_label_dict=new_edge_label_dict, 
-            curve_factor=curve_factor
+            g=g,
+            pos=pos,
+            ax=ax,
+            new_edge_label_dict=new_edge_label_dict,
+            curve_factor=curve_factor,
         )
     if with_progress_bar:
         # check that env has budget
@@ -602,18 +649,20 @@ def general_plot(
                 ax=ax,
                 current_budget=env.current_budget,
                 total_budget=env.budget_amount,
-                new_bar_dict=new_bar_dict
+                new_bar_dict=new_bar_dict,
             )
         else:
-            print("Passed environment does not have attributes 'budget_amount' and/or 'current_budget")
+            print(
+                "Passed environment does not have attributes 'budget_amount' and/or 'current_budget"
+            )
     plot_ending(
         fig=fig,
         ax=ax,
-        title=title, 
-        show_plot=show_plot, 
-        equal_axis=equal_axis, 
-        save_plot=save_plot, 
-        filename=filename
+        title=title,
+        show_plot=show_plot,
+        equal_axis=equal_axis,
+        save_plot=save_plot,
+        filename=filename,
     )
     return (
         [
@@ -633,8 +682,8 @@ def general_plot(
 
 def vis_one_episode(
     env_name: str = "ToyExample-v2",
-    frame_folder: str = "./tmp_pic_folder", 
-    frame_type: str = ".png", 
+    frame_folder: str = "./tmp_pic_folder",
+    frame_type: str = ".png",
     gif_name: str | None = None,
     delete=True,
     layout="positions",
@@ -642,7 +691,7 @@ def vis_one_episode(
     with_edge_labels: bool = True,
     with_volumes: bool = False,
     with_progress_bar: bool = True,
-    curve_factor: float=0.05,
+    curve_factor: float = 0.05,
 ):
     if os.path.exists(frame_folder):
         delete_folder = False
@@ -653,7 +702,7 @@ def vis_one_episode(
     frame_type = "." + frame_type if "." not in frame_type else frame_type
 
     if gif_name is None:
-        gif_name = '_'.join([env_name, "traj.gif"])
+        gif_name = "_".join([env_name, "traj.gif"])
 
     # create env
     env = make(environment_name=env_name)
@@ -666,10 +715,8 @@ def vis_one_episode(
 
     # select action 1 at every timestep for every segment
     act = 1
-    actions = [
-        [act for _ in edge["road_edge"].segments] for edge in env.graph.es
-    ]
-    
+    actions = [[act for _ in edge["road_edge"].segments] for edge in env.graph.es]
+
     time = 0
     pic_name = os.path.join(frame_folder, f"pic{time:0{digits}d}" + frame_type)
     path_list.append(pic_name)
@@ -722,7 +769,7 @@ def save_frames_as_gif(frame_folder: str, savename: str) -> None:
     ]
     frame_one = frames[0]
     frame_one.save(
-        os.path.join('./env_trajectories', savename),
+        os.path.join("./env_trajectories", savename),
         format="GIF",
         append_images=frames,
         save_all=True,
