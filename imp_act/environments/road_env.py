@@ -49,6 +49,12 @@ class RoadSegment:
             "state_action_reward"
         ]
 
+        # terminal state rewards
+        # shape: S
+        self.terminal_state_reward = config["maintenance"]["reward"][
+            "terminal_state_reward"
+        ]
+
         self.reset()
 
     def reset(self):
@@ -126,6 +132,38 @@ class RoadSegment:
                     )
 
         return reward
+
+    def get_initial_state(self):
+        # Computing initial state, observation, and belief
+        self.deterioration_rate = 0
+        self.forced_repair_interest_counter = 0
+        self.belief = np.array(self.initial_damage_prob)
+        self.initial_state = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            p=self.initial_damage_prob,
+        )
+        self.state = self.initial_state
+        self.observation = self.random_generator.choice(
+            np.arange(self.number_of_states),
+            p=self.observation_tables[self.ACTION_DO_NOTHING][self.state],
+        )
+
+    def get_action_reward(self, action):
+        reward = 0
+        if action == self.ACTION_REPLACE:
+            forced_repair_interest = (
+                self.forced_repair_interest_rate**self.forced_repair_interest_counter
+            )
+            reward = (
+                self.state_action_reward[action][self.state] * forced_repair_interest
+            )
+            self.forced_repair_interest_counter = 0
+        else:
+            reward = self.state_action_reward[action][self.state]
+        return reward
+
+    def get_terminal_reward(self):
+        return np.sum(self.terminal_state_reward * self.belief)
 
 
 class RoadEdge:
@@ -245,13 +283,19 @@ class RoadEnvironment:
         for nodes, edge_segments in config["topology"]["segments"].items():
             segments = []
             for segment in edge_segments:
+                if segment.get("travel_time") is None:
+                    base_travel_time = (
+                        segment["segment_length"] / segment["travel_speed"]
+                    )
+                else:
+                    base_travel_time = segment["travel_time"]
                 segments.append(
                     RoadSegment(
                         random_generator=self.random_generator,
                         position_x=segment["position_x"],
                         position_y=segment["position_y"],
                         capacity=segment["capacity"],
-                        base_travel_time=segment["travel_time"],
+                        base_travel_time=base_travel_time,
                         config=config,
                     )
                 )
@@ -271,6 +315,7 @@ class RoadEnvironment:
         # Budget parameters
         self.budget_amount = config["maintenance"]["budget_amount"]
         assert type(self.budget_amount) in [int, float]
+        self.budget_amount = float(self.budget_amount)
         self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
         assert type(self.budget_renewal_interval) == int
 
@@ -326,6 +371,13 @@ class RoadEnvironment:
             edge_states.append(edge["road_edge"].get_states())
 
         return edge_states
+
+    def get_terminal_reward(self):
+        total_terminal_reward = 0
+        for edge in self.graph.es:
+            for segment in edge["road_edge"].segments:
+                total_terminal_reward += segment.get_terminal_reward()
+        return total_terminal_reward
 
     def _get_total_travel_time(self):
         # Initialize volumes
@@ -418,7 +470,11 @@ class RoadEnvironment:
             "applied_actions": actions,
         }
 
-        return observation, reward, self.timestep >= self.max_timesteps, info
+        done = self.timestep >= self.max_timesteps
+        if done:
+            reward += self.get_terminal_reward()
+
+        return observation, reward, done, info
 
     def seed(self, seed):
         self.random_generator = np.random.default_rng(seed)
