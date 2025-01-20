@@ -1,5 +1,7 @@
 import time
 
+import igraph
+
 import numpy as np
 
 import pytest
@@ -15,49 +17,90 @@ environment_fixtures = [
 ]
 
 
+def type_checker(dict, types_dict):
+    """Check if the types of the dictionary values are the specified types.
+
+    Args:
+        dict (dict): Dictionary to check.
+        types_dict (dict): Dictionary with the same keys as dict and the types.
+
+    Returns:
+        bool: True if all types are correct, False otherwise.
+    """
+    for key, value in dict.items():
+        if not isinstance(value, types_dict[key]):
+            return False
+    return True
+
+
 def test_return_types(toy_environment_2):
     """Test if the return types of the environment are correct."""
     env = toy_environment_2
 
-    def check_return_types(obs, reward, done, info):
-        assert isinstance(obs, dict)
-        assert isinstance(reward, float)
-        assert isinstance(done, bool)
-        assert isinstance(info, dict)
-        check_obs_types(obs)
+    return_types = {
+        "obs": dict,
+        "reward": float,
+        "done": bool,
+        "info": dict,
+    }
 
     obs_types = {
-        "adjacency_matrix": np.ndarray,
         "edge_observations": list,
         "edge_deterioration_rates": list,
         "edge_beliefs": list,
-        "edge_nodes": list,
         "time_step": int,
         "budget_remaining": float,
         "budget_time_until_renewal": int,
     }
 
-    def check_obs_types(obs):
-        for key, value in obs_types.items():
-            assert isinstance(obs[key], value)
-
     obs = env.reset()
-
-    keys = [
-        "adjacency_matrix",
-        "edge_observations",
-        "edge_beliefs",
-        "edge_nodes",
-    ]
-
-    for key in keys:
-        assert key in obs.keys()
 
     done = False
     while not done:
+        assert type_checker(obs, obs_types)
+
         actions = [[1] * len(e) for e in obs["edge_observations"]]
         obs, reward, done, info = env.step(actions)
-        check_return_types(obs, reward, done, info)
+        return_dict = {
+            "obs": obs,
+            "reward": reward,
+            "done": done,
+            "info": info,
+        }
+        assert type_checker(return_dict, return_types)
+
+
+def test_get_topology_info(toy_environment_2):
+    """Test if the environment returns the correct topology dict."""
+    env = toy_environment_2
+
+    types = {
+        "adjacency_matrix": np.ndarray,
+        "graph": igraph.Graph,
+        "number_of_vertices": int,
+        "number_of_edges": int,
+        "edges_origin_destination": list,
+        "segments_per_edge": list,
+    }
+
+    topology = env.get_topology_info()
+
+    assert type_checker(topology, types)
+
+
+def test_get_dimension_info(toy_environment_2):
+    """Test if the environment returns the correct dimension dict."""
+    env = toy_environment_2
+
+    types = {
+        "actions": int,
+        "states": int,
+        "observations": int,
+    }
+
+    dimensions = env.get_dimension_info()
+
+    assert type_checker(dimensions, types)
 
 
 def test_increasing_timesteps(toy_environment_2):
