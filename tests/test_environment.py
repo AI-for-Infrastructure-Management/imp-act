@@ -81,6 +81,8 @@ def test_get_topology_info(toy_environment_2):
         "number_of_edges": int,
         "edges_origin_destination": list,
         "segments_per_edge": list,
+        "segment_lengths": list,
+        "segment_capacities": list,
     }
 
     topology = env.get_topology_info()
