@@ -2,6 +2,8 @@ from typing import Dict, Optional
 
 import numpy as np
 
+from .visualization import general_plot
+
 
 class RoadSegment:
     def __init__(
@@ -482,6 +484,22 @@ class RoadEnvironment:
             edge["road_edge"].random_generator = self.random_generator
             for segment in edge["road_edge"].segments:
                 segment.random_generator = self.random_generator
+
+    def render(self):
+        """Visualize the current environment state.
+
+        Returns:
+            None
+        """
+        general_plot(
+            env=self,
+            with_color=True,
+            with_edge_labels=True,
+            with_progress_bar=True,
+            curve_factor=0.05,
+            title=f"t: {self.timestep}",
+            show_plot=True,
+        )
 
     def get_count_redundancies_summary(self, verbose: bool = True):
         vcount = self.graph.vcount()
