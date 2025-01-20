@@ -781,7 +781,7 @@ def save_frames_as_gif(frame_folder: str, savename: str) -> None:
 
 # special plotting function which make use of general_plot. Not really necessary, but maybe someone wants to use these instead
 def plot_only_graph_structure(
-    g: nx.Graph,
+    env: RoadEnvironment,
     layout="planar",
     my_node_dict: dict = {},
     my_edge_dict: dict = {},
@@ -794,7 +794,7 @@ def plot_only_graph_structure(
 ) -> None:
 
     fig, ax, pos, g, nnd, ned, nnld, _ = general_plot(
-        g=g,
+        env=env,
         layout=layout,
         my_node_dict=my_node_dict,
         my_edge_dict=my_edge_dict,
@@ -809,7 +809,7 @@ def plot_only_graph_structure(
 
 
 def plot_only_states(
-    g: nx.Graph,
+    env: RoadEnvironment,
     layout="planar",
     use_cmap=False,
     my_node_dict: dict = {},
@@ -823,7 +823,7 @@ def plot_only_states(
 ) -> None:
 
     fig, ax, pos, g, nnd, ned, nnld, _ = general_plot(
-        g=g,
+        env=env,
         layout=layout,
         with_color=True,
         use_cmap=use_cmap,
@@ -840,7 +840,7 @@ def plot_only_states(
 
 
 def plot_states_with_edge_labels(
-    g: nx.Graph,
+    env: RoadEnvironment,
     layout="planar",
     use_cmap=False,
     my_node_dict: dict = {},
@@ -855,7 +855,7 @@ def plot_states_with_edge_labels(
     return_stuff=False,
 ) -> None:
     fig, ax, pos, g, nnd, ned, nnld, neld = general_plot(
-        g=g,
+        env=env,
         layout=layout,
         with_color=True,
         use_cmap=use_cmap,
@@ -874,7 +874,7 @@ def plot_states_with_edge_labels(
 
 
 def plot_only_volumes(
-    g: nx.Graph,
+    env: RoadEnvironment,
     layout="planar",
     my_node_dict: dict = {},
     my_edge_dict: dict = {},
@@ -888,7 +888,7 @@ def plot_only_volumes(
 ) -> None:
 
     fig, ax, pos, g, nnd, ned, nnld, _ = general_plot(
-        g=g,
+        env=env,
         layout=layout,
         with_volumes=True,
         my_node_dict=my_node_dict,
@@ -905,7 +905,7 @@ def plot_only_volumes(
 
 
 def plot_states_labels_and_volumes(
-    g: nx.Graph,
+    env: RoadEnvironment,
     layout="planar",
     with_color: bool = True,
     use_cmap: bool = False,
@@ -922,7 +922,7 @@ def plot_states_labels_and_volumes(
 ) -> None:
 
     fig, ax, pos, g, nnd, ned, nnld, neld = general_plot(
-        g=g,
+        env=env,
         layout=layout,
         with_color=True,
         use_cmap=use_cmap,
