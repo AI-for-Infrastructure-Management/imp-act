@@ -1,8 +1,8 @@
 from typing import Dict, Optional
 
-import numpy as np
-
 import igraph as ig
+
+import numpy as np
 
 
 class RoadSegment:
@@ -334,7 +334,7 @@ class RoadEnvironment:
         self.base_total_travel_time = self._get_total_travel_time()
 
     def reset(self, reset_edges=True):
-        """ Resets the environment to the initial state.
+        """Resets the environment to the initial state.
         Args:
             reset_edges (bool): If True, the road segments will be reset.
         Returns:
@@ -349,7 +349,6 @@ class RoadEnvironment:
 
     def _get_observation(self):
         edge_observations = []
-        edge_nodes = []
         edge_beliefs = []
         edge_deterioration_rates = []
         for edge in self.graph.es:
@@ -376,7 +375,7 @@ class RoadEnvironment:
         return edge_states
 
     def get_terminal_reward(self):
-        """ Returns the total terminal reward for the environment in the current state."""
+        """Returns the total terminal reward for the environment in the current state."""
 
         total_terminal_reward = 0
         for edge in self.graph.es:
@@ -438,10 +437,10 @@ class RoadEnvironment:
         return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
 
     def step(self, actions):
-        """ Takes a step in the environment with the given actions.
+        """Takes a step in the environment with the given actions.
         Args:
             actions (list): A list of lists containing the actions for each segment in the environment.
-        
+
         Returns:
             tuple: A tuple containing the following elements:
                 - observation (dict): The observation of the environment after the step.
@@ -493,7 +492,7 @@ class RoadEnvironment:
         return observation, reward, done, info
 
     def seed(self, seed):
-        """ Seeds the random number generator of the environment.
+        """Seeds the random number generator of the environment.
         Args:
             seed (int): The seed value to use for seeding the random number generator.
         """
@@ -504,7 +503,7 @@ class RoadEnvironment:
                 segment.random_generator = self.random_generator
 
     def get_count_redundancies_summary(self, verbose: bool = True):
-        """ Returns a string containing a summary of the redundancies in the environment.
+        """Returns a string containing a summary of the redundancies in the environment.
         Args:
             verbose (bool): If True, the number of paths between each origin-destination pair will be printed.
         Returns:
@@ -557,7 +556,7 @@ class RoadEnvironment:
         return string
 
     def get_edge_traffic_summary(self):
-        """ Returns a string containing a summary of the edge traffic in the environment.
+        """Returns a string containing a summary of the edge traffic in the environment.
         Returns:
             str: A string containing the summary of the edge traffic.
         """
@@ -576,9 +575,9 @@ class RoadEnvironment:
             string += f"{id:^5} {int(volume):^5}({usage:^3.1f}%) {travel_time:^15.2f}\n"
 
         return string
-    
+
     def get_topology_info(self):
-        """ Returns a dictionary containing topology related information of the environment.
+        """Returns a dictionary containing topology related information of the environment.
         Returns:
             dict: A dictionary containing the following keys:
                 - adjacency_matrix (np.array): The adjacency matrix of the graph.
@@ -590,7 +589,6 @@ class RoadEnvironment:
         """
         adjacency_matrix = np.array(self.graph.get_adjacency().data)
 
-        
         edges_origin_destination = []
         segments_per_edge = []
         for edge in self.graph.es:
@@ -609,17 +607,19 @@ class RoadEnvironment:
         }
 
         return topology_info
-    
+
     def get_dimension_info(self):
-        """ Returns a dictionary containing information about dimensions of the environment.
-        
+        """Returns a dictionary containing information about dimensions of the environment.
+
         Returns:
             dict: A dictionary containing the following keys:
                 - actions (int): The number of actions available for each segment in the environment.
                 - states (int): The number of states available for each segment in the environment.
                 - observations (int): The number of observations available for each segment in the environment.
         """
-        observation_tables = self.graph.es[0]["road_edge"].segments[0].observation_tables
+        observation_tables = (
+            self.graph.es[0]["road_edge"].segments[0].observation_tables
+        )
 
         dimension_info = {
             "actions": observation_tables.shape[0],
@@ -635,10 +635,10 @@ class RoadEnvironment:
         )
 
     def get_action_cost(self, actions):
-        """ Returns the total cost of the given actions in the current state.
+        """Returns the total cost of the given actions in the current state.
         Args:
             actions (list): A list of lists containing the actions for each segment in the environment.
-            
+
         Returns:
             float: The total cost of the given actions in the current state.
         """
