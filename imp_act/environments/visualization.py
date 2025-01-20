@@ -1,6 +1,8 @@
 import glob
 import os
 
+from typing import TYPE_CHECKING
+
 import igraph as ig
 import matplotlib as mpl
 import matplotlib.patches as patches
@@ -11,8 +13,10 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from PIL import Image
 
-from imp_act import make
-from imp_act.environments.road_env import RoadEnvironment
+if TYPE_CHECKING:
+    from .road_env import RoadEnvironment
+else:
+    RoadEnvironment = "RoadEnvironment"
 
 layout_dict = {
     "shell": nx.shell_layout,
@@ -693,6 +697,8 @@ def vis_one_episode(
     with_progress_bar: bool = True,
     curve_factor: float = 0.05,
 ):
+    from imp_act import make
+
     if os.path.exists(frame_folder):
         delete_folder = False
     else:
