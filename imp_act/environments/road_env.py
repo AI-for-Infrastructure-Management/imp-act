@@ -469,13 +469,12 @@ class RoadEnvironment:
         for i, edge in enumerate(self.graph.es):
             maintenance_reward += edge["road_edge"].step(actions[i])
 
-        max_action_duration = max(
-            [
-                seg.action_duration
-                for seg in edge["road_edge"].segments
-                for edge in self.graph.es
-            ]
-        )
+        action_durations = []
+        for edge in self.graph.es:
+            for segment in edge["road_edge"].segments:
+                action_durations.append(segment.action_duration)
+
+        max_action_duration = max(action_durations)
 
         if max_action_duration > 0:
             worst_case_total_travel_time = self._get_total_travel_time(
