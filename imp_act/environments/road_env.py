@@ -333,6 +333,13 @@ class RoadEnvironment:
 
         self.reset(reset_edges=False)
 
+        self.base_traffic_factor = config["traffic"]["base_traffic_factor"]
+
+        for edge in self.graph.es:
+            edge["base_volume"] = self.base_traffic_factor * (
+                min([seg.capacity for seg in edge["road_edge"].segments])
+            )
+
         self.base_total_travel_time = self._get_total_travel_time(
             iterations=self.traffic_assignment_initial_max_iterations,
             set_initial_volumes=False,
@@ -395,7 +402,7 @@ class RoadEnvironment:
             self.graph.es["volume"] = self.initial_edge_volumes
         else:
             # Initialize with all-or-nothing assignment
-            self.graph.es["volume"] = 0
+            self.graph.es["volume"] = self.graph.es["base_volume"]
 
             self.graph.es["travel_time"] = [
                 edge["road_edge"].compute_edge_travel_time(edge["volume"])
@@ -417,7 +424,7 @@ class RoadEnvironment:
             ]
 
             # Find the shortest paths using updated travel times
-            new_volumes = np.zeros(len(self.graph.es))
+            new_volumes = np.array(self.graph.es["base_volume"])
             for source, target, num_cars in self.trips:
                 path = self.graph.get_shortest_paths(
                     source, target, weights="travel_time", output="epath"
