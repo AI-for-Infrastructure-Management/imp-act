@@ -119,7 +119,16 @@ class EnvironmentLoader:
             )
         else:
             raise ValueError(
-                f"Deterioration type {maintenance['terminal_state_reward']['type']} not supported"
+                f"Terminal state reward type {maintenance['terminal_state_reward']['type']} not supported"
+            )
+
+        if maintenance["action_duration_factors"]["type"] == "list":
+            maintenance["action_duration_factors"] = np.array(
+                maintenance["action_duration_factors"]["list"]
+            )
+        else:
+            raise ValueError(
+                f"Action Duration type {maintenance['action_duration_factors']['type']} not supported"
             )
 
         traffic = config["traffic"]

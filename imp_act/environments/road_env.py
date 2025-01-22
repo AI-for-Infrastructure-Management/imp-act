@@ -32,6 +32,10 @@ class RoadSegment:
         # shape: A
         self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
 
+        # action durations
+        # shape: A
+        self.action_durations = config["maintenance"]["action_duration_factors"]
+
         # deterioration tables
         # shape: A x S x S or A x DR x S x S
         self.deterioration_table = config["maintenance"]["deterioration"]
@@ -60,7 +64,7 @@ class RoadSegment:
     def reset(self):
         self.forced_repair = False
         self.worst_observation_counter = 0
-
+        self.action_duration = 0
         self.deterioration_rate = 0
         self.belief = np.array(self.initial_damage_prob)
         self.state = self.random_generator.choice(
@@ -130,6 +134,8 @@ class RoadSegment:
                     raise ValueError(
                         f"Deterioration rate exceeded maximum value {self.deterioration_rate_max}"
                     )
+
+        self.action_duration = self.action_durations[action]
 
         return reward
 
@@ -463,10 +469,26 @@ class RoadEnvironment:
         for i, edge in enumerate(self.graph.es):
             maintenance_reward += edge["road_edge"].step(actions[i])
 
-        total_travel_time = self._get_total_travel_time(
-            iterations=self.traffic_assignment_max_iterations,
-            set_initial_volumes=self.traffic_assigmment_reuse_initial_volumes,
+        max_action_duration = max(
+            [
+                seg.action_duration
+                for seg in edge["road_edge"].segments
+                for edge in self.graph.es
+            ]
         )
+
+        if max_action_duration > 0:
+            worst_case_total_travel_time = self._get_total_travel_time(
+                iterations=self.traffic_assignment_max_iterations,
+                set_initial_volumes=self.traffic_assigmment_reuse_initial_volumes,
+            )
+
+            total_travel_time = (
+                (1 - max_action_duration) * self.base_total_travel_time
+                + max_action_duration * worst_case_total_travel_time
+            )
+        else:
+            total_travel_time = self.base_total_travel_time
 
         travel_time_reward = self.travel_time_reward_factor * (
             total_travel_time - self.base_total_travel_time

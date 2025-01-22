@@ -13,9 +13,9 @@ base_travel_time_factors:
   type: "list"
   # Shape: A 
   # [do-nothing, inspect, minor-repair, major-repair, replacement]
-  list: [1.0000, 1.0000, 1.0000, 1.0000, 1.3333]
+  list: [1.0000, 1.0000, 1.0000, 1.0618, 1.2500]
 capacity_factors:
   type: "list"
   # Shape: A 
   # [do-nothing, inspect, minor-repair, major-repair, replacement]
-  list: [1.0000, 1.0000, 0.9807, 0.9272, 0.4717]
+  list: [1.0000, 1.0000, 0.7500, 0.7500, 0.5000]
