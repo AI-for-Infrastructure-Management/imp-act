@@ -98,6 +98,7 @@ def test_get_dimension_info(toy_environment_2):
         "actions": int,
         "states": int,
         "observations": int,
+        "agents": int,
     }
 
     dimensions = env.get_dimension_info()

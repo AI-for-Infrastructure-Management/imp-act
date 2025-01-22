@@ -693,6 +693,7 @@ class RoadEnvironment:
             "actions": observation_tables.shape[0],
             "states": observation_tables.shape[1],
             "observations": observation_tables.shape[2],
+            "agents": sum([len(edge["road_edge"].segments) for edge in self.graph.es]),
         }
 
         return dimension_info
