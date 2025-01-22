@@ -504,6 +504,11 @@ class RoadEnvironment:
 
         observation = self._get_observation()
 
+        done = self.timestep >= self.max_timesteps
+
+        terminal_reward = self.get_terminal_reward() if done else 0
+        reward += terminal_reward
+
         info = {
             "edge_states": self._get_states(),
             "total_travel_time": total_travel_time,
@@ -512,15 +517,12 @@ class RoadEnvironment:
             "reward_elements": {
                 "travel_time_reward": travel_time_reward,
                 "maintenance_reward": maintenance_reward,
+                "terminal_reward": terminal_reward,
             },
             "budget_constraints_applied": self.budget_constraint_applied,
             "forced_replace_constraint_applied": self.forced_replace_constraint_applied,
             "applied_actions": actions,
         }
-
-        done = self.timestep >= self.max_timesteps
-        if done:
-            reward += self.get_terminal_reward()
 
         return observation, reward, done, info
 
