@@ -6,7 +6,7 @@ maintenance:
       override: False
       
 traffic:
-  travel_time_reward_factor: -180.0
+  travel_time_reward_factor: -720.0
   trips:
     path: ./traffic.csv
     type: file
