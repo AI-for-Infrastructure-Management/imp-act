@@ -3,6 +3,10 @@ from typing import Dict, Optional
 import numpy as np
 
 
+MILES_PER_KILOMETER = 0.621371
+KILOMETERS_PER_MILE = 1.0 / MILES_PER_KILOMETER
+
+
 class RoadSegment:
     def __init__(
         self,
@@ -11,6 +15,7 @@ class RoadSegment:
         position_x,
         position_y,
         capacity,
+        segment_length,
         base_travel_time,
     ):
         self.random_generator = random_generator
@@ -20,6 +25,7 @@ class RoadSegment:
         self.position_y = position_y
 
         self.capacity = capacity
+        self.segment_length = segment_length
         self.base_travel_time = base_travel_time
 
         # base travel time table
@@ -95,7 +101,7 @@ class RoadSegment:
             self.forced_repair = False
             self.worst_observation_counter = 0
         else:
-            reward = self.state_action_reward[action][self.state]
+            reward = self.get_action_reward(action=action)
 
         self.state = next_deterioration_state
 
@@ -149,21 +155,17 @@ class RoadSegment:
         )
 
     def get_action_reward(self, action):
-        reward = 0
-        if action == self.ACTION_REPLACE:
-            forced_repair_interest = (
-                self.forced_repair_interest_rate**self.forced_repair_interest_counter
-            )
-            reward = (
-                self.state_action_reward[action][self.state] * forced_repair_interest
-            )
-            self.forced_repair_interest_counter = 0
-        else:
-            reward = self.state_action_reward[action][self.state]
+        reward = self.state_action_reward[action][self.state]
+        reward *= self.segment_length * MILES_PER_KILOMETER
+
         return reward
 
     def get_terminal_reward(self):
-        return np.sum(self.terminal_state_reward * self.belief)
+        return (
+            np.sum(self.terminal_state_reward * self.belief)
+            * self.segment_length
+            * MILES_PER_KILOMETER
+        )
 
 
 class RoadEdge:
@@ -283,18 +285,24 @@ class RoadEnvironment:
         for nodes, edge_segments in config["topology"]["segments"].items():
             segments = []
             for segment in edge_segments:
+
+                if segment.get("segment_length") is None:
+                    segment["segment_length"] = KILOMETERS_PER_MILE
+
                 if segment.get("travel_time") is None:
                     base_travel_time = (
                         segment["segment_length"] / segment["travel_speed"]
                     )
                 else:
                     base_travel_time = segment["travel_time"]
+
                 segments.append(
                     RoadSegment(
                         random_generator=self.random_generator,
                         position_x=segment["position_x"],
                         position_y=segment["position_y"],
                         capacity=segment["capacity"],
+                        segment_length=segment["segment_length"],
                         base_travel_time=base_travel_time,
                         config=config,
                     )
@@ -588,7 +596,7 @@ class RoadEnvironment:
             edge_actions = actions[i]
             for j, segment in enumerate(segments):
                 segment_action = edge_actions[j]
-                cost = -segment.state_action_reward[segment_action][segment.state]
+                cost = -segment.get_action_reward(action=segment_action)
                 total_cost += cost
         return total_cost
 
@@ -650,10 +658,10 @@ class RoadEnvironment:
                     action_cost = 0
                 else:
                     action = edge_actions[j]
-                    upfront_cost = -segment.state_action_reward[0, segment.state]
-                    action_cost = -segment.state_action_reward[action][segment.state]
+                    upfront_cost = -segment.get_action_reward(action=0)
+                    action_cost = -segment.get_action_reward(action=action)
 
-                future_upfront_cost = -segment.state_action_reward[0, segment.state]
+                future_upfront_cost = -segment.get_action_reward(action=0)
 
                 adjusted_cost = action_cost - upfront_cost
 
