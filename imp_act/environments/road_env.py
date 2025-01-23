@@ -331,6 +331,10 @@ class RoadEnvironment:
 
         # Traffic assignment parameters
         ta_conf = config["traffic"]["traffic_assignment"]
+        self.traffic_assigmment_reuse_initial_volumes = ta_conf["reuse_initial_volumes"]
+        self.traffic_assignment_initial_max_iterations = ta_conf[
+            "initial_max_iterations"
+        ]
         self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
         self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
         self.traffic_assignment_update_weight = ta_conf["update_weight"]
@@ -339,7 +343,11 @@ class RoadEnvironment:
 
         self.reset(reset_edges=False)
 
-        self.base_total_travel_time = self._get_total_travel_time()
+        self.base_total_travel_time = self._get_total_travel_time(
+            iterations=self.traffic_assignment_initial_max_iterations,
+            set_initial_volumes=False,
+        )
+        self.initial_edge_volumes = np.array(self.graph.es["volume"])
 
     def reset(self, reset_edges=True):
         """Resets the environment to the initial state.
@@ -391,24 +399,29 @@ class RoadEnvironment:
                 total_terminal_reward += segment.get_terminal_reward()
         return total_terminal_reward
 
-    def _get_total_travel_time(self):
-        # Initialize volumes
-        self.graph.es["volume"] = 0
+    def _get_total_travel_time(self, iterations=None, set_initial_volumes=False):
+        if iterations is None:
+            iterations = self.traffic_assignment_max_iterations
 
-        # Initialize with all-or-nothing assignment
-        self.graph.es["travel_time"] = [
-            edge["road_edge"].compute_edge_travel_time(edge["volume"])
-            for edge in self.graph.es
-        ]
+        if set_initial_volumes:
+            self.graph.es["volume"] = self.initial_edge_volumes
+        else:
+            # Initialize with all-or-nothing assignment
+            self.graph.es["volume"] = 0
 
-        for source, target, num_cars in self.trips:
-            path = self.graph.get_shortest_paths(
-                source, target, weights="travel_time", output="epath"
-            )[0]
-            for edge_id in path:
-                self.graph.es[edge_id]["volume"] += num_cars
+            self.graph.es["travel_time"] = [
+                edge["road_edge"].compute_edge_travel_time(edge["volume"])
+                for edge in self.graph.es
+            ]
 
-        for iteration in range(self.traffic_assignment_max_iterations):
+            for source, target, num_cars in self.trips:
+                path = self.graph.get_shortest_paths(
+                    source, target, weights="travel_time", output="epath"
+                )[0]
+                for edge_id in path:
+                    self.graph.es[edge_id]["volume"] += num_cars
+
+        for iteration in range(iterations):
             # Recalculate travel times with current volumes
             self.graph.es["travel_time"] = [
                 edge["road_edge"].compute_edge_travel_time(edge["volume"])
@@ -442,7 +455,11 @@ class RoadEnvironment:
             edge["road_edge"].compute_edge_travel_time(edge["volume"])
             for edge in self.graph.es
         ]
-        return np.sum([edge["travel_time"] * edge["volume"] for edge in self.graph.es])
+
+        total_travel_time = np.sum(
+            [edge["travel_time"] * edge["volume"] for edge in self.graph.es]
+        )
+        return total_travel_time
 
     def step(self, actions):
         """Takes a step in the environment with the given actions.
@@ -462,7 +479,10 @@ class RoadEnvironment:
         for i, edge in enumerate(self.graph.es):
             maintenance_reward += edge["road_edge"].step(actions[i])
 
-        total_travel_time = self._get_total_travel_time()
+        total_travel_time = self._get_total_travel_time(
+            iterations=self.traffic_assignment_max_iterations,
+            set_initial_volumes=self.traffic_assigmment_reuse_initial_volumes,
+        )
 
         travel_time_reward = self.travel_time_reward_factor * (
             total_travel_time - self.base_total_travel_time
@@ -479,6 +499,11 @@ class RoadEnvironment:
 
         observation = self._get_observation()
 
+        done = self.timestep >= self.max_timesteps
+
+        terminal_reward = self.get_terminal_reward() if done else 0
+        reward += terminal_reward
+
         info = {
             "edge_states": self._get_states(),
             "total_travel_time": total_travel_time,
@@ -487,15 +512,12 @@ class RoadEnvironment:
             "reward_elements": {
                 "travel_time_reward": travel_time_reward,
                 "maintenance_reward": maintenance_reward,
+                "terminal_reward": terminal_reward,
             },
             "budget_constraints_applied": self.budget_constraint_applied,
             "forced_replace_constraint_applied": self.forced_replace_constraint_applied,
             "applied_actions": actions,
         }
-
-        done = self.timestep >= self.max_timesteps
-        if done:
-            reward += self.get_terminal_reward()
 
         return observation, reward, done, info
 
