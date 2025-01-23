@@ -1,4 +1,6 @@
 traffic_assignment:
+  reuse_initial_volumes: false 
+  initial_max_iterations: 5
   max_iterations: 5
   convergence_threshold: 0.01
   update_weight: 0.5
