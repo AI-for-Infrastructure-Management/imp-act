@@ -18,7 +18,7 @@ class Recorder:
     def __init__(self, env):
         self.env = env
         self.initialize_recorder()
-        self.record_exclude_keys = ["adjacency_matrix"]
+        self.record_exclude_keys = []
 
     def initialize_recorder(self):
         self.episode = -1
