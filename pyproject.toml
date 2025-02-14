@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "imp-act"
+version = "0.1.0"
+description = "Environments for the imp-act challenge"
+authors = ["Pascal Leroy <pjr.leroy@gmail.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [
+    {include = "imp_act"},
+    {include = "imp_act/environments"},
+    {include = "imp_act/policies"},
+    {include = "imp_act/wrappers"}
+]
+
+[tool.poetry.dependencies]
+python=">=3.9"
+igraph="~0.11.3"
+numpy="~1.26.2"
+pandas="~2.1.4"
+pyyaml="~6.0.1"
+tqdm="~4.66.1"
+
+[tool.poetry.group.dev]
+optional = true
+[tool.poetry.group.dev.dependencies]
+pytest="8.0.1"
+pre-commit = "3.6.2"
+
+[tool.poetry.group.vis]
+optional = true
+[tool.poetry.group.vis.dependencies]
+matplotlib="~3.8.2"
+networkx="~3.2.1"
+Pillow="~10.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,21 @@
+base_traffic_factor: 0.7
+traffic_assignment:
+  reuse_initial_volumes: false 
+  initial_max_iterations: 5
+  max_iterations: 5
+  convergence_threshold: 0.01
+  update_weight: 0.5
+
+bpr_alpha: 0.15
+bpr_beta: 4.0
+
+base_travel_time_factors:
+  type: "list"
+  # Shape: A 
+  # [do-nothing, inspect, minor-repair, major-repair, replacement]
+  list: [1.0000, 1.0000, 1.0000, 1.0618, 1.2500]
+capacity_factors:
+  type: "list"
+  # Shape: A 
+  # [do-nothing, inspect, minor-repair, major-repair, replacement]
+  list: [1.0000, 1.0000, 0.7500, 0.7500, 0.5000]

@@ -1,77 +1,67 @@
+from time import time
+
 import pytest
-from environments.config.environment_loader import EnvironmentLoader
-from wrappers.jax_env_wrapper import JaxRoadEnvironmentWrapper
+
+from imp_act import make
+from imp_act.environments.environment_loader import EnvironmentLoader
+from imp_act.environments.registry import Registry
 
 
 @pytest.fixture
-def toy_environment_path():
-    """Path to toy environment file"""
-    return "environments/config/environment_presets/toy_environment.yaml"
-
-
-@pytest.fixture
-def toy_environment_loader(toy_environment_path):
+def toy_environment_loader():
     """Create a toy environment loader for testing."""
-    return EnvironmentLoader(toy_environment_path)
+    toy_example_path = Registry().get("ToyExample-v1")[1]["filename"]
+    return EnvironmentLoader(toy_example_path)
 
 
 @pytest.fixture
-def toy_environment_numpy(toy_environment_loader):
+def toy_environment_1():
     """Create a toy environment loader for testing."""
-    env = toy_environment_loader.to_numpy()
-    return env
+    return make("ToyExample-v1")
 
 
 @pytest.fixture
-def toy_environment_jax(toy_environment_loader):
+def toy_environment_2():
     """Create a toy environment loader for testing."""
-    env = toy_environment_loader.to_jax()
-    return env
+    return make("ToyExample-v2")
 
 
 @pytest.fixture
-def toy_environment_jax_wrapper(toy_environment_path):
-    """Create a toy environment loader for testing."""
-    env = JaxRoadEnvironmentWrapper(toy_environment_path)
-    return env
+def small_environment():
+    return make("Montenegro-v1")
 
 
 @pytest.fixture
-def small_environment_path():
-    """Path to small environment file"""
-    return "environments/config/environment_presets/small_environment.yaml"
+def medium_environment():
+    return make("Denmark-v1")
 
 
 @pytest.fixture
-def small_environment_numpy(small_environment_path):
-    loader = EnvironmentLoader(small_environment_path)
-    return loader.to_numpy()
+def large_environment():
+    return make("Belgium-v1")
 
 
 @pytest.fixture
-def small_environment_jax(small_environment_path):
-    loader = EnvironmentLoader(small_environment_path)
-    return loader.to_jax()
+def cologne_environment():
+    return make("Cologne-v1")
 
 
 @pytest.fixture
-def large_environment_path():
-    """Path to large environment file"""
-    return "environments/config/environment_presets/large_environment.yaml"
-
-
-@pytest.fixture
-def large_environment_numpy(large_environment_path):
-    loader = EnvironmentLoader(large_environment_path)
-    return loader.to_numpy()
-
-
-@pytest.fixture
-def large_environment_jax(large_environment_path):
-    loader = EnvironmentLoader(large_environment_path)
-    return loader.to_jax()
+def random_time_seed():
+    return int(time())
 
 
 @pytest.fixture
 def parameter_fixture(request):
     return request.getfixturevalue(request.param)
+
+
+def load_test_env(name):
+    return EnvironmentLoader(
+        f"tests/test_environment_configs/{name}/{name}.yaml"
+    ).to_numpy()
+
+
+@pytest.fixture
+def stationary_deterioration_environment():
+    return load_test_env("stationary_deterioration")

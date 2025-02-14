@@ -1,0 +1,179 @@
+maintenance:
+  initial_damage_distribution: [0.85, 0.05, 0.05, 0.05 ,0]
+  include:
+      path: "../common/maintenance_defaults.yaml"
+      override: False
+traffic:
+  travel_time_reward_factor: -50000.0
+  traffic_assignment:
+    max_iterations: 15
+    convergence_threshold: 0.01
+    update_weight: 0.1
+  include:
+    path: "../common/traffic_defaults.yaml"
+    override: False
+  trips:
+    type: "list"
+    list:
+      - origin: 0
+        destination: 5
+        volume: 40
+      - origin: 5
+        destination: 0
+        volume: 40
+      - origin: 1
+        destination: 3
+        volume: 20
+      - origin: 4
+        destination: 2
+        volume: 30
+      - origin: 2
+        destination: 5
+        volume: 30
+topology:
+  graph:
+    directed: true
+    type: "list"
+    nodes:
+      - id: 0
+        position_x: 0
+        position_y: 0
+      - id: 1
+        position_x: 0
+        position_y: 1
+      - id: 2
+        position_x: 0
+        position_y: 2
+      - id: 3
+        position_x: 1
+        position_y: 2
+      - id: 4
+        position_x: 1
+        position_y: 1
+      - id: 5
+        position_x: 1
+        position_y: 0
+    edges:
+      - id: 0
+        source: 0
+        target: 1
+        distance: 1
+      - id: 1
+        source: 1
+        target: 0
+        distance: 1
+      - id: 2
+        source: 1
+        target: 2
+        distance: 1
+      - id: 3
+        source: 1
+        target: 3
+        distance: 1
+      - id: 4
+        source: 1
+        target: 4
+        distance: 1
+      - id: 5
+        source: 2
+        target: 3
+        distance: 1
+      - id: 6
+        source: 3
+        target: 2
+        distance: 1
+      - id: 7
+        source: 3
+        target: 4
+        distance: 1
+      - id: 8
+        source: 4
+        target: 1
+        distance: 1
+      - id: 9
+        source: 4
+        target: 5
+        distance: 1
+      - id: 10
+        source: 5
+        target: 4
+        distance: 1
+      - id: 11
+        source: 5
+        target: 1
+        distance: 1
+  segments:
+    type: "list"
+    list:
+      - source: 0
+        target: 1
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 1
+        target: 0
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 1
+        target: 2
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 1
+        target: 3
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 1
+        target: 4
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 2
+        target: 3
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 3
+        target: 2
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 3
+        target: 4
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 4
+        target: 1
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 4
+        target: 5
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 5
+        target: 4
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
+      - source: 5
+        target: 1
+        capacity: 50
+        travel_time: 1
+        position_x: null
+        position_y: null
