@@ -1,9 +1,0 @@
-general:
-  max_timesteps: 50
-model:
-  include:
-    path: "./model/model_defaults.yaml"
-network:
-  include:
-    path: "./countries/ME/network.yaml"
-  

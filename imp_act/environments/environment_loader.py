@@ -7,6 +7,7 @@ import yaml
 from igraph import Graph
 
 from .road_env import RoadEnvironment
+from .jax_environment import JaxRoadEnvironment
 
 
 class EnvironmentLoader:

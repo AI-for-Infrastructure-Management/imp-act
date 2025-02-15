@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from environments.jax_environment import EnvState
+from imp_act.environments.jax_environment import EnvState
 from igraph import Graph
 
 
