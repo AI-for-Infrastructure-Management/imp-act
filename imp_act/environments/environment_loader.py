@@ -97,6 +97,10 @@ class EnvironmentLoader:
                 f"Deterioration type {maintenance['deterioration']['type']} not supported"
             )
 
+        maintenance["initial_damage_distribution"] = np.array(
+            maintenance["initial_damage_distribution"]
+        )
+
         if maintenance["observation"]["type"] == "list":
             maintenance["observation"] = np.array(maintenance["observation"]["list"])
         else:
@@ -205,6 +209,17 @@ class EnvironmentLoader:
     def _check_model_params_maintenance(self, config):
         """Ensure that maintenance model params are valid"""
 
+        # Ensure initial damage distribution is valid
+        initial_damage_distribution = config["maintenance"][
+            "initial_damage_distribution"
+        ]
+        assert (
+            initial_damage_distribution >= 0
+        ).all(), "Initial damage distribution has negative values"
+        assert (
+            np.sum(initial_damage_distribution) == 1
+        ), "Initial damage distribution does not sum to 1"
+
         # Ensure transition matrix values sum to 1
         # Shape: A x S x S or A x DR x S x S
         deterioration_table = config["maintenance"]["deterioration"]
@@ -243,6 +258,10 @@ class EnvironmentLoader:
         reward_table = config["maintenance"]["reward"]["state_action_reward"]
         if np.any(reward_table > 0):
             raise ValueError("Reward matrix has values greater than 0")
+
+        # Ensure buget parameters are valid
+        assert type(config["maintenance"]["budget_amount"]) in [int, float]
+        assert type(config["maintenance"]["budget_renewal_interval"]) == int
 
     def _check_model_params_traffic(self, config):
         """Ensure that traffic model params are valid"""
