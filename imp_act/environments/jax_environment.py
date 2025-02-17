@@ -80,7 +80,13 @@ class JaxRoadEnvironment(environment.Environment):
 
         # 2.3) Traffic assignment
         ta_conf = config["traffic"]["traffic_assignment"]
-        self.traffic_assigmment_reuse_initial_volumes = ta_conf["reuse_initial_volumes"]
+        self.traffic_assigmment_reuse_initial_volumes = ta_conf[
+            "reuse_initial_volumes"
+        ]  # TODO: implement if needed, for speedups
+        if self.traffic_assigmment_reuse_initial_volumes:
+            print(
+                "Warning: Reusing initial volumes in traffic assignment is not implemented yet."
+            )
         self.traffic_assignment_initial_max_iterations = ta_conf[
             "initial_max_iterations"
         ]
@@ -127,17 +133,17 @@ class JaxRoadEnvironment(environment.Environment):
         self.budget_amount = float(imp_conf["budget_amount"])
         self.budget_renewal_interval = imp_conf["budget_renewal_interval"]
 
+        ## Environment properties
         key = jax.random.PRNGKey(9898)  # dummy key, doesn't matter
         _, state = self.reset_env(key)
 
-        ## Environment properties
         # Base total travel time
-        base_volumes = (
+        self.base_volumes = (
             self._gather(state.capacity, fill_value=jnp.inf).min(axis=1)
             * self.base_traffic_factor
         )
         self.total_base_travel_time = self._get_total_travel_time(
-            state, base_volumes, self.traffic_assignment_initial_max_iterations
+            state, self.traffic_assignment_initial_max_iterations
         )
 
     def _extract_segments_info(self, config: Dict):
@@ -387,7 +393,6 @@ class JaxRoadEnvironment(environment.Environment):
 
         # set weights (uses jax.lax.scatter behind the scenes)
         weights_matrix = weights_matrix.at[edges[:, 0], edges[:, 1]].set(weights)
-        weights_matrix = weights_matrix.at[edges[:, 1], edges[:, 0]].set(weights)
 
         return weights_matrix
 
@@ -486,7 +491,7 @@ class JaxRoadEnvironment(environment.Environment):
         )[2]
 
     @partial(jax.jit, static_argnums=0)
-    def _get_volumes_shortest_path(self, weights: jnp.array):
+    def _get_volumes_shortest_path(self, weights: jnp.array, base_volumes: jnp.array):
         """
         Compute the volumes of each edge in the shortest path from the
         given source to the given destination.
@@ -512,27 +517,35 @@ class JaxRoadEnvironment(environment.Environment):
             jnp.arange(self.num_nodes), jnp.arange(self.num_nodes)
         ].set(jnp.inf)
 
-        volumes = self._get_volumes(
+        trips_volumes = self._get_volumes(
             self.trip_sources,
             self.trip_destinations,
             weight_matrix,
             cost_to_go_matrix,
-        )
+        ).sum(axis=0)
 
-        return volumes
+        return base_volumes + trips_volumes
 
     @partial(jax.jit, static_argnums=0)
-    def _get_total_travel_time(self, state, volumes, max_iterations):
-        """Get the total travel time of all cars in the network."""
+    def _get_total_travel_time(self, state, max_iterations):
+        """
+        Get the total travel time of all trucks in the network.
+        We assume that there is a base volume of traffic from cars,
+        We only consider the travel time for trucks (trips) in the network.
+
+        """
 
         # 0.1 Initialize volumes
-        edge_volumes = volumes
+        # base_volumes: base traffic (such as cars, always on the road)
+        edge_volumes = self.base_volumes
 
         # 0.2 Calculate initial travel times
         edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
 
         # 0.3 Find the shortest paths using all-or-nothing assignment
-        edge_volumes = self._get_volumes_shortest_path(edge_travel_times).sum(axis=0)
+        edge_volumes = self._get_volumes_shortest_path(
+            edge_travel_times, self.base_volumes
+        )
 
         # repeat until convergence
         def body_fun(val):
@@ -543,8 +556,8 @@ class JaxRoadEnvironment(environment.Environment):
 
             # 2. Find the shortest paths using updated travel times
             #    (recalculates edge volumes)
-            new_edge_volumes = self._get_volumes_shortest_path(edge_travel_times).sum(
-                axis=0
+            new_edge_volumes = self._get_volumes_shortest_path(
+                edge_travel_times, self.base_volumes
             )
 
             # 3. Check for convergence by comparing volume changes
