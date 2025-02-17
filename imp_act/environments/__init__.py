@@ -22,6 +22,7 @@ presets = [
     "Belgium-v1",
     "Cologne-v1",
     "Cologne-v1-unconstrained",
+    "Cologne-v1-only-maintenance",
 ]
 
 for name in presets:

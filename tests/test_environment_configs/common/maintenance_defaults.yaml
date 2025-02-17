@@ -56,3 +56,8 @@ reward:
 budget_amount: 75000000
 budget_renewal_interval: 5
 forced_replace_worst_observation_count: 2
+action_duration_factors:
+  type: "list"
+  # Shape: A 
+  # [do-nothing, inspect, minor-repair, major-repair, replacement]
+  list: [0.0000, 0.0000, 0.0771, 0.2911, 1.0000]
