@@ -9,6 +9,8 @@ from flax import struct
 from gymnax.environments import environment, spaces
 from jax import vmap
 
+# jax.config.update("jax_disable_jit", True)
+
 
 @struct.dataclass
 class EnvState:
@@ -18,7 +20,12 @@ class EnvState:
     belief: jnp.array
     base_travel_time: jnp.array
     capacity: jnp.array
+    worst_obs_counter: jnp.array
     timestep: int
+
+
+MILES_PER_KILOMETER = 0.621371
+KILOMETERS_PER_MILE = 1.0 / MILES_PER_KILOMETER
 
 
 class JaxRoadEnvironment(environment.Environment):
@@ -30,72 +37,108 @@ class JaxRoadEnvironment(environment.Environment):
         super().__init__()
 
         # Episode time horizon
-        self.max_timesteps = config["general"]["max_timesteps"]
+        self.max_timesteps = config["maintenance"]["max_timesteps"]
 
-        # Network geometry
-        self.graph = config["network"]["graph"]
-        self.num_nodes = self.graph.vcount()
-        self.num_edges = self.graph.ecount()
+        ## 1) Network modeling
+
+        # 1.1) Topology
+        self.graph = config["topology"]["graph"]
+        self.num_nodes, self.num_edges = self.graph.vcount(), self.graph.ecount()
         self.edges = jnp.array(self.graph.get_edgelist())
-        # adjacency matrix (with edge indices)
-        adjacency_matrix = np.ones((self.num_nodes, self.num_nodes)) * -1
-        adjacency_matrix[self.edges[:, 0], self.edges[:, 1]] = np.arange(self.num_edges)
-        adjacency_matrix[self.edges[:, 1], self.edges[:, 0]] = np.arange(self.num_edges)
-        self.adjacency_matrix = jnp.array(adjacency_matrix, dtype=jnp.int32)
+        # Adjacency matrix (with edge indices)
+        # A1: vertex pairs contain edge index ("id"), 0 otherwise
+        # A2: if no edge between vertex pairs, value is -1, 0 otherwise
+        A1 = np.array(self.graph.get_adjacency(attribute="id"))
+        A2 = np.array(self.graph.get_adjacency(eids=True))
+        self.adjacency_matrix = jnp.array(A1 + A2, dtype=jnp.int32)
+
+        # 1.2) Road Segments
         (
             self.segments_list,
             self.initial_btts,
             self.initial_capacities,
+            self.segment_lengths,
             self.total_num_segments,
         ) = self._extract_segments_info(config)
         self.idxs_map = self._compute_idxs_map(self.segments_list)
 
-        # Traffic modeling
-        ta_conf = config["network"]["traffic_assignment"]
-        self.traffic_alpha = config["model"]["edge"]["traffic"]["bpr_alpha"]
-        self.traffic_beta = config["model"]["edge"]["traffic"]["bpr_beta"]
-        self.capacity_table = jnp.array(
-            config["model"]["segment"]["traffic"]["capacity_factors"]
-        )  # fractions of the initial capacities, multiplied by the initial capacities later
-        self.btt_table = jnp.array(
-            config["model"]["segment"]["traffic"]["base_travel_time_factors"]
-        )  # fractions of the initial btts, multiplied by the initial btts later
+        ## 2) Traffic modeling
+        self.travel_time_reward_factor = config["traffic"]["travel_time_reward_factor"]
 
-        # Traffic assignment
-        self.traffic_assignment_update_weight = ta_conf["update_weight"]
-        self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
-        self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
-        # Network traffic
+        # 2.1) BPR function parameters, capacity, and base travel times
+        self.traffic_alpha = config["traffic"]["bpr_alpha"]
+        self.traffic_beta = config["traffic"]["bpr_beta"]
+        self.base_traffic_factor = config["traffic"]["base_traffic_factor"]
+        # fractions of the initial capacities, multiplied by the initial capacities later
+        self.capacity_table = jnp.array(config["traffic"]["capacity_factors"])
+        # fractions of the initial btts, multiplied by the initial btts later
+        self.btt_table = jnp.array(config["traffic"]["base_travel_time_factors"])
+
+        # 2.2) Network traffic
         self.trips = self._extract_trip_info(config)
         self.trip_sources, self.trip_destinations = jnp.nonzero(self.trips)
 
-        # Inspection and maintenance modeling
-        self.num_damage_states = config["model"]["segment"]["deterioration"].shape[1]
-        self.initial_dam_state = config["model"]["segment"]["initial_damage_state"]
-        self.initial_obs = config["model"]["segment"]["initial_observation"]
-        self.initial_belief = np.zeros(self.num_damage_states)
-        self.initial_belief[self.initial_dam_state] = 1.0
-        self.initial_belief = jnp.array(self.initial_belief)
-        # Deterioration model
-        self.deterioration_table = jnp.array(
-            config["model"]["segment"]["deterioration"]
-        )
-        # Observation model
-        self.observation_table = jnp.array(config["model"]["segment"]["observation"])
-
-        # Rewards
-        self.travel_time_reward_factor = config["model"]["network"][
-            "travel_time_reward_factor"
+        # 2.3) Traffic assignment
+        ta_conf = config["traffic"]["traffic_assignment"]
+        self.traffic_assigmment_reuse_initial_volumes = ta_conf["reuse_initial_volumes"]
+        self.traffic_assignment_initial_max_iterations = ta_conf[
+            "initial_max_iterations"
         ]
-        self.inspection_campaign_reward = config["model"]["edge"]["reward"][
+        self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
+        self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
+        self.traffic_assignment_update_weight = ta_conf["update_weight"]
+
+        ## 3) Inspection and maintenance modeling
+        imp_conf = config["maintenance"]
+
+        # 3.1) Damage states and observations
+        self.initial_damage_prob = jnp.array(imp_conf["initial_damage_distribution"])
+        self.num_damage_states = imp_conf["deterioration"].shape[-1]
+        self.num_observations = imp_conf["observation"].shape[-1]
+        self.forced_replace_worst_observation_count = imp_conf[
+            "forced_replace_worst_observation_count"
+        ]
+
+        # 3.2) Action space
+        # action durations (shape: A)
+        self.action_durations = imp_conf["action_duration_factors"]
+
+        # 3.3) Deterioration and observation models
+        self.deterioration_rate = None
+        # Deterioration model (shape: A x S x S or A x DR x S x S)
+        self.deterioration_table = jnp.array(imp_conf["deterioration"])
+        self.deterioration_rate_enabled = self.deterioration_table.ndim == 4
+        if self.deterioration_rate_enabled:
+            self.deterioration_rate_max = self.deterioration_table.shape[1]
+        # Observation model (shape: A x S x O)
+        self.observation_table = jnp.array(imp_conf["observation"])
+
+        # 3.4) Budget and rewards
+        self.inspection_campaign_reward = imp_conf["reward"][
             "inspection_campaign_reward"
         ]
-        self.rewards_table = jnp.array(
-            config["model"]["segment"]["reward"]["state_action_reward"]
+        # rewards_table (shape: S x A)
+        self.rewards_table = jnp.array(imp_conf["reward"]["state_action_reward"])
+        # terminal state rewards (shape: S)
+        self.terminal_state_reward = jnp.array(
+            imp_conf["reward"]["terminal_state_reward"]
         )
+        # Budget parameters
+        self.budget_amount = float(imp_conf["budget_amount"])
+        self.budget_renewal_interval = imp_conf["budget_renewal_interval"]
 
-        _, state = self.reset_env()
-        self.total_base_travel_time = self._get_total_travel_time(state)
+        key = jax.random.PRNGKey(9898)  # dummy key, doesn't matter
+        _, state = self.reset_env(key)
+
+        ## Environment properties
+        # Base total travel time
+        base_volumes = (
+            self._gather(state.capacity, fill_value=jnp.inf).min(axis=1)
+            * self.base_traffic_factor
+        )
+        self.total_base_travel_time = self._get_total_travel_time(
+            state, base_volumes, self.traffic_assignment_initial_max_iterations
+        )
 
     def _extract_segments_info(self, config: Dict):
         """Extract segments information from the configuration file.
@@ -106,27 +149,45 @@ class JaxRoadEnvironment(environment.Environment):
         igraph_edge_ids = self.graph.es["id"]
 
         total_num_segments = 0
-        for edge_segments in config["network"]["segments"].values():
+        for edge_segments in config["topology"]["segments"].values():
             total_num_segments += len(edge_segments)
 
-        segments_idxs_list = [
-            []
-        ] * self.num_edges  # list of segment indices for each edge
+        # idxs_list: list of segment indices for each edge
+        segments_idxs_list = [[] for _ in range(self.num_edges)]
         segment_initial_btt = np.empty(total_num_segments)
         segment_initial_capacity = np.empty(total_num_segments)
+        segment_lengths = np.empty(total_num_segments)
         idx = 0
-        for nodes, edge_segments in config["network"]["segments"].items():
+        for nodes, edge_segments in config["topology"]["segments"].items():
             _indices = []
             for segment in edge_segments:
                 # get edge index from graph using nodes
-                vertex_1 = self.graph.vs.select(id_eq=nodes[0])
-                vertex_2 = self.graph.vs.select(id_eq=nodes[1])
-                graph_edge = self.graph.es.select(_between=(vertex_1, vertex_2))[0]
+                edge_id = self.graph.get_eid(
+                    self.graph.vs.find(id=nodes[0]).index,
+                    self.graph.vs.find(id=nodes[1]).index,
+                )
                 # get equivalent JAX edge index
-                edge_id = igraph_edge_ids.index(graph_edge["id"])
+                edge_id = igraph_edge_ids.index(edge_id)
                 _indices.append(idx)
-                segment_initial_btt[idx] = segment["travel_time"]
+
+                # segment length
+                if segment.get("segment_length") is None:
+                    _segment_length = KILOMETERS_PER_MILE
+                else:
+                    _segment_length = segment["segment_length"]
+
+                # travel time
+                if segment.get("travel_time") is None:
+                    base_travel_time = (
+                        segment["segment_length"] / segment["travel_speed"]
+                    )
+                else:
+                    base_travel_time = segment["travel_time"]
+
                 segment_initial_capacity[idx] = segment["capacity"]
+                segment_initial_btt[idx] = base_travel_time
+                segment_lengths[idx] = _segment_length
+
                 idx += 1
 
             segments_idxs_list[edge_id] = _indices
@@ -135,6 +196,7 @@ class JaxRoadEnvironment(environment.Environment):
             segments_idxs_list,
             jnp.array(segment_initial_btt),
             jnp.array(segment_initial_capacity),
+            jnp.array(segment_lengths),
             total_num_segments,
         )
 
@@ -147,7 +209,7 @@ class JaxRoadEnvironment(environment.Environment):
 
         trips = np.zeros((self.num_nodes, self.num_nodes))
 
-        trips_df = config["network"]["trips"]
+        trips_df = config["traffic"]["trips"]
         for index in trips_df.index:
 
             vertex_1_list = self.graph.vs.select(id_eq=trips_df["origin"][index])
@@ -460,11 +522,11 @@ class JaxRoadEnvironment(environment.Environment):
         return volumes
 
     @partial(jax.jit, static_argnums=0)
-    def _get_total_travel_time(self, state):
+    def _get_total_travel_time(self, state, volumes, max_iterations):
         """Get the total travel time of all cars in the network."""
 
         # 0.1 Initialize volumes
-        edge_volumes = jnp.full((len(self.edges)), 0)
+        edge_volumes = volumes
 
         # 0.2 Calculate initial travel times
         edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
@@ -501,7 +563,7 @@ class JaxRoadEnvironment(environment.Environment):
             _, max_volume_change, i, _ = val
             return (
                 max_volume_change > self.traffic_assignment_convergence_threshold
-            ) & (i < self.traffic_assignment_max_iterations)
+            ) & (i < max_iterations)
 
         edge_volumes, _, _, edge_travel_times = jax.lax.while_loop(
             cond_fun, body_fun, init_val=(edge_volumes, jnp.inf, 0, edge_travel_times)
@@ -583,17 +645,27 @@ class JaxRoadEnvironment(environment.Environment):
         return obs, reward, done, info, next_state
 
     @partial(jax.jit, static_argnums=0)
-    def reset_env(self) -> Tuple[chex.Array, EnvState]:
+    def reset_env(self, key) -> Tuple[chex.Array, EnvState]:
         # initial damage state
-        damage_state = (
-            jnp.ones(self.total_num_segments, dtype=jnp.uint8) * self.initial_dam_state
+        key, subkey = jax.random.split(key)
+        damage_state = jax.random.choice(
+            subkey,
+            self.num_damage_states,
+            p=self.initial_damage_prob,
+            shape=(self.total_num_segments,),
         )
 
         # initial observation
-        obs = jnp.ones(self.total_num_segments, dtype=jnp.uint8) * self.initial_obs
+        keys = jax.random.split(key, self.total_num_segments + 1)
+        key, subkeys = keys[0], keys[1:]
+        _actions = jnp.zeros(self.total_num_segments, dtype=jnp.int32)
+        obs = self._get_next(subkeys, damage_state, _actions, self.observation_table)
 
         # initial belief
-        belief = jnp.array([self.initial_belief] * self.total_num_segments)
+        belief = jnp.array([self.initial_damage_prob] * self.total_num_segments)
+
+        # worst observation counter (for forced repair)
+        worst_observation_counter = jnp.zeros(self.total_num_segments, dtype=jnp.int32)
 
         env_state = EnvState(
             damage_state=damage_state,
@@ -601,12 +673,13 @@ class JaxRoadEnvironment(environment.Environment):
             belief=belief,
             base_travel_time=self.initial_btts,
             capacity=self.initial_capacities,
+            worst_obs_counter=worst_observation_counter,
             timestep=0,
         )
         return self.get_obs(env_state), env_state
 
     @partial(jax.jit, static_argnums=0)
-    def _gather(self, x: jnp.array):
+    def _gather(self, x: jnp.array, fill_value: float = 0.0) -> jnp.array:
         """
         Gather the properties (example: base travel time) of all
         segments belonging to an edge.
@@ -628,7 +701,7 @@ class JaxRoadEnvironment(environment.Environment):
             shape: (max_num_segments_per_edge, num_edges)
         """
 
-        return jnp.take(x, self.idxs_map, fill_value=0.0)
+        return jnp.take(x, self.idxs_map, fill_value=fill_value)
 
     def get_obs(self, state: EnvState) -> chex.Array:
         return state.observation
