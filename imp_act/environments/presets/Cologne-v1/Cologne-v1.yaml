@@ -1,6 +1,6 @@
 maintenance:
   initial_damage_distribution: [0.6, 0.134, 0.133, 0.133 ,0]
-  budget_amount: 325_000_000
+  budget_amount: 230_000_000
   include:
       path: "../common/maintenance_defaults.yaml"
       override: False
