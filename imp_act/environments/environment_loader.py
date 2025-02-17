@@ -7,7 +7,6 @@ import yaml
 from igraph import Graph
 
 from .road_env import RoadEnvironment
-from .jax_environment import JaxRoadEnvironment
 
 
 class EnvironmentLoader:
@@ -263,4 +262,13 @@ class EnvironmentLoader:
         return RoadEnvironment(self.config)
 
     def to_jax(self):
-        pass
+        # JAX is an optional dependency, importing here avoids import
+        # errors if JAX is not installed
+        from .jax_environment import JaxRoadEnvironment
+
+        try:
+            return JaxRoadEnvironment(self.config)
+        except ImportError:
+            raise ImportError(
+                "JAX is not installed. Please install JAX to use this method"
+            )
