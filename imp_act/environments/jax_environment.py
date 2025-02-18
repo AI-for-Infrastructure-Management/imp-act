@@ -23,6 +23,7 @@ class EnvState:
     worst_obs_counter: jnp.array
     deterioration_rate: jnp.array
     timestep: int
+    episode_return: float = 0.0
 
 
 MILES_PER_KILOMETER = 0.621371
@@ -136,14 +137,14 @@ class JaxRoadEnvironment(environment.Environment):
 
         ## Environment properties
         key = jax.random.PRNGKey(9898)  # dummy key, doesn't matter
-        _, state = self.reset_env(key)
+        _, state = self.reset(key)
 
         # Base total travel time
         self.base_volumes = (
             self._gather(state.capacity, fill_value=jnp.inf).min(axis=1)
             * self.base_traffic_factor
         )
-        self.total_base_travel_time = self._get_total_travel_time(
+        self.base_total_travel_time = self._get_total_travel_time(
             state, self.traffic_assignment_initial_max_iterations
         )
 
@@ -658,11 +659,9 @@ class JaxRoadEnvironment(environment.Environment):
             state.belief, obs, action, state.deterioration_rate
         )
 
-        base_travel_time = (
-            self.btt_table[action, state.damage_state] * self.initial_btts
-        )
-        capacity = (
-            self.capacity_table[action, state.damage_state] * self.initial_capacities
+        ## Traffic modeling
+        base_travel_time = self.btt_table[action] * self.initial_btts
+        capacity = self.capacity_table[action] * self.initial_capacities
         )
 
         total_travel_time = self._get_total_travel_time(state)
@@ -673,30 +672,61 @@ class JaxRoadEnvironment(environment.Environment):
         # reward
         reward = maintenance_reward + travel_time_reward
 
+        # done
+        timestep = state.timestep + 1
+        done = self.is_terminal(timestep)
+
+
+        # returns
+        returns = state.episode_return + reward
+
+        # info
+        info = {
+            "total_travel_time": total_travel_time,
+            "reward_elements": {
+                "travel_time_reward": travel_time_reward,
+                "maintenance_reward": maintenance_reward,
+                "terminal_reward": terminal_reward,
+            },
+            "returns": returns,
+        }
+
         next_state = EnvState(
-            damage_state=next_state,
+            damage_state=damage_state,
             observation=obs,
             belief=belief,
             base_travel_time=base_travel_time,
             capacity=capacity,
             deterioration_rate=deterioration_rate,
             timestep=state.timestep + 1,
+            episode_return=returns * jnp.logical_not(done),
         )
 
-        # done
-        done = self.is_terminal(next_state)
-
-        # info
-        info = {
-            "total_travel_time": total_travel_time,
-            "maintenance_reward": maintenance_reward,
-            "travel_time_reward": travel_time_reward,
-        }
-
-        return obs, reward, done, info, next_state
+        return obs, next_state, reward, done, info
 
     @partial(jax.jit, static_argnums=0)
-    def reset_env(self, key) -> Tuple[chex.Array, EnvState]:
+    def step(self, key, state, action):
+
+        key, subkeys = self.split_key(key)
+
+        # environment step
+        obs_st, state_st, reward, done, info = self.step_env(subkeys, state, action)
+
+        # reset env
+        key, sub_key = jax.random.split(key)
+        obs_re, state_re = self.reset(sub_key)
+
+        # Auto-reset environment based on done
+        state = jax.tree.map(
+            lambda x, y: jax.lax.select(done, x, y), state_re, state_st
+        )
+
+        obs = jax.tree.map(lambda x, y: jax.lax.select(done, x, y), obs_re, obs_st)
+
+        return obs, state, reward, done, info
+
+    @partial(jax.jit, static_argnums=0)
+    def reset(self, key) -> Tuple[chex.Array, EnvState]:
         # initial damage state
         key, subkey = jax.random.split(key)
         damage_state = jax.random.choice(
@@ -733,7 +763,7 @@ class JaxRoadEnvironment(environment.Environment):
         )
         return self.get_obs(env_state), env_state
 
-    @partial(jax.jit, static_argnums=0)
+    @partial(jax.jit, static_argnums=(0, 2))
     def _gather(self, x: jnp.array, fill_value: float = 0.0) -> jnp.array:
         """
         Gather the properties (example: base travel time) of all
@@ -761,8 +791,8 @@ class JaxRoadEnvironment(environment.Environment):
     def get_obs(self, state: EnvState) -> chex.Array:
         return state.observation
 
-    def is_terminal(self, state: EnvState) -> bool:
-        return state.timestep >= self.max_timesteps
+    def is_terminal(self, timestep: int) -> bool:
+        return timestep >= self.max_timesteps
 
     def action_space(self) -> spaces.Discrete:
         pass
@@ -802,7 +832,7 @@ class JaxRoadEnvironment(environment.Environment):
         subkeys = keys[: self.total_num_segments * 2, :]
         key = keys[-1, :]
 
-        return subkeys, key
+        return key, subkeys
 
     def _get_shortest_path(
         self,
