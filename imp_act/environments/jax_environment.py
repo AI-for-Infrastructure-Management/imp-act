@@ -98,6 +98,13 @@ class JaxRoadEnvironment(environment.Environment):
 
         ## 3) Inspection and maintenance modeling
         imp_conf = config["maintenance"]
+        self.action_map = {
+            "do-nothing": 0,
+            "inspect": 1,
+            "minor-repair": 2,
+            "major-repair": 3,
+            "replace": 4,
+        }
 
         # 3.1) Damage states and observations
         self.initial_damage_prob = jnp.array(imp_conf["initial_damage_distribution"])
@@ -109,10 +116,9 @@ class JaxRoadEnvironment(environment.Environment):
 
         # 3.2) Action space
         # action durations (shape: A)
-        self.action_durations = imp_conf["action_duration_factors"]
+        self.action_durations = jnp.array(imp_conf["action_duration_factors"])
 
         # 3.3) Deterioration and observation models
-        self.deterioration_rate = None
         # Deterioration model (shape: A x S x S or A x DR x S x S)
         self.deterioration_table = jnp.array(imp_conf["deterioration"])
         self.deterioration_rate_enabled = self.deterioration_table.ndim == 4
@@ -666,7 +672,7 @@ class JaxRoadEnvironment(environment.Environment):
 
         total_travel_time = self._get_total_travel_time(state)
         travel_time_reward = self.travel_time_reward_factor * (
-            total_travel_time - self.total_base_travel_time
+            total_travel_time - self.base_total_travel_time
         )
 
         # reward
