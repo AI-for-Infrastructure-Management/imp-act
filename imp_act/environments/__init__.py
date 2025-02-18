@@ -25,6 +25,9 @@ presets = [
     "Cologne-v1",
     "Cologne-v1-unconstrained",
     "Cologne-v1-only-maintenance",
+    "CologneBonnDusseldorf-v1",
+    "CologneBonnDusseldorf-v1-unconstrained",
+    "CologneBonnDusseldorf-v1-only-maintenance",
 ]
 
 for name in presets:

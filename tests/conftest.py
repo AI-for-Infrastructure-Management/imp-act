@@ -50,6 +50,9 @@ def large_environment():
 def cologne_environment():
     return make("Cologne-v1")
 
+@pytest.fixture
+def cologne_bonn_dusseldorf_environment():
+    return make("CologneBonnDusseldorf-v1")
 
 @pytest.fixture
 def random_time_seed():
