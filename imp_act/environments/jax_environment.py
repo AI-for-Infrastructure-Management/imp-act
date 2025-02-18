@@ -48,11 +48,10 @@ class JaxRoadEnvironment(environment.Environment):
         self.num_nodes, self.num_edges = self.graph.vcount(), self.graph.ecount()
         self.edges = jnp.array(self.graph.get_edgelist())
         # Adjacency matrix (with edge indices)
-        # A1: vertex pairs contain edge index ("id"), 0 otherwise
-        # A2: if no edge between vertex pairs, value is -1, 0 otherwise
-        A1 = np.array(self.graph.get_adjacency(attribute="id"))
-        A2 = np.array(self.graph.get_adjacency(eids=True))
-        self.adjacency_matrix = jnp.array(A1 + A2, dtype=jnp.int32)
+        adjacency_matrix = np.ones((self.num_nodes, self.num_nodes)) * -1
+        adjacency_matrix[self.edges[:, 0], self.edges[:, 1]] = np.arange(self.num_edges)
+        adjacency_matrix[self.edges[:, 1], self.edges[:, 0]] = np.arange(self.num_edges)
+        self.adjacency_matrix = jnp.array(adjacency_matrix, dtype=jnp.int32)
 
         # 1.2) Road Segments
         (
