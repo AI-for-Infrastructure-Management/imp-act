@@ -636,6 +636,25 @@ class JaxRoadEnvironment(environment.Environment):
 
         return total_travel_time, edge_volumes
 
+    @partial(jax.jit, static_argnums=0)
+    def _get_worst_case_travel_time(self, state, max_duration):
+
+        initial_volumes = jax.lax.cond(
+            self.traffic_assigmment_reuse_initial_volumes,
+            lambda x: x,
+            lambda x: self.base_edge_volumes,
+            self.percomputed_edge_volumes,
+        )
+
+        (worst_case_ttt, edge_volumes) = self._get_total_travel_time_and_edge_volumes(
+            state, initial_volumes, self.traffic_assignment_max_iterations
+        )
+
+        total_travel_time = (
+            1 - max_duration
+        ) * self.base_total_travel_time + max_duration * worst_case_ttt
+
+        return total_travel_time
 
     @partial(vmap, in_axes=(None, 0, 0, 0, 0))
     def _get_next_belief(
@@ -700,9 +719,18 @@ class JaxRoadEnvironment(environment.Environment):
         ## Traffic modeling
         base_travel_time = self.btt_table[action] * self.initial_btts
         capacity = self.capacity_table[action] * self.initial_capacities
-        )
 
-        total_travel_time = self._get_total_travel_time(state)
+        # udpate state
+        state = state.replace(base_travel_time=base_travel_time, capacity=capacity)
+
+        # Worst-case travel time
+        max_duration = jnp.max(self.action_durations[action])
+        total_travel_time = jax.lax.cond(
+            max_duration > 0,
+            lambda args: self._get_worst_case_travel_time(*args),
+            lambda _: self.base_total_travel_time,
+            (state, max_duration),
+        )
         travel_time_reward = self.travel_time_reward_factor * (
             total_travel_time - self.base_total_travel_time
         )
