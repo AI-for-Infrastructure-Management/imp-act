@@ -731,7 +731,7 @@ class RoadEnvironment:
 
     def _apply_forced_repair_constraint(self, actions):
         # Corrective replace action if the worst condition is observed
-        self.forced_replace_constraint_applied = False
+        self.forced_replace_constraint_applied = 0
         for i, edge in enumerate(self.graph.es):
             for j, segment in enumerate(edge["road_edge"].segments):
                 if segment.observation == segment.number_of_states - 1:
@@ -740,7 +740,7 @@ class RoadEnvironment:
                         segment.worst_observation_counter
                         > self.forced_replace_worst_observation_count
                     ):
-                        self.forced_replace_constraint_applied = True
+                        self.forced_replace_constraint_applied += 1
                         segment.forced_repair = True
                         actions[i][j] = 4
                 else:
