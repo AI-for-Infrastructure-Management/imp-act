@@ -21,6 +21,7 @@ class EnvState:
     base_travel_time: jnp.array
     capacity: jnp.array
     worst_obs_counter: jnp.array
+    deterioration_rate: jnp.array
     timestep: int
 
 
@@ -282,6 +283,18 @@ class JaxRoadEnvironment(environment.Environment):
             key, self.num_damage_states, p=table[action, dam_state]
         )
 
+        return next_dam_state
+
+    @partial(jax.jit, static_argnums=(0,))
+    @partial(vmap, in_axes=(None, 0, 0, 0, 0))
+    def _get_next_damage_state(self, key, dam_state, action, det_rate):
+
+        # sample
+        next_dam_state = jax.random.choice(
+            key,
+            self.num_damage_states,
+            p=self.deterioration_table[action, det_rate, dam_state],
+        )
         return next_dam_state
 
     @partial(jax.jit, static_argnums=(0,))
@@ -585,15 +598,28 @@ class JaxRoadEnvironment(environment.Environment):
         # 5. Calculate total travel time
         return jnp.sum(edge_travel_times * edge_volumes)
 
-    @partial(vmap, in_axes=(None, 0, 0, 0))
-    def _get_next_belief(self, belief: jnp.array, obs: int, action: int) -> jnp.array:
+    @partial(vmap, in_axes=(None, 0, 0, 0, 0))
+    def _get_next_belief(
+        self, belief: jnp.array, obs: int, action: int, det_rate: int
+    ) -> jnp.array:
         """Update belief for a single segment."""
 
-        next_belief = self.deterioration_table[action].T @ belief
+        next_belief = self.deterioration_table[action, det_rate].T @ belief
         state_probs = self.observation_table[action][:, obs]
         next_belief = state_probs * next_belief
         next_belief /= next_belief.sum()
         return next_belief
+
+    @partial(jax.jit, static_argnums=0)
+    @partial(vmap, in_axes=(None, 0, 0))
+    def _get_next_deterioration_rate(self, action: int, det_rate: int) -> int:
+        det_rate = jax.lax.cond(
+            action == self.action_map["replace"],
+            lambda x: 0,
+            lambda x: jnp.minimum(x + 1, self.deterioration_rate_max),
+            det_rate,
+        )
+        return det_rate
 
     @partial(jax.jit, static_argnums=0)
     def step_env(
@@ -607,19 +633,30 @@ class JaxRoadEnvironment(environment.Environment):
         # split keys into keys for damage transitions and observations
         keys_transition, keys_obs = jnp.split(keys, 2, axis=0)
 
-        # next state
-        next_state = self._get_next(
-            keys_transition, state.damage_state, action, self.deterioration_table
+
+        ## Maintenance modeling
+        damage_state = self._get_next_damage_state(
+            keys_transition,
+            state.damage_state,
+            action,
+            state.deterioration_rate,
+        )
+
+        # deterioration rate update
+        deterioration_rate = self._get_next_deterioration_rate(
+            action, state.deterioration_rate
         )
 
         # observation
-        obs = self._get_next(keys_obs, next_state, action, self.observation_table)
+        obs = self._get_next(keys_obs, damage_state, action, self.observation_table)
 
         # maintenance reward
         maintenance_reward = self._get_maintenance_reward(state.damage_state, action)
 
         # belief update
-        belief = self._get_next_belief(state.belief, obs, action)
+        belief = self._get_next_belief(
+            state.belief, obs, action, state.deterioration_rate
+        )
 
         base_travel_time = (
             self.btt_table[action, state.damage_state] * self.initial_btts
@@ -642,6 +679,7 @@ class JaxRoadEnvironment(environment.Environment):
             belief=belief,
             base_travel_time=base_travel_time,
             capacity=capacity,
+            deterioration_rate=deterioration_rate,
             timestep=state.timestep + 1,
         )
 
@@ -680,6 +718,9 @@ class JaxRoadEnvironment(environment.Environment):
         # worst observation counter (for forced repair)
         worst_observation_counter = jnp.zeros(self.total_num_segments, dtype=jnp.int32)
 
+        # deterioration rate
+        deterioration_rate = jnp.zeros(self.total_num_segments, dtype=jnp.int32)
+
         env_state = EnvState(
             damage_state=damage_state,
             observation=obs,
@@ -687,6 +728,7 @@ class JaxRoadEnvironment(environment.Environment):
             base_travel_time=self.initial_btts,
             capacity=self.initial_capacities,
             worst_obs_counter=worst_observation_counter,
+            deterioration_rate=deterioration_rate,
             timestep=0,
         )
         return self.get_obs(env_state), env_state
