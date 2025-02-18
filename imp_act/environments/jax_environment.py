@@ -63,6 +63,7 @@ class JaxRoadEnvironment(environment.Environment):
             self.total_num_segments,
         ) = self._extract_segments_info(config)
         self.idxs_map = self._compute_idxs_map(self.segments_list)
+        self.segment_lengths = self._gather(self.segment_lengths).squeeze()
 
         ## 2) Traffic modeling
         self.travel_time_reward_factor = config["traffic"]["travel_time_reward_factor"]
@@ -325,13 +326,19 @@ class JaxRoadEnvironment(environment.Environment):
         return total_num_inspections * self.inspection_campaign_reward
 
     @partial(jax.jit, static_argnums=(0,))
+    def _get_terminal_reward(self, belief: jnp.array) -> float:
+        terminal_rewards = jnp.dot(belief, self.terminal_state_reward)
+
+        return jnp.sum(terminal_rewards * self.segment_lengths * MILES_PER_KILOMETER)
+
+    @partial(jax.jit, static_argnums=(0,))
     def _get_maintenance_reward(
         self, damage_state: jnp.array, action: jnp.array
     ) -> float:
 
         maintenance_reward = jnp.sum(
             self._get_rewards_from_table(damage_state, action, self.rewards_table)
-            * self._gather(self.segment_lengths).squeeze()
+            * self.segment_lengths
             * MILES_PER_KILOMETER
         )
 
@@ -682,6 +689,14 @@ class JaxRoadEnvironment(environment.Environment):
         timestep = state.timestep + 1
         done = self.is_terminal(timestep)
 
+        # terminal reward
+        terminal_reward = jax.lax.cond(
+            done,
+            lambda x: self._get_terminal_reward(x),
+            lambda x: 0.0,
+            belief,
+        )
+        reward += terminal_reward
 
         # returns
         returns = state.episode_return + reward
