@@ -83,9 +83,7 @@ class JaxRoadEnvironment(environment.Environment):
 
         # 2.3) Traffic assignment
         ta_conf = config["traffic"]["traffic_assignment"]
-        self.traffic_assigmment_reuse_initial_volumes = ta_conf[
-            "reuse_initial_volumes"
-        ]  # TODO: implement if needed, for speedups
+        self.traffic_assigmment_reuse_initial_volumes = ta_conf["reuse_initial_volumes"]
         if self.traffic_assigmment_reuse_initial_volumes:
             print(
                 "Warning: Reusing initial volumes in traffic assignment is not implemented yet."
@@ -147,12 +145,21 @@ class JaxRoadEnvironment(environment.Environment):
         _, state = self.reset(key)
 
         # Base total travel time
+        # base volumes such as cars, always on the road
         self.base_volumes = (
             self._gather(state.capacity, fill_value=jnp.inf).min(axis=1)
             * self.base_traffic_factor
         )
-        self.base_total_travel_time = self._get_total_travel_time(
-            state, self.traffic_assignment_initial_max_iterations
+        # base edge volumes: base_volume + 1 iteration TA
+        self.base_edge_volumes = self._get_base_edge_volumes(state)
+
+        # initial edge volumes: base_volume + 1 full TA
+        self.base_total_travel_time, self.percomputed_edge_volumes = (
+            self._get_total_travel_time_and_edge_volumes(
+                state,
+                self.base_edge_volumes,
+                self.traffic_assignment_initial_max_iterations,
+            )
         )
 
     def _extract_segments_info(self, config: Dict):
@@ -525,7 +532,7 @@ class JaxRoadEnvironment(environment.Environment):
         )[2]
 
     @partial(jax.jit, static_argnums=0)
-    def _get_volumes_shortest_path(self, weights: jnp.array, base_volumes: jnp.array):
+    def _get_volumes_shortest_path(self, weights: jnp.array, edge_volumes: jnp.array):
         """
         Compute the volumes of each edge in the shortest path from the
         given source to the given destination.
@@ -558,16 +565,10 @@ class JaxRoadEnvironment(environment.Environment):
             cost_to_go_matrix,
         ).sum(axis=0)
 
-        return base_volumes + trips_volumes
+        return edge_volumes + trips_volumes
 
     @partial(jax.jit, static_argnums=0)
-    def _get_total_travel_time(self, state, max_iterations):
-        """
-        Get the total travel time of all trucks in the network.
-        We assume that there is a base volume of traffic from cars,
-        We only consider the travel time for trucks (trips) in the network.
-
-        """
+    def _get_base_edge_volumes(self, state):
 
         # 0.1 Initialize volumes
         # base_volumes: base traffic (such as cars, always on the road)
@@ -577,9 +578,20 @@ class JaxRoadEnvironment(environment.Environment):
         edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
 
         # 0.3 Find the shortest paths using all-or-nothing assignment
-        edge_volumes = self._get_volumes_shortest_path(
-            edge_travel_times, self.base_volumes
-        )
+        edge_volumes = self._get_volumes_shortest_path(edge_travel_times, edge_volumes)
+
+        return edge_volumes
+
+    @partial(jax.jit, static_argnums=0)
+    def _get_total_travel_time_and_edge_volumes(
+        self, state, initial_edge_volumes, max_iterations
+    ):
+        """
+        Get the total travel time of all trucks in the network.
+        We assume that there is a base volume of traffic from cars,
+        We only consider the travel time for trucks (trips) in the network.
+
+        """
 
         # repeat until convergence
         def body_fun(val):
@@ -612,12 +624,18 @@ class JaxRoadEnvironment(environment.Environment):
                 max_volume_change > self.traffic_assignment_convergence_threshold
             ) & (i < max_iterations)
 
+        initial_travel_times = jnp.zeros_like(initial_edge_volumes)
         edge_volumes, _, _, edge_travel_times = jax.lax.while_loop(
-            cond_fun, body_fun, init_val=(edge_volumes, jnp.inf, 0, edge_travel_times)
+            cond_fun,
+            body_fun,
+            init_val=(initial_edge_volumes, jnp.inf, 0, initial_travel_times),
         )
 
         # 5. Calculate total travel time
-        return jnp.sum(edge_travel_times * edge_volumes)
+        total_travel_time = jnp.sum(edge_travel_times * edge_volumes)
+
+        return total_travel_time, edge_volumes
+
 
     @partial(vmap, in_axes=(None, 0, 0, 0, 0))
     def _get_next_belief(
