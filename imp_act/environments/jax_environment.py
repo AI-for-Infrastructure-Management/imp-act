@@ -131,7 +131,7 @@ class JaxRoadEnvironment(environment.Environment):
         self.inspection_campaign_reward = imp_conf["reward"][
             "inspection_campaign_reward"
         ]
-        # rewards_table (shape: S x A)
+        # rewards_table (shape: A x S)
         self.rewards_table = jnp.array(imp_conf["reward"]["state_action_reward"])
         # terminal state rewards (shape: S)
         self.terminal_state_reward = jnp.array(
@@ -160,7 +160,7 @@ class JaxRoadEnvironment(environment.Environment):
         """
 
         # get all edge ids from the graph
-        igraph_edge_ids = self.graph.es["id"]
+        igraph_edge_ids = self.graph.es.indices
 
         total_num_segments = 0
         for edge_segments in config["topology"]["segments"].values():
@@ -309,7 +309,7 @@ class JaxRoadEnvironment(environment.Environment):
     def _get_rewards_from_table(
         self, dam_state: int, action: int, rewards_table: jnp.array
     ) -> float:
-        return rewards_table[dam_state, action]
+        return rewards_table[action, dam_state]
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_campaign_reward(self, action: jnp.array) -> float:
@@ -329,15 +329,15 @@ class JaxRoadEnvironment(environment.Environment):
         self, damage_state: jnp.array, action: jnp.array
     ) -> float:
 
-        maintenance_reward = self._get_rewards_from_table(
-            damage_state, action, self.rewards_table
-        ).sum()
+        maintenance_reward = jnp.sum(
+            self._get_rewards_from_table(damage_state, action, self.rewards_table)
+            * self._gather(self.segment_lengths).squeeze()
+            * MILES_PER_KILOMETER
+        )
 
         campaign_reward = self._get_campaign_reward(action)
 
-        maintenance_reward += campaign_reward
-
-        return maintenance_reward
+        return maintenance_reward + campaign_reward
 
     @partial(jax.jit, static_argnums=0)
     def compute_edge_travel_time(self, state: EnvState, edge_volumes: jnp.array):
