@@ -77,8 +77,9 @@ class JaxRoadEnvironment(environment.Environment):
         self.btt_table = jnp.array(config["traffic"]["base_travel_time_factors"])
 
         # 2.2) Network traffic
-        self.trips = self._extract_trip_info(config)
-        self.trip_sources, self.trip_destinations = jnp.nonzero(self.trips)
+        self.trips, self.trip_sources, self.trip_destinations = self._extract_trip_info(
+            config
+        )
 
         # 2.3) Traffic assignment
         ta_conf = config["traffic"]["traffic_assignment"]
@@ -224,6 +225,7 @@ class JaxRoadEnvironment(environment.Environment):
         trips = np.zeros((self.num_nodes, self.num_nodes))
 
         trips_df = config["traffic"]["trips"]
+        trip_sources, trip_destinations = [], []
         for index in trips_df.index:
 
             vertex_1_list = self.graph.vs.select(id_eq=trips_df["origin"][index])
@@ -237,9 +239,15 @@ class JaxRoadEnvironment(environment.Environment):
             vertex_1 = vertex_1_list[0].index
             vertex_2 = vertex_2_list[0].index
 
+            trip_sources.append(vertex_1)
+            trip_destinations.append(vertex_2)
             trips[vertex_1, vertex_2] = trips_df["volume"][index]
 
-        return jnp.array(trips)
+        trips = jnp.array(trips)
+        trip_sources = jnp.array(trip_sources, dtype=jnp.int32)
+        trip_destinations = jnp.array(trip_destinations, dtype=jnp.int32)
+
+        return trips, trip_sources, trip_destinations
 
     def _compute_idxs_map(self, segments_list):
         """
