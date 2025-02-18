@@ -154,7 +154,7 @@ class JaxRoadEnvironment(environment.Environment):
         self.base_edge_volumes = self._get_base_edge_volumes(state)
 
         # initial edge volumes: base_volume + 1 full TA
-        self.base_total_travel_time, self.percomputed_edge_volumes = (
+        self.base_total_travel_time, self.initial_edge_volumes = (
             self._get_total_travel_time_and_edge_volumes(
                 state,
                 self.base_edge_volumes,
@@ -342,7 +342,6 @@ class JaxRoadEnvironment(environment.Environment):
     @partial(jax.jit, static_argnums=(0,))
     def _get_terminal_reward(self, belief: jnp.array) -> float:
         terminal_rewards = jnp.dot(belief, self.terminal_state_reward)
-
         return jnp.sum(terminal_rewards * self.segment_lengths * MILES_PER_KILOMETER)
 
     @partial(jax.jit, static_argnums=(0,))
@@ -643,7 +642,7 @@ class JaxRoadEnvironment(environment.Environment):
             self.traffic_assigmment_reuse_initial_volumes,
             lambda x: x,
             lambda x: self.base_edge_volumes,
-            self.percomputed_edge_volumes,
+            self.initial_edge_volumes,
         )
 
         (worst_case_ttt, edge_volumes) = self._get_total_travel_time_and_edge_volumes(
