@@ -707,6 +707,12 @@ class JaxRoadEnvironment(environment.Environment):
         # observation
         obs = self._get_next(keys_obs, damage_state, action, self.observation_table)
 
+        worst_observation_counter = jax.lax.select(
+            obs == self.num_observations - 1,
+            state.worst_obs_counter + 1,
+            jnp.zeros_like(state.worst_obs_counter),
+        )
+
         # maintenance reward
         maintenance_reward = self._get_maintenance_reward(state.damage_state, action)
 
@@ -770,6 +776,7 @@ class JaxRoadEnvironment(environment.Environment):
             belief=belief,
             base_travel_time=base_travel_time,
             capacity=capacity,
+            worst_obs_counter=worst_observation_counter,
             deterioration_rate=deterioration_rate,
             timestep=state.timestep + 1,
             episode_return=returns * jnp.logical_not(done),
