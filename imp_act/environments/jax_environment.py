@@ -9,12 +9,14 @@ from flax import struct
 from gymnax.environments import environment, spaces
 from jax import vmap
 
+## For debugging, uncomment the following lines
 # jax.config.update("jax_disable_jit", True)
+# jax.config.update("jax_check_tracer_leaks", True)
 
 
 @struct.dataclass
 class EnvState:
-    # Properties of segments
+    # Segment properties
     damage_state: jnp.array
     observation: jnp.array
     belief: jnp.array
@@ -22,6 +24,7 @@ class EnvState:
     capacity: jnp.array
     worst_obs_counter: jnp.array
     deterioration_rate: jnp.array
+    # Environment properties
     timestep: int
     episode_return: float = 0.0
 
@@ -84,10 +87,6 @@ class JaxRoadEnvironment(environment.Environment):
         # 2.3) Traffic assignment
         ta_conf = config["traffic"]["traffic_assignment"]
         self.traffic_assigmment_reuse_initial_volumes = ta_conf["reuse_initial_volumes"]
-        if self.traffic_assigmment_reuse_initial_volumes:
-            print(
-                "Warning: Reusing initial volumes in traffic assignment is not implemented yet."
-            )
         self.traffic_assignment_initial_max_iterations = ta_conf[
             "initial_max_iterations"
         ]
