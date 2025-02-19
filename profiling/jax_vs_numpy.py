@@ -254,10 +254,15 @@ if __name__ == "__main__":
         mean_jax_scan_returns,
     ]
     print(f"Mean returns: {round_list(mean_list)}")
-    rel_error = lambda x, y: abs(x - y) * 100 / x
-    rel_error_numpy_mp = rel_error(mean_numpy_returns, mean_numpy_mp_returns)
-    rel_error_jax_for_loop = rel_error(mean_numpy_returns, mean_jax_for_loop_returns)
-    rel_error_jax_scan = rel_error(mean_numpy_returns, mean_jax_scan_returns)
+
+    def relative_error(x, y):
+        return abs(x - y) * 100 / x
+
+    rel_error_numpy_mp = relative_error(mean_numpy_returns, mean_numpy_mp_returns)
+    rel_error_jax_for_loop = relative_error(
+        mean_numpy_returns, mean_jax_for_loop_returns
+    )
+    rel_error_jax_scan = relative_error(mean_numpy_returns, mean_jax_scan_returns)
     _list = [rel_error_numpy_mp, rel_error_jax_for_loop, rel_error_jax_scan]
     print(f"Relative error mean returns wrt NumPy: {round_list(_list)}")
 
@@ -308,4 +313,4 @@ if __name__ == "__main__":
     ax[1].legend()
 
     plt.show()
-    plt.savefig(f"profiling/jax_vs_numpy.png")
+    plt.savefig("profiling/jax_vs_numpy.png")
