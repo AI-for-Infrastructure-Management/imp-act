@@ -2,13 +2,13 @@
 Based on https://github.com/omniscientoctopus/jax-imprl/blob/main/profile/jax_vs_numpy.py
 """
 
-import time
 import itertools
 import multiprocessing as mp
-import numpy as np
+import time
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from imp_act import make
 

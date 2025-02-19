@@ -154,12 +154,13 @@ class JaxRoadEnvironment(environment.Environment):
         self.base_edge_volumes = self._get_base_edge_volumes(state)
 
         # initial edge volumes: base_volume + 1 full TA
-        self.base_total_travel_time, self.initial_edge_volumes = (
-            self._get_total_travel_time_and_edge_volumes(
-                state,
-                self.base_edge_volumes,
-                self.traffic_assignment_initial_max_iterations,
-            )
+        (
+            self.base_total_travel_time,
+            self.initial_edge_volumes,
+        ) = self._get_total_travel_time_and_edge_volumes(
+            state,
+            self.base_edge_volumes,
+            self.traffic_assignment_initial_max_iterations,
         )
 
     def _extract_segments_info(self, config: Dict):
@@ -689,7 +690,6 @@ class JaxRoadEnvironment(environment.Environment):
 
         # split keys into keys for damage transitions and observations
         keys_transition, keys_obs = jnp.split(keys, 2, axis=0)
-
 
         ## Maintenance modeling
         damage_state = self._get_next_damage_state(
