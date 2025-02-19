@@ -2,8 +2,13 @@ import itertools
 
 import time
 
-import jax
-import jax.numpy as jnp
+try:
+    import jax
+    import jax.numpy as jnp
+except ImportError:
+    jax = None
+    jnp = None
+
 import numpy as np
 
 import pytest
@@ -23,7 +28,7 @@ def do_nothing_policy_jax(jax_env):
 
 NUM_EPISODES = 5
 
-
+@pytest.mark.skipif(jax is None, reason="JAX is not installed.")
 @pytest.mark.parametrize("parameter_fixture", environment_fixtures_jax, indirect=True)
 def test_n_episodes_jax(parameter_fixture):
     env = parameter_fixture
@@ -61,7 +66,7 @@ def test_n_episodes_jax(parameter_fixture):
     print(f"Average episode time taken: {average_time:.2} seconds")
     print("Test Result: ", end="")
 
-
+@pytest.mark.skipif(jax is None, reason="JAX is not installed.")
 def test_total_base_travel_time_toy(toy_environment_2, toy_environment_2_jax):
     """Test if total base travel time is the same for jax and numpy env"""
     assert jnp.allclose(
@@ -70,6 +75,16 @@ def test_total_base_travel_time_toy(toy_environment_2, toy_environment_2_jax):
         rtol=1e-2,
     )
 
+
+@pytest.mark.skipif(jax is None, reason="JAX is not installed.")
+def test_trips_initialization(cologne_environment, cologne_environment_jax):
+    """Test trips initialization."""
+
+    jax_env = cologne_environment_jax
+    numpy_env = cologne_environment
+
+    for source, target, num_cars in numpy_env.trips:
+        assert jax_env.trips[source, target] == num_cars
 
 @pytest.mark.skip(reason="Old implementation references.")
 def test_compute_edge_travel_time(cologne_environment, cologne_environment_jax):
@@ -94,7 +109,6 @@ def test_compute_edge_travel_time(cologne_environment, cologne_environment_jax):
         edge_travel_times = jax_env.compute_edge_travel_time(state, edge_volumes)
 
         assert jnp.allclose(edge_travel_times, numpy_edge_travel_times, rtol=1e-2)
-
 
 @pytest.mark.skip(reason="Old implementation references.")
 def test_shortest_path_computation_toy(toy_environment_2_jax):
@@ -129,16 +143,6 @@ def test_shortest_path_computation_toy(toy_environment_2_jax):
         cost_2 = toy_environment_2_jax._get_cost_to_go(weights_matrix)[source][target]
 
         assert cost_1 == cost_2
-
-
-def test_trips_initialization(cologne_environment, cologne_environment_jax):
-    """Test trips initialization."""
-
-    jax_env = cologne_environment_jax
-    numpy_env = cologne_environment
-
-    for source, target, num_cars in numpy_env.trips:
-        assert jax_env.trips[source, target] == num_cars
 
 
 @pytest.mark.skip(reason="Old implementation references.")
