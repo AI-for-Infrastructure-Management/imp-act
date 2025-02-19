@@ -131,7 +131,9 @@ class JaxRoadEnvironment(environment.Environment):
             "inspection_campaign_reward"
         ]
         # rewards_table (shape: A x S)
-        self.rewards_table = jnp.array(imp_conf["reward"]["state_action_reward"])
+        self.rewards_table = jnp.array(
+            imp_conf["reward"]["state_action_reward"], dtype=jnp.float32
+        )
         # terminal state rewards (shape: S)
         self.terminal_state_reward = jnp.array(
             imp_conf["reward"]["terminal_state_reward"]
@@ -320,11 +322,20 @@ class JaxRoadEnvironment(environment.Environment):
         return next_dam_state
 
     @partial(jax.jit, static_argnums=(0,))
-    @partial(vmap, in_axes=(None, 0, 0, None))
+    @partial(vmap, in_axes=(None, 0, 0, 0, 0))
     def _get_rewards_from_table(
-        self, dam_state: int, action: int, rewards_table: jnp.array
+        self, dam_state: int, action: int, _is_forced_repair: bool, segment_length: int
     ) -> float:
-        return rewards_table[action, dam_state]
+
+        reward = jax.lax.cond(
+            _is_forced_repair,
+            lambda x: self.rewards_table[-1][-1],
+            lambda x: self.rewards_table[action, dam_state]
+            * segment_length
+            * MILES_PER_KILOMETER,
+            None,
+        )
+        return reward
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_campaign_reward(self, action: jnp.array) -> float:
@@ -346,13 +357,13 @@ class JaxRoadEnvironment(environment.Environment):
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_maintenance_reward(
-        self, damage_state: jnp.array, action: jnp.array
+        self, damage_state: jnp.array, action: jnp.array, _is_forced_repair: jnp.array
     ) -> float:
 
         maintenance_reward = jnp.sum(
-            self._get_rewards_from_table(damage_state, action, self.rewards_table)
-            * self.segment_lengths
-            * MILES_PER_KILOMETER
+            self._get_rewards_from_table(
+                damage_state, action, _is_forced_repair, self.segment_lengths
+            )
         )
 
         campaign_reward = self._get_campaign_reward(action)
@@ -679,6 +690,45 @@ class JaxRoadEnvironment(environment.Environment):
         return det_rate
 
     @partial(jax.jit, static_argnums=0)
+    @partial(vmap, in_axes=(None, 0, 0))
+    def update_worst_obs_counter(self, obs: int, counter: int) -> int:
+        counter = jax.lax.cond(
+            obs == self.num_damage_states - 1,
+            lambda x: x + 1,
+            lambda x: 0,
+            counter,
+        )
+        return counter
+
+    @partial(jax.jit, static_argnums=0)
+    @partial(vmap, in_axes=(None, 0, 0))
+    def _apply_forced_repair_constraint(
+        self, action: int, worst_obs_counter: int
+    ) -> int:
+        # if worst_obs_counter > forced_replace_worst_observation_count
+        # then action = replace
+        action, flag = jax.lax.cond(
+            worst_obs_counter > self.forced_replace_worst_observation_count,
+            lambda a: (self.action_map["replace"], True),
+            lambda a: (a, False),
+            action,
+        )
+        return action, flag
+
+    @partial(jax.jit, static_argnums=0)
+    def _apply_action_constraints(
+        self, actions: jnp.array, worst_obs_counter: jnp.array
+    ):
+        # 1. Forced repair constraint
+        c_actions, _is_forced_repair = self._apply_forced_repair_constraint(
+            actions, worst_obs_counter
+        )
+
+        # 2. Budget constraint
+        # TODO: Implement budget constraint
+        return c_actions, _is_forced_repair
+
+    @partial(jax.jit, static_argnums=0)
     def step_env(
         self,
         keys: chex.PRNGKey,
@@ -690,6 +740,16 @@ class JaxRoadEnvironment(environment.Environment):
         # split keys into keys for damage transitions and observations
         keys_transition, keys_obs = jnp.split(keys, 2, axis=0)
 
+        # worst observation counter
+        worst_obs_counter = self.update_worst_obs_counter(
+            state.observation, state.worst_obs_counter
+        )
+
+        agent_action = jnp.copy(action)
+        action, _is_forced_repair = self._apply_action_constraints(
+            action, worst_obs_counter
+        )
+        # worst_observation_counter update (for forced repair)
 
         ## Maintenance modeling
         damage_state = self._get_next_damage_state(
@@ -708,7 +768,9 @@ class JaxRoadEnvironment(environment.Environment):
         obs = self._get_next(keys_obs, damage_state, action, self.observation_table)
 
         # maintenance reward
-        maintenance_reward = self._get_maintenance_reward(state.damage_state, action)
+        maintenance_reward = self._get_maintenance_reward(
+            state.damage_state, action, _is_forced_repair
+        )
 
         # belief update
         belief = self._get_next_belief(
@@ -770,6 +832,7 @@ class JaxRoadEnvironment(environment.Environment):
             belief=belief,
             base_travel_time=base_travel_time,
             capacity=capacity,
+            worst_obs_counter=worst_obs_counter,
             deterioration_rate=deterioration_rate,
             timestep=state.timestep + 1,
             episode_return=returns * jnp.logical_not(done),
