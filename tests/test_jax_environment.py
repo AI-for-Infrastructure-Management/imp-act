@@ -1,5 +1,7 @@
 import itertools
 
+import time
+
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -13,6 +15,51 @@ environment_fixtures_jax = [
     "toy_environment_2_jax",
     "cologne_environment_jax",
 ]
+
+
+def do_nothing_policy_jax(jax_env):
+    return jnp.zeros(jax_env.total_num_segments, dtype=jnp.int32)
+
+
+NUM_EPISODES = 5
+
+
+@pytest.mark.parametrize("parameter_fixture", environment_fixtures_jax, indirect=True)
+def test_n_episodes_jax(parameter_fixture):
+    env = parameter_fixture
+
+    action_jax = do_nothing_policy_jax(env)
+    jax_for_loop_timings = []
+
+    start_time = time.time()
+
+    key = jax.random.PRNGKey(12345)
+
+    # reset
+    key, subkey = jax.random.split(key)
+    obs, state = env.reset(subkey)
+
+    for _ in range(NUM_EPISODES):
+
+        done = False
+        total_reward = 0
+
+        while not done:
+
+            # generate keys for next timestep
+            key, step_key = jax.random.split(key)
+            obs, state, reward, done, info = env.step(step_key, state, action_jax)
+
+            total_reward += reward
+
+        jax_for_loop_timings.append(start_time - time.time())
+
+    average_time = sum(jax_for_loop_timings) / len(jax_for_loop_timings)
+    print(
+        f"\nNodes: {env.num_nodes}, Edges: {env.num_edges}, Timesteps: {env.max_timesteps}, Trips: {env.trips.shape[0]}"
+    )
+    print(f"Average episode time taken: {average_time:.2} seconds")
+    print("Test Result: ", end="")
 
 
 def test_total_base_travel_time_toy(toy_environment_2, toy_environment_2_jax):
