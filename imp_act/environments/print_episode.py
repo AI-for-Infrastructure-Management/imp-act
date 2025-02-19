@@ -1,14 +1,5 @@
 import numpy as np
 
-<<<<<<<< HEAD:environments/print_episode.py
-from environments.config.environment_loader import EnvironmentLoader
-
-
-def main():
-    env = EnvironmentLoader(
-        "environments/config/environment_presets/small_environment.yaml"
-    ).to_numpy()
-========
 from imp_act import make
 
 
@@ -16,7 +7,6 @@ def main():
     env = make("ToyExample-v2")
     print(env.get_count_redundancies_summary())
     print(env.get_edge_traffic_summary())
->>>>>>>> worst_case_traffic_averaging:imp_act/environments/print_episode.py
     env.reset()
     actions = [[1] * len(e["road_edge"].segments) for e in env.graph.es]
     done = False

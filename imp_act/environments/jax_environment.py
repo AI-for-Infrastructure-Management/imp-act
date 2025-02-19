@@ -155,12 +155,13 @@ class JaxRoadEnvironment(environment.Environment):
         self.base_edge_volumes = self._get_base_edge_volumes(state)
 
         # initial edge volumes: base_volume + 1 full TA
-        self.base_total_travel_time, self.initial_edge_volumes = (
-            self._get_total_travel_time_and_edge_volumes(
-                state,
-                self.base_edge_volumes,
-                self.traffic_assignment_initial_max_iterations,
-            )
+        (
+            self.base_total_travel_time,
+            self.initial_edge_volumes,
+        ) = self._get_total_travel_time_and_edge_volumes(
+            state,
+            self.base_edge_volumes,
+            self.traffic_assignment_initial_max_iterations,
         )
 
     def _extract_segments_info(self, config: Dict):
@@ -690,17 +691,6 @@ class JaxRoadEnvironment(environment.Environment):
 
     @partial(jax.jit, static_argnums=0)
     @partial(vmap, in_axes=(None, 0, 0))
-    def update_worst_obs_counter(self, obs: int, counter: int) -> int:
-        counter = jax.lax.cond(
-            obs == self.num_damage_states - 1,
-            lambda x: x + 1,
-            lambda x: 0,
-            counter,
-        )
-        return counter
-
-    @partial(jax.jit, static_argnums=0)
-    @partial(vmap, in_axes=(None, 0, 0))
     def _apply_forced_repair_constraint(
         self, action: int, worst_obs_counter: int
     ) -> int:
@@ -740,15 +730,16 @@ class JaxRoadEnvironment(environment.Environment):
         keys_transition, keys_obs = jnp.split(keys, 2, axis=0)
 
         # worst observation counter
-        worst_obs_counter = self.update_worst_obs_counter(
-            state.observation, state.worst_obs_counter
+        worst_obs_counter = jax.lax.select(
+            state.observation == self.num_observations - 1,
+            state.worst_obs_counter + 1,
+            jnp.zeros_like(state.worst_obs_counter),
         )
 
         agent_action = jnp.copy(action)
         action, _is_forced_repair = self._apply_action_constraints(
             action, worst_obs_counter
         )
-        # worst_observation_counter update (for forced repair)
 
         ## Maintenance modeling
         damage_state = self._get_next_damage_state(

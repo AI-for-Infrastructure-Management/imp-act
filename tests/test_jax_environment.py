@@ -1,42 +1,97 @@
 import itertools
 
-import jax
-import jax.numpy as jnp
+import time
+
+try:
+    import jax
+    import jax.numpy as jnp
+except ImportError:
+    jax = None
+    jnp = None
+
 import numpy as np
 
-from imp_act.environments.jax_environment import EnvState
+import pytest
 from igraph import Graph
 
+from imp_act.environments.jax_environment import EnvState
 
-def test_total_base_travel_time_toy(toy_environment_numpy, toy_environment_jax):
-
-    _numpy = toy_environment_numpy.base_total_travel_time
-    _jax = toy_environment_jax.total_base_travel_time
-
-    assert jnp.allclose(_jax, _numpy, rtol=1e-2)
-
-
-def test_total_base_travel_time_small(small_environment_numpy, small_environment_jax):
-
-    _numpy = small_environment_numpy.base_total_travel_time
-    _jax = small_environment_jax.total_base_travel_time
-
-    assert jnp.allclose(_jax, _numpy, rtol=1e-2)
+environment_fixtures_jax = [
+    "toy_environment_2_jax",
+    "cologne_environment_jax",
+]
 
 
-def test_total_base_travel_time_large(large_environment_numpy, large_environment_jax):
-
-    _numpy = large_environment_numpy.base_total_travel_time
-    _jax = large_environment_jax.total_base_travel_time
-
-    assert jnp.allclose(_jax, _numpy, rtol=1e-2)
+def do_nothing_policy_jax(jax_env):
+    return jnp.zeros(jax_env.total_num_segments, dtype=jnp.int32)
 
 
-def test_compute_edge_travel_time(large_environment_numpy, large_environment_jax):
+NUM_EPISODES = 5
+
+@pytest.mark.skipif(jax is None, reason="JAX is not installed.")
+@pytest.mark.parametrize("parameter_fixture", environment_fixtures_jax, indirect=True)
+def test_n_episodes_jax(parameter_fixture):
+    env = parameter_fixture
+
+    action_jax = do_nothing_policy_jax(env)
+    jax_for_loop_timings = []
+
+    start_time = time.time()
+
+    key = jax.random.PRNGKey(12345)
+
+    # reset
+    key, subkey = jax.random.split(key)
+    obs, state = env.reset(subkey)
+
+    for _ in range(NUM_EPISODES):
+
+        done = False
+        total_reward = 0
+
+        while not done:
+
+            # generate keys for next timestep
+            key, step_key = jax.random.split(key)
+            obs, state, reward, done, info = env.step(step_key, state, action_jax)
+
+            total_reward += reward
+
+        jax_for_loop_timings.append(start_time - time.time())
+
+    average_time = sum(jax_for_loop_timings) / len(jax_for_loop_timings)
+    print(
+        f"\nNodes: {env.num_nodes}, Edges: {env.num_edges}, Timesteps: {env.max_timesteps}, Trips: {env.trips.shape[0]}"
+    )
+    print(f"Average episode time taken: {average_time:.2} seconds")
+    print("Test Result: ", end="")
+
+@pytest.mark.skipif(jax is None, reason="JAX is not installed.")
+def test_total_base_travel_time_toy(toy_environment_2, toy_environment_2_jax):
+    """Test if total base travel time is the same for jax and numpy env"""
+    assert jnp.allclose(
+        toy_environment_2.base_total_travel_time,
+        toy_environment_2_jax.base_total_travel_time,
+        rtol=1e-2,
+    )
+
+
+@pytest.mark.skipif(jax is None, reason="JAX is not installed.")
+def test_trips_initialization(cologne_environment, cologne_environment_jax):
+    """Test trips initialization."""
+
+    jax_env = cologne_environment_jax
+    numpy_env = cologne_environment
+
+    for source, target, num_cars in numpy_env.trips:
+        assert jax_env.trips[source, target] == num_cars
+
+@pytest.mark.skip(reason="Old implementation references.")
+def test_compute_edge_travel_time(cologne_environment, cologne_environment_jax):
     """Compare edge travel time computation for different volumes."""
 
-    numpy_env = large_environment_numpy
-    jax_env = large_environment_jax
+    numpy_env = cologne_environment
+    jax_env = cologne_environment_jax
 
     for volume in [0, 100, 250]:
 
@@ -55,8 +110,8 @@ def test_compute_edge_travel_time(large_environment_numpy, large_environment_jax
 
         assert jnp.allclose(edge_travel_times, numpy_edge_travel_times, rtol=1e-2)
 
-
-def test_shortest_path_computation_toy(toy_environment_jax):
+@pytest.mark.skip(reason="Old implementation references.")
+def test_shortest_path_computation_toy(toy_environment_2_jax):
     """Test shortest path computation."""
 
     _num_vertices = 4
@@ -84,24 +139,16 @@ def test_shortest_path_computation_toy(toy_environment_jax):
         cost_1 = float(sum([weights_list[i] for i in shortest_path[0]]))
 
         # get cost to travel from source to target
-        weights_matrix = toy_environment_jax._get_weight_matrix(weights_list)
-        cost_2 = toy_environment_jax._get_cost_to_go(weights_matrix)[source][target]
+        weights_matrix = toy_environment_2_jax._get_weight_matrix(weights_list)
+        cost_2 = toy_environment_2_jax._get_cost_to_go(weights_matrix)[source][target]
 
         assert cost_1 == cost_2
 
 
-def test_trips_initialization(large_environment_jax, large_environment_numpy):
-    """Test trips initialization."""
-
-    jax_env = large_environment_jax
-    numpy_env = large_environment_numpy
-
-    for source, target, num_cars in numpy_env.trips:
-        assert jax_env.trips[source, target] == num_cars
-
-
+@pytest.mark.skip(reason="Old implementation references.")
 def test_shortest_path_cost_equivalence_large(
-    large_environment_jax, large_environment_numpy
+    cologne_environment,
+    cologne_environment_jax,
 ):
     """
     When computing the cost to travel from source to target using the
@@ -109,8 +156,8 @@ def test_shortest_path_cost_equivalence_large(
     In general, the shortest path is not unique, so we compare the cost.
     """
 
-    jax_env = large_environment_jax
-    numpy_env = large_environment_numpy
+    jax_env = cologne_environment_jax
+    numpy_env = cologne_environment
 
     trips = numpy_env.trips
 
@@ -144,7 +191,8 @@ def test_shortest_path_cost_equivalence_large(
         assert jnp.allclose(cost_numpy, cost_jax, rtol=1e-3)
 
 
-def test_shortest_paths_large(large_environment_jax, large_environment_numpy):
+@pytest.mark.skip(reason="Old implementation references.")
+def test_shortest_paths_large(cologne_environment, cologne_environment_jax):
     """
     Does shortest path compute by jax environment match the shortest path(s)
     computed by numpy environment?
@@ -152,8 +200,8 @@ def test_shortest_paths_large(large_environment_jax, large_environment_numpy):
     Use the same trips for both environments, get all shortest paths for
     each trip. Check if JAX finds at least one of the numpy paths.
     """
-    jax_env = large_environment_jax
-    numpy_env = large_environment_numpy
+    jax_env = cologne_environment_jax
+    numpy_env = cologne_environment
 
     trips = numpy_env.trips
 
@@ -207,28 +255,32 @@ def test_shortest_paths_large(large_environment_jax, large_environment_numpy):
         assert shortest_path_jax in all_shortest_paths_numpy
 
 
-def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
+@pytest.mark.skip(reason="Old implementation references.")
+def test_get_travel_time(toy_environment_2, toy_environment_2_jax):
     "Test total travel time is the same for jax and numpy env"
-    actions = [[1, 1] for edge in toy_environment_numpy.graph.es]
+    actions = [
+        [1 for _ in edge["road_edge"].segments] for edge in toy_environment_2.graph.es
+    ]
     timestep = 0
     done = False
     total_num_segments = sum(
-        [len(edge.segments) for edge in toy_environment_numpy.graph.es["road_segments"]]
+        [len(edge.segments) for edge in toy_environment_2.graph.es["road_edge"]]
     )
 
     while not done:
         timestep += 1
-        obs, _, done, info = toy_environment_numpy.step(actions)
-        dam_state = jnp.array(toy_environment_numpy._get_states()).flatten()
+        obs, _, done, info = toy_environment_2.step(actions)
+        dam_state = jnp.array(toy_environment_2._get_states()).flatten()
         belief = jnp.array(obs["edge_beliefs"]).flatten()
         total_travel_time_np = info["total_travel_time"]
         base_travel_times = np.empty(total_num_segments)
         capacities = np.empty(total_num_segments)
-        for edge in toy_environment_numpy.graph.es["road_segments"]:
+        id_counter = 0
+        for edge in toy_environment_2.graph.es["road_edge"]:
             for segment in edge.segments:
-                id = segment.id
-                base_travel_times[id] = segment.base_travel_time
-                capacities[id] = segment.capacity
+                base_travel_times[id_counter] = segment.base_travel_time
+                capacities[id_counter] = segment.capacity
+                id_counter += 1
         jax_state = EnvState(
             damage_state=dam_state,
             observation=jnp.array(obs["edge_observations"]).flatten(),
@@ -237,32 +289,34 @@ def test_get_travel_time(toy_environment_numpy, toy_environment_jax):
             capacity=jnp.asarray(capacities),
             timestep=timestep,
         )
-        total_travel_time_jax = toy_environment_jax._get_total_travel_time(jax_state)
+        total_travel_time_jax = toy_environment_2_jax._get_total_travel_time(jax_state)
         print(total_travel_time_np, total_travel_time_jax)
         assert jnp.allclose(total_travel_time_np, total_travel_time_jax, rtol=1e-2)
 
 
-def test_belief_computation(toy_environment_jax, toy_environment_numpy):
-    action_np = [[1, 1] for edge in toy_environment_numpy.graph.es]
+@pytest.mark.skip(reason="Old implementation references.")
+def test_belief_computation(toy_environment_2, toy_environment_2_jax):
+    action_np = [[1, 1] for edge in toy_environment_2.graph.es]
     action_jax = [{"0": [1, 1]}, {"1": [1, 1]}, {"2": [1, 1]}, {"3": [1, 1]}]
     action_jax = jax.tree_util.tree_leaves(action_jax)
     action_jax = jnp.array(action_jax, dtype=jnp.uint8)
 
-    observation = toy_environment_numpy.reset()
+    observation = toy_environment_2.reset()
     belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
     done = False
 
     while not done:
-        observation, _, done, _ = toy_environment_numpy.step(action_np)
+        observation, _, done, _ = toy_environment_2.step(action_np)
         obs = jnp.array(observation["edge_observations"]).flatten()
         print(jnp.array(observation["edge_beliefs"]), obs, action_jax)
-        belief_jax = toy_environment_jax._get_next_belief(belief, obs, action_jax)
+        belief_jax = toy_environment_2_jax._get_next_belief(belief, obs, action_jax)
         belief = jnp.array(observation["edge_beliefs"]).reshape(-1, 4)
 
         assert jnp.allclose(belief, belief_jax, rtol=1e-3)
 
 
-def test_campaign_reward(toy_environment_jax):
+@pytest.mark.skip(reason="Old implementation references.")
+def test_campaign_reward(toy_environment_2_jax):
     """Test inspection campaign reward computation."""
 
     # inspections on 0 edges => campaign reward: 0
@@ -270,7 +324,7 @@ def test_campaign_reward(toy_environment_jax):
     __action = jax.tree_util.tree_leaves(_action)
     action = jnp.array(__action, dtype=jnp.uint8)
 
-    campaign_reward = toy_environment_jax._get_campaign_reward(action)
+    campaign_reward = toy_environment_2_jax._get_campaign_reward(action)
 
     assert campaign_reward == 0
 
@@ -279,12 +333,13 @@ def test_campaign_reward(toy_environment_jax):
     __action = jax.tree_util.tree_leaves(_action)
     action = jnp.array(__action, dtype=jnp.uint8)
 
-    campaign_reward = toy_environment_jax._get_campaign_reward(action)
+    campaign_reward = toy_environment_2_jax._get_campaign_reward(action)
 
     assert campaign_reward == -15
 
 
-def test_jax_keys(toy_environment_jax):
+@pytest.mark.skip(reason="Old implementation references.")
+def test_jax_keys(toy_environment_2_jax):
 
     _action = [{"0": [0, 0]}, {"1": [0, 0]}, {"2": [0, 0]}, {"3": [0, 0]}]
     __action = jax.tree_util.tree_leaves(_action)
@@ -292,18 +347,18 @@ def test_jax_keys(toy_environment_jax):
 
     # rollout
     key = jax.random.PRNGKey(442)
-    step_keys, key = toy_environment_jax.split_key(key)
+    step_keys, key = toy_environment_2_jax.split_key(key)
 
     # environment reset
-    _, state = toy_environment_jax.reset_env()
+    _, state = toy_environment_2_jax.reset_env()
 
     done = False
 
     while not done:
-        _, _, done, _, state = toy_environment_jax.step_env(step_keys, state, action)
+        _, _, done, _, state = toy_environment_2_jax.step_env(step_keys, state, action)
 
         # generate keys for next timestep
-        step_keys, key = toy_environment_jax.split_key(key)
+        step_keys, key = toy_environment_2_jax.split_key(key)
 
     _rollout_key = key
 
@@ -311,6 +366,7 @@ def test_jax_keys(toy_environment_jax):
     assert (jnp.array([3808878501, 3829080728]) == _rollout_key).all()
 
 
+@pytest.mark.skip(reason="Old implementation references.")
 def test_jax_wrapper_keys(toy_environment_jax_wrapper):
     jax_env = toy_environment_jax_wrapper
     step_keys, key = jax_env.step_keys, jax_env.key

@@ -65,3 +65,15 @@ def load_test_env(name):
 @pytest.fixture
 def stationary_deterioration_environment():
     return load_test_env("stationary_deterioration")
+
+
+# JAX
+@pytest.fixture
+def toy_environment_2_jax():
+    """Create a toy environment loader for testing."""
+    return make("ToyExample-v2-jax")
+
+
+@pytest.fixture
+def cologne_environment_jax():
+    return make("Cologne-v1-jax")
