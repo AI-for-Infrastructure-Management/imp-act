@@ -217,7 +217,7 @@ class EnvironmentLoader:
             initial_damage_distribution >= 0
         ).all(), "Initial damage distribution has negative values"
         assert (
-            np.sum(initial_damage_distribution) == 1
+            np.sum(initial_damage_distribution).round(7) == 1
         ), "Initial damage distribution does not sum to 1"
 
         # Ensure transition matrix values sum to 1
