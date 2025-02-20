@@ -34,6 +34,12 @@ jax=[{extras = ["gpu"], version="~0.4.26"}]
 flax="~0.8.4"
 gymnax="~0.0.6"
 
+[tool.poetry.group.jax_profiling]
+optional = true
+[tool.poetry.group.jax_profiling.dependencies]
+tensorflow="~2.18.0"
+tensorboard_plugin_profile="~2.15"
+
 [tool.poetry.group.dev]
 optional = true
 [tool.poetry.group.dev.dependencies]

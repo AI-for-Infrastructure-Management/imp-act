@@ -62,6 +62,8 @@ def round_list(lst, decimals=2):
 
 if __name__ == "__main__":
 
+    main_start = time.time()
+
     # experiments = [1, 10]
     experiments = [1, 10, 100, 1_000]
     ENV_NAME = "Cologne-v1"
@@ -75,6 +77,7 @@ if __name__ == "__main__":
     numpy_timings = []
     numpy_returns = []
 
+    print('Running Numpy (for loop) ...')
     for NUM_EPISODES in experiments:
         start = time.time()
 
@@ -92,6 +95,7 @@ if __name__ == "__main__":
     numpy_mp_timings = []
     numpy_mp_returns = []
 
+    print('Running Numpy (multiprocessing) ...')
     for NUM_EPISODES in experiments:
         start = time.time()
 
@@ -113,6 +117,7 @@ if __name__ == "__main__":
     jax_for_loop_timings = []
     jax_for_loop_returns = []
 
+    print('Running Jax (for loop) ...')
     for NUM_EPISODES in experiments:
 
         start_jax = time.time()
@@ -202,6 +207,7 @@ if __name__ == "__main__":
     jax_scan_timings = []
     jax_scan_returns = []
 
+    print('Running Jax (scan) ...')
     for NUM_EPISODES in experiments:
 
         start_jax = time.time()
@@ -217,6 +223,9 @@ if __name__ == "__main__":
         if NUM_EPISODES == store_returns_for:
             evals = metrics["returns"] * metrics["dones"]
             jax_scan_returns = evals[jnp.nonzero(evals)]
+
+    main_end = time.time()
+    print(f"Total time: {main_end - main_start}")
 
     ########################## Print results ###########################
     print(f"NumPy (for loop): {round_list(numpy_timings)}")
@@ -313,4 +322,4 @@ if __name__ == "__main__":
     ax[1].legend()
 
     plt.show()
-    plt.savefig("profiling/jax_vs_numpy.png")
+    fig.savefig("profiling/jax_vs_numpy.png")
