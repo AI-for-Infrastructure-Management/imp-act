@@ -1,0 +1,10 @@
+include:
+  path: "../ToyExample-v2/ToyExample-v2.yaml"
+  override: False
+
+traffic:
+  travel_time_reward_factor: 0.0
+  traffic_assignment:
+    reuse_initial_volumes: true 
+    initial_max_iterations: 5
+    max_iterations: 0
