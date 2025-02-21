@@ -838,15 +838,16 @@ class JaxRoadEnvironment(environment.Environment):
             state.worst_obs_counter + 1,
             jnp.zeros_like(state.worst_obs_counter),
         )
-
         state = state.replace(worst_obs_counter=worst_obs_counter)
 
+        ## Action constraints
+        key, key_constraints = jax.random.split(key)
         (
             constrained_action,
             forced_repair_flag,
             new_budget,
             budget_constraint_applied,
-        ) = self._apply_action_constraints(key, state, action)
+        ) = self._apply_action_constraints(key_constraints, state, action)
 
         ## Maintenance modeling
         key, key_transition = jax.random.split(key)
