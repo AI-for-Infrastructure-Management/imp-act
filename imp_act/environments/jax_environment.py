@@ -9,9 +9,15 @@ from flax import struct
 from gymnax.environments import environment, spaces
 from jax import vmap
 
-## For debugging, uncomment the following lines
-# jax.config.update("jax_disable_jit", True)
-# jax.config.update("jax_check_tracer_leaks", True)
+## For debugging, set DEBUG to True
+DEBUG = False
+if DEBUG:
+    jax.config.update("jax_disable_jit", True)
+    jax.config.update("jax_check_tracer_leaks", True)
+
+jax.config.update(
+    "jax_enable_x64", True
+)  # Enable 64-bit precision, required for budget and reward precision
 
 
 @struct.dataclass
@@ -26,6 +32,7 @@ class EnvState:
     deterioration_rate: jnp.array
     # Environment properties
     timestep: int
+    budget_remaining: float
     episode_return: float = 0.0
 
 
@@ -97,11 +104,11 @@ class JaxRoadEnvironment(environment.Environment):
         ## 3) Inspection and maintenance modeling
         imp_conf = config["maintenance"]
         self.action_map = {
-            "do-nothing": 0,
-            "inspect": 1,
-            "minor-repair": 2,
-            "major-repair": 3,
-            "replace": 4,
+            "do-nothing": jnp.int32(0),
+            "inspect": jnp.int32(1),
+            "minor-repair": jnp.int32(2),
+            "major-repair": jnp.int32(3),
+            "replace": jnp.int32(4),
         }
 
         # 3.1) Damage states and observations
@@ -129,16 +136,21 @@ class JaxRoadEnvironment(environment.Environment):
         self.inspection_campaign_reward = imp_conf["reward"][
             "inspection_campaign_reward"
         ]
+        if self.inspection_campaign_reward != 0:
+            raise NotImplementedError(
+                "Inspection campaign reward is not currently implemented with hard budget constraints."
+            )
+
         # rewards_table (shape: A x S)
         self.rewards_table = jnp.array(
-            imp_conf["reward"]["state_action_reward"], dtype=jnp.float32
+            imp_conf["reward"]["state_action_reward"], dtype=jnp.float64
         )
         # terminal state rewards (shape: S)
         self.terminal_state_reward = jnp.array(
             imp_conf["reward"]["terminal_state_reward"]
         )
         # Budget parameters
-        self.budget_amount = float(imp_conf["budget_amount"])
+        self.budget_amount = jnp.float64(imp_conf["budget_amount"])
         self.budget_renewal_interval = imp_conf["budget_renewal_interval"]
 
         ## Environment properties
@@ -252,7 +264,7 @@ class JaxRoadEnvironment(environment.Environment):
             trip_destinations.append(vertex_2)
             trips[vertex_1, vertex_2] = trips_df["volume"][index]
 
-        trips = jnp.array(trips)
+        trips = jnp.array(trips, dtype=jnp.float32)
         trip_sources = jnp.array(trip_sources, dtype=jnp.int32)
         trip_destinations = jnp.array(trip_destinations, dtype=jnp.int32)
 
@@ -324,16 +336,19 @@ class JaxRoadEnvironment(environment.Environment):
     @partial(jax.jit, static_argnums=(0,))
     @partial(vmap, in_axes=(None, 0, 0, 0, 0))
     def _get_rewards_from_table(
-        self, dam_state: int, action: int, _is_forced_repair: bool, segment_length: int
+        self,
+        dam_state: int,
+        action: int,
+        forced_repair_mask: bool,
+        segment_length: float,
     ) -> float:
 
         reward = jax.lax.cond(
-            _is_forced_repair,
-            lambda x: self.rewards_table[-1][-1],
-            lambda x: self.rewards_table[action, dam_state]
+            forced_repair_mask,
+            lambda: self.rewards_table[-1][-1],
+            lambda: self.rewards_table[action, dam_state]
             * segment_length
             * MILES_PER_KILOMETER,
-            None,
         )
         return reward
 
@@ -357,18 +372,18 @@ class JaxRoadEnvironment(environment.Environment):
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_maintenance_reward(
-        self, damage_state: jnp.array, action: jnp.array, _is_forced_repair: jnp.array
+        self, damage_state: jnp.array, action: jnp.array, forced_repair_mask: jnp.array
     ) -> float:
 
         maintenance_reward = jnp.sum(
             self._get_rewards_from_table(
-                damage_state, action, _is_forced_repair, self.segment_lengths
+                damage_state, action, forced_repair_mask, self.segment_lengths
             )
         )
 
-        campaign_reward = self._get_campaign_reward(action)
+        # campaign_reward = self._get_campaign_reward(action) # Currently not implemented with hard budget constraints
 
-        return maintenance_reward + campaign_reward
+        return maintenance_reward  # + campaign_reward
 
     @partial(jax.jit, static_argnums=0)
     def compute_edge_travel_time(self, state: EnvState, edge_volumes: jnp.array):
@@ -516,7 +531,6 @@ class JaxRoadEnvironment(environment.Environment):
             is the cost-to-go from node i to node j using the shortest available path.
 
         """
-
         trip = self.trips[source][destination]
 
         volumes = jnp.zeros(self.num_edges)
@@ -527,7 +541,7 @@ class JaxRoadEnvironment(environment.Environment):
             # reminder: returns the first index
             next_node = jnp.argmin(
                 weights_matrix[current_node, :] + cost_to_go_matrix[:, destination]
-            )
+            ).astype(jnp.int32)
             # find edge index given current_node and next_node
             edge_index = self.adjacency_matrix[current_node, next_node]
             volumes = volumes.at[edge_index].set(volumes[edge_index] + trip)
@@ -683,11 +697,39 @@ class JaxRoadEnvironment(environment.Environment):
     def _get_next_deterioration_rate(self, action: int, det_rate: int) -> int:
         det_rate = jax.lax.cond(
             action == self.action_map["replace"],
-            lambda x: 0,
+            lambda x: jnp.int32(0),
             lambda x: jnp.minimum(x + 1, self.deterioration_rate_max),
             det_rate,
         )
         return det_rate
+
+    @partial(jax.jit, static_argnums=0)
+    def _apply_action_constraints(
+        self, key: chex.PRNGKey, state: EnvState, actions: jnp.array
+    ):
+        """Apply all action constraints in sequence."""
+        # 1. Forced repair constraint
+        # Update worst observation counter
+        constrained_actions, forced_repair_flag = self._apply_forced_repair_constraint(
+            actions, state.worst_obs_counter
+        )
+
+        # 2. Budget constraint
+        key, key_budget = jax.random.split(key)
+        (
+            constrained_actions,
+            new_budget,
+            budget_constraint_applied,
+        ) = self._apply_budget_constraint(
+            key_budget, state, constrained_actions, forced_repair_flag
+        )
+
+        return (
+            constrained_actions,
+            forced_repair_flag,
+            new_budget,
+            budget_constraint_applied,
+        )
 
     @partial(jax.jit, static_argnums=0)
     @partial(vmap, in_axes=(None, 0, 0))
@@ -696,6 +738,7 @@ class JaxRoadEnvironment(environment.Environment):
     ) -> int:
         # if worst_obs_counter > forced_replace_worst_observation_count
         # then action = replace
+
         action, flag = jax.lax.cond(
             worst_obs_counter > self.forced_replace_worst_observation_count,
             lambda a: (self.action_map["replace"], True),
@@ -705,77 +748,148 @@ class JaxRoadEnvironment(environment.Environment):
         return action, flag
 
     @partial(jax.jit, static_argnums=0)
-    def _apply_action_constraints(
-        self, actions: jnp.array, worst_obs_counter: jnp.array
-    ):
-        # 1. Forced repair constraint
-        c_actions, _is_forced_repair = self._apply_forced_repair_constraint(
-            actions, worst_obs_counter
+    def _get_budget_action_cost(
+        self, state: EnvState, action: jnp.array, forced_repair_mask: jnp.array
+    ) -> float:
+        """Calculate total cost of actions across all segments."""
+        # Get base costs from rewards table
+        costs = -self._get_rewards_from_table(
+            state.damage_state, action, forced_repair_mask, self.segment_lengths
         )
 
-        # 2. Budget constraint
-        # TODO: Implement budget constraint
-        return c_actions, _is_forced_repair
+        # Zero out costs for forced repairs
+        costs = jnp.where(forced_repair_mask, 0.0, costs)
+
+        return costs
+
+    @partial(jax.jit, static_argnums=0)
+    def get_budget_remaining_time(self, timestep: int) -> int:
+        return self.budget_renewal_interval - timestep % self.budget_renewal_interval
+
+    @partial(jax.jit, static_argnums=0)
+    def _apply_budget_constraint(
+        self,
+        key: chex.PRNGKey,
+        state: EnvState,
+        action: jnp.array,
+        forced_repair_mask: jnp.array,
+    ) -> Tuple[jnp.array, float, bool]:
+        """Apply budget constraints to actions."""
+        # Calculate upfront costs (do-nothing costs)
+        do_nothing_action = jnp.zeros_like(action)
+        do_nothing_forced_repair_mask = jnp.full_like(forced_repair_mask, False)
+        upfront_cost = self._get_budget_action_cost(
+            state, do_nothing_action, do_nothing_forced_repair_mask
+        )
+        future_upfront_cost = upfront_cost * (
+            self.get_budget_remaining_time(state.timestep) - 1
+        )
+
+        # Calculate adjusted costs
+        action_cost = self._get_budget_action_cost(state, action, forced_repair_mask)
+        adjusted_cost = action_cost - upfront_cost
+
+        remaining_budget = (
+            state.budget_remaining
+            - jnp.sum(upfront_cost)
+            - jnp.sum(future_upfront_cost)
+        )
+
+        # Apply constraints if needed
+        def apply_constraints():
+            # Randomly select actions that fit within budget
+            priorities = jax.random.uniform(key, shape=action.shape)
+            # Don't constrain forced repairs
+            priorities = jnp.where(forced_repair_mask, -jnp.inf, priorities)
+            sorted_indices = jnp.argsort(priorities)
+            cumulative_costs = jnp.cumsum(adjusted_cost[sorted_indices])
+            valid_mask = cumulative_costs <= remaining_budget
+
+            # Create array of constrained actions in original order
+            constrained_action = jnp.zeros_like(action)
+            constrained_action = constrained_action.at[sorted_indices].set(
+                jnp.where(
+                    valid_mask,
+                    action[sorted_indices],
+                    do_nothing_action[sorted_indices],
+                )
+            )
+
+            return constrained_action, True
+
+        constrained_action, constraint_applied = jax.lax.cond(
+            jnp.sum(adjusted_cost) > remaining_budget,
+            lambda: apply_constraints(),
+            lambda: (action, False),
+        )
+
+        new_budget = state.budget_remaining - jnp.sum(
+            self._get_budget_action_cost(state, constrained_action, forced_repair_mask)
+        )
+        return constrained_action, new_budget, constraint_applied
 
     @partial(jax.jit, static_argnums=0)
     def step_env(
-        self,
-        keys: chex.PRNGKey,
-        state: EnvState,
-        action: jnp.array,
-    ) -> Tuple[chex.Array, list, float, bool, dict]:
+        self, key: chex.PRNGKey, state: EnvState, action: jnp.array
+    ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         """Move the environment one timestep forward."""
-
-        # split keys into keys for damage transitions and observations
-        keys_transition, keys_obs = jnp.split(keys, 2, axis=0)
-
-        # worst observation counter
         worst_obs_counter = jax.lax.select(
             state.observation == self.num_observations - 1,
             state.worst_obs_counter + 1,
             jnp.zeros_like(state.worst_obs_counter),
         )
 
-        agent_action = jnp.copy(action)
-        action, _is_forced_repair = self._apply_action_constraints(
-            action, worst_obs_counter
-        )
+        state = state.replace(worst_obs_counter=worst_obs_counter)
+
+        (
+            constrained_action,
+            forced_repair_flag,
+            new_budget,
+            budget_constraint_applied,
+        ) = self._apply_action_constraints(key, state, action)
 
         ## Maintenance modeling
+        key, key_transition = jax.random.split(key)
         damage_state = self._get_next_damage_state(
-            keys_transition,
+            jax.random.split(key_transition, self.total_num_segments),
             state.damage_state,
-            action,
+            constrained_action,
             state.deterioration_rate,
         )
 
         # deterioration rate update
         deterioration_rate = self._get_next_deterioration_rate(
-            action, state.deterioration_rate
+            constrained_action, state.deterioration_rate
         )
 
         # observation
-        obs = self._get_next(keys_obs, damage_state, action, self.observation_table)
+        key, key_observation = jax.random.split(key)
+        obs = self._get_next(
+            jax.random.split(key_observation, self.total_num_segments),
+            damage_state,
+            constrained_action,
+            self.observation_table,
+        )
 
         # maintenance reward
         maintenance_reward = self._get_maintenance_reward(
-            state.damage_state, action, _is_forced_repair
+            state.damage_state, constrained_action, forced_repair_flag
         )
 
         # belief update
         belief = self._get_next_belief(
-            state.belief, obs, action, state.deterioration_rate
+            state.belief, obs, constrained_action, state.deterioration_rate
         )
 
         ## Traffic modeling
-        base_travel_time = self.btt_table[action] * self.initial_btts
-        capacity = self.capacity_table[action] * self.initial_capacities
+        base_travel_time = self.btt_table[constrained_action] * self.initial_btts
+        capacity = self.capacity_table[constrained_action] * self.initial_capacities
 
         # udpate state
         state = state.replace(base_travel_time=base_travel_time, capacity=capacity)
 
         # Worst-case travel time
-        max_duration = jnp.max(self.action_durations[action])
+        max_duration = jnp.max(self.action_durations[constrained_action])
         total_travel_time = jax.lax.cond(
             max_duration > 0,
             lambda args: self._get_worst_case_travel_time(*args),
@@ -814,7 +928,18 @@ class JaxRoadEnvironment(environment.Environment):
                 "terminal_reward": terminal_reward,
             },
             "returns": returns,
+            "budget_constraints_applied": budget_constraint_applied,
+            "forced_replace_constraint_applied": jnp.sum(forced_repair_flag),
+            "applied_actions": constrained_action,
         }
+
+        # Update budget at renewal interval
+        new_budget = jax.lax.cond(
+            self.get_budget_remaining_time(timestep) == self.budget_renewal_interval,
+            lambda _: self.budget_amount,
+            lambda x: x,
+            new_budget,
+        )
 
         next_state = EnvState(
             damage_state=damage_state,
@@ -822,9 +947,10 @@ class JaxRoadEnvironment(environment.Environment):
             belief=belief,
             base_travel_time=base_travel_time,
             capacity=capacity,
-            worst_obs_counter=worst_obs_counter,
+            worst_obs_counter=state.worst_obs_counter,
             deterioration_rate=deterioration_rate,
-            timestep=state.timestep + 1,
+            timestep=timestep,
+            budget_remaining=new_budget,
             episode_return=returns * jnp.logical_not(done),
         )
 
@@ -833,14 +959,13 @@ class JaxRoadEnvironment(environment.Environment):
     @partial(jax.jit, static_argnums=0)
     def step(self, key, state, action):
 
-        key, subkeys = self.split_key(key)
-
         # environment step
-        obs_st, state_st, reward, done, info = self.step_env(subkeys, state, action)
+        key, step_key = jax.random.split(key)
+        obs_st, state_st, reward, done, info = self.step_env(step_key, state, action)
 
         # reset env
-        key, sub_key = jax.random.split(key)
-        obs_re, state_re = self.reset(sub_key)
+        key, reset_key = jax.random.split(key)
+        obs_re, state_re = self.reset(reset_key)
 
         # Auto-reset environment based on done
         state = jax.tree.map(
@@ -886,6 +1011,7 @@ class JaxRoadEnvironment(environment.Environment):
             worst_obs_counter=worst_observation_counter,
             deterioration_rate=deterioration_rate,
             timestep=0,
+            budget_remaining=self.budget_amount,
         )
         return self.get_obs(env_state), env_state
 
@@ -939,26 +1065,6 @@ class JaxRoadEnvironment(environment.Environment):
     @property
     def num_actions(self) -> int:
         return self.total_num_segments
-
-    @partial(jax.jit, static_argnums=(0))
-    def split_key(self, key: chex.PRNGKey) -> Tuple[chex.PRNGKey, chex.PRNGKey]:
-        """
-        #! The rule of thumb is: never reuse keys
-        (unless you want identical outputs)
-
-        Split key into keys for each random variable:
-
-        - keys for damage transitions of each segment (#segments)
-        - keys for observations of each segment (#segments)
-        - key for next timestep (1)
-
-        """
-
-        keys = jax.random.split(key, self.total_num_segments * 2 + 1)
-        subkeys = keys[: self.total_num_segments * 2, :]
-        key = keys[-1, :]
-
-        return key, subkeys
 
     def _get_shortest_path(
         self,

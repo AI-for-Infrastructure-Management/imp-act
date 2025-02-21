@@ -27,6 +27,11 @@ def toy_environment_2():
 
 
 @pytest.fixture
+def toy_environment_2_unconstrained():
+    return make("ToyExample-v2-unconstrained")
+
+
+@pytest.fixture
 def small_environment():
     return make("Montenegro-v1")
 
@@ -72,6 +77,11 @@ def stationary_deterioration_environment():
 def toy_environment_2_jax():
     """Create a toy environment loader for testing."""
     return make("ToyExample-v2-jax")
+
+
+@pytest.fixture
+def toy_environment_2_unconstrained_jax():
+    return make("ToyExample-v2-unconstrained-jax")
 
 
 @pytest.fixture
