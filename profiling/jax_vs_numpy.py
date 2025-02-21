@@ -9,6 +9,8 @@ import time
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
+from tabulate import tabulate
 
 from imp_act import make
 
@@ -60,11 +62,63 @@ def round_list(lst, decimals=2):
     return [round(x, decimals) for x in lst]
 
 
+def print_formatted_timings(timings, baseline=None):
+
+    baseline = timings[baseline]
+    rel_timings = {key: baseline / timings[key] for key in timings}
+
+    df = pd.DataFrame(index=timings.keys(), columns=experiments)
+
+    # formatting
+    GREEN, RESET = "\033[1;32m", "\033[0m"
+
+    for i, experiment in enumerate(experiments):
+        _best_key = min(timings, key=lambda x: timings[x][i])
+        for key in timings.keys():
+            value = f"{timings[key][i]:.1f} ({rel_timings[key][i]:.1f}x)"
+
+            # Color best key
+            if key == _best_key:
+                value = f"{GREEN}{value}{RESET}"
+
+            df.loc[key, experiment] = value
+
+    # Rename the first column header to "Episodes"
+    df.index.name = "Episodes"
+    print(tabulate(df, headers="keys", tablefmt="pretty", stralign="right"))
+
+
+def print_formatted_returns(store_returns_for, mean_returns):
+
+    baseline = mean_returns["numpy"]
+    rel_error = {
+        key: (mean_returns[key] - baseline) * 100 / baseline for key in mean_returns
+    }
+
+    df = pd.DataFrame(
+        index=mean_returns.keys(), columns=["Mean return (M)", "Relative error"]
+    )
+
+    print("")
+    print(f"Mean returns (in millions) for {store_returns_for} episodes")
+    for key in mean_returns.keys():
+        df.loc[key, "Mean return (M)"] = f"{mean_returns[key]:.2f}"
+        df.loc[key, "Relative error"] = f"{rel_error[key]:.2f} %"
+
+    print(tabulate(df, headers="keys", tablefmt="pretty", stralign="right"))
+
+
 if __name__ == "__main__":
+
+    main_start = time.time()
 
     # experiments = [1, 10]
     experiments = [1, 10, 100, 1_000]
-    ENV_NAME = "Cologne-v1"
+    # ENV_NAME = "ToyExample-v2"
+    # ENV_NAME = "Cologne-v1"
+    ENV_NAME = "Cologne-v1-unconstrained"
+
+    print(f"Environment: {ENV_NAME}")
 
     store_returns_for = experiments[-1]
 
@@ -75,6 +129,7 @@ if __name__ == "__main__":
     numpy_timings = []
     numpy_returns = []
 
+    print("Running: Numpy (for loop),", end=" ")
     for NUM_EPISODES in experiments:
         start = time.time()
 
@@ -92,6 +147,9 @@ if __name__ == "__main__":
     numpy_mp_timings = []
     numpy_mp_returns = []
 
+    cpu_count = mp.cpu_count()
+
+    print("Numpy (multiprocessing),", end=" ")
     for NUM_EPISODES in experiments:
         start = time.time()
 
@@ -113,6 +171,7 @@ if __name__ == "__main__":
     jax_for_loop_timings = []
     jax_for_loop_returns = []
 
+    print("Jax (for loop),", end=" ")
     for NUM_EPISODES in experiments:
 
         start_jax = time.time()
@@ -202,6 +261,7 @@ if __name__ == "__main__":
     jax_scan_timings = []
     jax_scan_returns = []
 
+    print("Jax (scan)")
     for NUM_EPISODES in experiments:
 
         start_jax = time.time()
@@ -218,53 +278,40 @@ if __name__ == "__main__":
             evals = metrics["returns"] * metrics["dones"]
             jax_scan_returns = evals[jnp.nonzero(evals)]
 
+    main_end = time.time()
+    print(f"Total time: {main_end - main_start:.1f} s")
+
     ########################## Print results ###########################
-    print(f"NumPy (for loop): {round_list(numpy_timings)}")
-    print(f"NumPy (multiprocessing): {round_list(numpy_mp_timings)}")
-    print(f"Jax (for loop): {round_list(jax_for_loop_timings)}")
-    print(f"Jax (scan): {round_list(jax_scan_timings)}")
 
-    def compare(list1, list2):
-        return [l1 / l2 for l1, l2 in zip(list1, list2)]
+    ####### Timings #######
+    timings = {
+        "numpy": np.array(numpy_timings),
+        "numpy_mp": np.array(numpy_mp_timings),
+        "jax_for_loop": np.array(jax_for_loop_timings),
+        "jax_scan": np.array(jax_scan_timings),
+    }
 
-    speedup_for_loop = compare(numpy_timings, jax_for_loop_timings)
-    speedup_scan = compare(numpy_timings, jax_scan_timings)
     print("")
-    print("Speedups wrt NumPy (for loop):")
-    print(f"Speedup (Jax): {round_list(speedup_for_loop)}")
-    print(f"Speedup (Jax scan): {round_list(speedup_scan)}")
-
-    speedup_for_loop = compare(numpy_mp_timings, jax_for_loop_timings)
-    speedup_scan = compare(numpy_mp_timings, jax_scan_timings)
+    print("Timings (s) for different number of episodes")
+    print("(best time in green)")
     print("")
-    print("Speedups wrt NumPy (multiprocessing):")
-    print(f"Speedup (Jax): {round_list(speedup_for_loop)}")
-    print(f"Speedup (Jax scan): {round_list(speedup_scan)}")
+    print("(wrt NumPy)")
+    print_formatted_timings(timings, baseline="numpy")
 
-    # Mean returns
     print("")
-    mean_numpy_returns = np.mean(numpy_returns)
-    mean_numpy_mp_returns = np.mean(numpy_mp_returns)
-    mean_jax_for_loop_returns = np.mean(jax_for_loop_returns)
-    mean_jax_scan_returns = np.mean(jax_scan_returns).item()
-    mean_list = [
-        mean_numpy_returns,
-        mean_numpy_mp_returns,
-        mean_jax_for_loop_returns,
-        mean_jax_scan_returns,
-    ]
-    print(f"Mean returns: {round_list(mean_list)}")
+    print(f"(wrt NumPy multiprocessing with {cpu_count} cores)")
+    print_formatted_timings(timings, baseline="numpy_mp")
 
-    def relative_error(x, y):
-        return abs(x - y) * 100 / x
+    ######## Mean returns ########
+    normalizing_constant = 1_000_000
+    mean_returns = {
+        "numpy": np.mean(numpy_returns) / normalizing_constant,
+        "numpy_mp": np.mean(numpy_mp_returns) / normalizing_constant,
+        "jax_for_loop": np.mean(jax_for_loop_returns) / normalizing_constant,
+        "jax_scan": np.mean(jax_scan_returns).item() / normalizing_constant,
+    }
 
-    rel_error_numpy_mp = relative_error(mean_numpy_returns, mean_numpy_mp_returns)
-    rel_error_jax_for_loop = relative_error(
-        mean_numpy_returns, mean_jax_for_loop_returns
-    )
-    rel_error_jax_scan = relative_error(mean_numpy_returns, mean_jax_scan_returns)
-    _list = [rel_error_numpy_mp, rel_error_jax_for_loop, rel_error_jax_scan]
-    print(f"Relative error mean returns wrt NumPy: {round_list(_list)}")
+    print_formatted_returns(store_returns_for, mean_returns)
 
     ########################## Plot results ############################
     import matplotlib.pyplot as plt
@@ -313,4 +360,4 @@ if __name__ == "__main__":
     ax[1].legend()
 
     plt.show()
-    plt.savefig("profiling/jax_vs_numpy.png")
+    # fig.savefig("./jax_vs_numpy.png")
