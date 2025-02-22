@@ -785,7 +785,6 @@ def test_shortest_paths_large(cologne_environment, cologne_environment_jax):
         assert shortest_path_jax in all_shortest_paths_numpy
 
 
-@pytest.mark.skip(reason="Old implementation references.")
 def test_get_travel_time(toy_environment_2, toy_environment_2_jax):
     "Test total travel time is the same for jax and numpy env"
     actions = [
@@ -800,8 +799,17 @@ def test_get_travel_time(toy_environment_2, toy_environment_2_jax):
     while not done:
         timestep += 1
         obs, _, done, info = toy_environment_2.step(actions)
-        dam_state = jnp.array(toy_environment_2._get_states()).flatten()
-        belief = jnp.array(obs["edge_beliefs"]).flatten()
+        action_durations = []
+        for edge in toy_environment_2.graph.es:
+            for segment in edge["road_edge"].segments:
+                action_durations.append(segment.action_duration)
+        max_action_duration = jnp.array(max(action_durations))
+        worst_obs_counter = jnp.array(
+            [
+                [segment.worst_observation_counter for segment in edge.segments]
+                for edge in toy_environment_2.graph.es["road_edge"]
+            ]
+        ).flatten()
         total_travel_time_np = info["total_travel_time"]
         base_travel_times = np.empty(total_num_segments)
         capacities = np.empty(total_num_segments)
@@ -812,14 +820,19 @@ def test_get_travel_time(toy_environment_2, toy_environment_2_jax):
                 capacities[id_counter] = segment.capacity
                 id_counter += 1
         jax_state = EnvState(
-            damage_state=dam_state,
+            damage_state=jnp.array(info["edge_states"]).flatten(),
             observation=jnp.array(obs["edge_observations"]).flatten(),
-            belief=belief,
+            belief=jnp.array(obs["edge_beliefs"]).flatten(),
             base_travel_time=jnp.asarray(base_travel_times),
             capacity=jnp.asarray(capacities),
+            worst_obs_counter=worst_obs_counter,
+            deterioration_rate=jnp.array(obs["edge_deterioration_rates"]).flatten(),
+            budget_remaining=toy_environment_2.current_budget,
             timestep=timestep,
         )
-        total_travel_time_jax = toy_environment_2_jax._get_total_travel_time(jax_state)
+        total_travel_time_jax = toy_environment_2_jax._get_worst_case_travel_time(
+            jax_state, max_action_duration
+        )
         print(total_travel_time_np, total_travel_time_jax)
         assert jnp.allclose(total_travel_time_np, total_travel_time_jax, rtol=1e-2)
 
