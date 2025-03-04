@@ -556,7 +556,7 @@ class JaxRoadEnvironment(environment.Environment):
         )[2]
 
     @partial(jax.jit, static_argnums=0)
-    def _get_volumes_shortest_path(self, weights: jnp.array, edge_volumes: jnp.array):
+    def _get_volumes_shortest_path(self, weights: jnp.array):
         """
         Compute the volumes of each edge in the shortest path from the
         given source to the given destination.
@@ -589,7 +589,7 @@ class JaxRoadEnvironment(environment.Environment):
             cost_to_go_matrix,
         ).sum(axis=0)
 
-        return edge_volumes + trips_volumes
+        return self.base_volumes + trips_volumes
 
     @partial(jax.jit, static_argnums=0)
     def _get_base_edge_volumes(self, state):
@@ -602,7 +602,7 @@ class JaxRoadEnvironment(environment.Environment):
         edge_travel_times = self.compute_edge_travel_time(state, edge_volumes)
 
         # 0.3 Find the shortest paths using all-or-nothing assignment
-        edge_volumes = self._get_volumes_shortest_path(edge_travel_times, edge_volumes)
+        edge_volumes = self._get_volumes_shortest_path(edge_travel_times)
 
         return edge_volumes
 
@@ -626,9 +626,7 @@ class JaxRoadEnvironment(environment.Environment):
 
             # 2. Find the shortest paths using updated travel times
             #    (recalculates edge volumes)
-            new_edge_volumes = self._get_volumes_shortest_path(
-                edge_travel_times, self.base_volumes
-            )
+            new_edge_volumes = self._get_volumes_shortest_path(edge_travel_times)
 
             # 3. Check for convergence by comparing volume changes
             volume_changes = jnp.abs(edge_volumes - new_edge_volumes)
@@ -665,9 +663,8 @@ class JaxRoadEnvironment(environment.Environment):
 
         initial_volumes = jax.lax.cond(
             self.traffic_assigmment_reuse_initial_volumes,
-            lambda x: x,
-            lambda x: self.base_edge_volumes,
-            self.initial_edge_volumes,
+            lambda: self.initial_edge_volumes,
+            lambda: self.base_edge_volumes,
         )
 
         (worst_case_ttt, edge_volumes) = self._get_total_travel_time_and_edge_volumes(
