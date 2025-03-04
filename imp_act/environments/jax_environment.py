@@ -60,7 +60,6 @@ class JaxRoadEnvironment(environment.Environment):
         # Adjacency matrix (with edge indices)
         adjacency_matrix = np.ones((self.num_nodes, self.num_nodes)) * -1
         adjacency_matrix[self.edges[:, 0], self.edges[:, 1]] = np.arange(self.num_edges)
-        adjacency_matrix[self.edges[:, 1], self.edges[:, 0]] = np.arange(self.num_edges)
         self.adjacency_matrix = jnp.array(adjacency_matrix, dtype=jnp.int32)
 
         # 1.2) Road Segments
