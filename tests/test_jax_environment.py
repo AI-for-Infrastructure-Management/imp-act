@@ -830,11 +830,59 @@ def test_get_travel_time(toy_environment_2, toy_environment_2_jax):
             budget_remaining=toy_environment_2.current_budget,
             timestep=timestep,
         )
-        total_travel_time_jax = toy_environment_2_jax._get_worst_case_travel_time(
-            jax_state, max_action_duration
+        
+        # Get JAX travel time and volumes
+        total_travel_time_jax, edge_volumes_jax = toy_environment_2_jax._get_total_travel_time_and_edge_volumes(
+            jax_state, 
+            toy_environment_2_jax.base_edge_volumes, 
+            toy_environment_2_jax.traffic_assignment_max_iterations
         )
-        print(total_travel_time_np, total_travel_time_jax)
-        assert jnp.allclose(total_travel_time_np, total_travel_time_jax, rtol=1e-2)
+        
+        # Apply worst case calculation as per _get_worst_case_travel_time
+        worst_case_ttt = total_travel_time_jax
+        total_travel_time_jax = (
+            1 - max_action_duration
+        ) * toy_environment_2_jax.base_total_travel_time + max_action_duration * worst_case_ttt
+        
+        print(f"Total Travel Time - NumPy: {total_travel_time_np:.2f}, JAX: {total_travel_time_jax:.2f}")
+        
+        # If travel times don't match closely
+        if not jnp.allclose(total_travel_time_np, total_travel_time_jax, rtol=1e-2):
+            print(f"Travel times differ: NumPy={total_travel_time_np:.2f}, JAX={total_travel_time_jax:.2f}")
+            
+                
+            # Save original initial_edge_volumes
+            original_initial_edge_volumes = toy_environment_2.initial_edge_volumes.copy()
+            
+            # Override initial_edge_volumes with JAX volumes
+            toy_environment_2.initial_edge_volumes = np.array([float(v) for v in edge_volumes_jax])
+            
+            # Calculate travel time with JAX volumes using NumPy implementation
+            np_travel_time_with_jax_volumes = toy_environment_2._get_total_travel_time(
+                set_initial_volumes=True  # Use the initial volumes we just set
+            )
+            
+            # Restore original initial_edge_volumes
+            toy_environment_2.initial_edge_volumes = original_initial_edge_volumes
+            
+            print(f"NumPy travel time with JAX volumes: {np_travel_time_with_jax_volumes}")
+            
+            
+            # Also calculate JAX travel time using NumPy volumes
+            numpy_volumes = np.array([edge["volume"] for edge in toy_environment_2.graph.es])
+            jax_numpy_volumes = jnp.array(numpy_volumes)
+            
+            # Calculate edge travel times using the JAX method with NumPy volumes
+            edge_travel_times = toy_environment_2_jax.compute_edge_travel_time(jax_state, jax_numpy_volumes)
+            jax_travel_time_with_numpy_volumes = jnp.sum(edge_travel_times * jax_numpy_volumes)
+            
+            print(f"JAX travel time with NumPy volumes: {jax_travel_time_with_numpy_volumes:.2f}")
+            print(f"Actual NumPy travel time: {total_travel_time_np:.2f}")
+            print(f"Actual JAX travel time: {total_travel_time_jax:.2f}")
+        
+        # Original assertion
+        assert jnp.allclose(total_travel_time_np, total_travel_time_jax, rtol=1e-2), \
+            f"Travel times differ: NumPy={total_travel_time_np:.2f}, JAX={total_travel_time_jax:.2f}"
 
 
 @pytest.mark.skip(reason="Old implementation references.")
