@@ -195,14 +195,17 @@ class JaxRoadEnvironment(environment.Environment):
         idx = 0
         for nodes, edge_segments in config["topology"]["segments"].items():
             _indices = []
+
+            # get edge index from graph using nodes
+            edge_id = self.graph.get_eid(
+                self.graph.vs.find(id=nodes[0]).index,
+                self.graph.vs.find(id=nodes[1]).index,
+            )
+            # get equivalent JAX edge index
+            edge_id = igraph_edge_ids.index(edge_id)
+
             for segment in edge_segments:
-                # get edge index from graph using nodes
-                edge_id = self.graph.get_eid(
-                    self.graph.vs.find(id=nodes[0]).index,
-                    self.graph.vs.find(id=nodes[1]).index,
-                )
-                # get equivalent JAX edge index
-                edge_id = igraph_edge_ids.index(edge_id)
+
                 _indices.append(idx)
 
                 # segment length
@@ -226,6 +229,20 @@ class JaxRoadEnvironment(environment.Environment):
                 idx += 1
 
             segments_idxs_list[edge_id] = _indices
+        
+        # Flatten the unsorted segments_idxs_list
+        unsorted_segments_idxs_list = np.concatenate(segments_idxs_list)
+
+        # Reorder the segment info based on the edge index
+        segment_initial_btt = segment_initial_btt[unsorted_segments_idxs_list]
+        segment_initial_capacity = segment_initial_capacity[unsorted_segments_idxs_list]
+        segment_lengths = segment_lengths[unsorted_segments_idxs_list]
+
+        index_offset = 0
+        for i, edge_indices in enumerate(segments_idxs_list):
+            edge_segment_no = len(edge_indices)
+            segments_idxs_list[i] = [i for i in range(index_offset, index_offset + edge_segment_no)]
+            index_offset += edge_segment_no
 
         return (
             segments_idxs_list,
