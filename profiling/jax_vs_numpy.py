@@ -28,6 +28,7 @@ def do_nothing_policy_jax(jax_env):
 
 
 def numpy_rollout(env, actions):
+    env.seed(None)
     _ = env.reset()
     done = False
 
@@ -113,7 +114,7 @@ if __name__ == "__main__":
     main_start = time.time()
 
     # experiments = [1, 10]
-    experiments = [1, 10, 100, 1_000]
+    experiments = [1, 10, 100]
     # ENV_NAME = "ToyExample-v2"
     # ENV_NAME = "Cologne-v1"
     ENV_NAME = "Cologne-v1-unconstrained"
