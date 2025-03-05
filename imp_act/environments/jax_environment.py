@@ -64,14 +64,13 @@ class JaxRoadEnvironment(environment.Environment):
 
         # 1.2) Road Segments
         (
-            self.segments_list,
+            self.segment_idxs,
             self.initial_btts,
             self.initial_capacities,
             self.segment_lengths,
             self.total_num_segments,
         ) = self._extract_segments_info(config)
-        self.idxs_map = self._compute_idxs_map(self.segments_list)
-        self.segment_lengths = self._gather(self.segment_lengths).squeeze()
+        self.idxs_map = self._compute_idxs_map(self.segment_idxs)
 
         ## 2) Traffic modeling
         self.travel_time_reward_factor = config["traffic"]["travel_time_reward_factor"]
