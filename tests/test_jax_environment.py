@@ -885,6 +885,10 @@ def test_get_travel_time(toy_environment_2, toy_environment_2_jax):
             f"Travel times differ: NumPy={total_travel_time_np:.2f}, JAX={total_travel_time_jax:.2f}"
 
 
+def test_get_travel_time_cologne(cologne_environment, cologne_environment_jax):
+    "Test total travel time is the same for jax and numpy env"
+    test_get_travel_time(cologne_environment, cologne_environment_jax)
+
 @pytest.mark.skip(reason="Old implementation references.")
 def test_belief_computation(toy_environment_2, toy_environment_2_jax):
     action_np = [[1, 1] for edge in toy_environment_2.graph.es]
