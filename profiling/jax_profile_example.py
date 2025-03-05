@@ -1,5 +1,6 @@
 import os
 import time
+
 import jax
 
 start_time = time.time()

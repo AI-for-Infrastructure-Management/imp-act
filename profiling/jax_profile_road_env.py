@@ -1,5 +1,6 @@
 import os
 import time
+
 import jax
 import jax.numpy as jnp
 
@@ -19,7 +20,7 @@ start_time = time.time()
 with jax.profiler.trace(f"{os.getcwd()}/jax-profile"):
 
     jit_step = jax.jit(jax_env.step)
-    
+
     done = False
     total_reward = jnp.zeros(1)
 

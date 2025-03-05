@@ -228,7 +228,7 @@ class JaxRoadEnvironment(environment.Environment):
                 idx += 1
 
             segments_idxs_list[edge_id] = _indices
-        
+
         # Flatten the unsorted segments_idxs_list
         unsorted_segments_idxs_list = np.concatenate(segments_idxs_list)
 
@@ -240,7 +240,9 @@ class JaxRoadEnvironment(environment.Environment):
         index_offset = 0
         for i, edge_indices in enumerate(segments_idxs_list):
             edge_segment_no = len(edge_indices)
-            segments_idxs_list[i] = [i for i in range(index_offset, index_offset + edge_segment_no)]
+            segments_idxs_list[i] = [
+                i for i in range(index_offset, index_offset + edge_segment_no)
+            ]
             index_offset += edge_segment_no
 
         return (

@@ -10,9 +10,9 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from tabulate import tabulate
 
 from imp_act import make
+from tabulate import tabulate
 
 
 def do_nothing_policy_np(numpy_env):
