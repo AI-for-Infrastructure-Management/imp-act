@@ -712,7 +712,7 @@ class JaxRoadEnvironment(environment.Environment):
         det_rate = jax.lax.cond(
             action == self.action_map["replace"],
             lambda x: jnp.int32(0),
-            lambda x: jnp.minimum(x + 1, self.deterioration_rate_max),
+            lambda x: jnp.minimum(x + 1, self.deterioration_rate_max).astype(jnp.int32),
             det_rate,
         )
         return det_rate
@@ -969,7 +969,7 @@ class JaxRoadEnvironment(environment.Environment):
             episode_return=returns * jnp.logical_not(done),
         )
 
-        return obs, next_state, reward, done, info
+        return self.get_obs(state), next_state, reward, done, info
 
     @partial(jax.jit, static_argnums=0)
     def step(self, key, state, action):
@@ -1056,7 +1056,7 @@ class JaxRoadEnvironment(environment.Environment):
         return jnp.take(x, self.idxs_map, fill_value=fill_value)
 
     def get_obs(self, state: EnvState) -> chex.Array:
-        return state.observation
+        return state.belief
 
     def is_terminal(self, timestep: int) -> bool:
         return timestep >= self.max_timesteps
