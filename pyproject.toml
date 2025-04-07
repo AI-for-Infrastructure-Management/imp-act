@@ -30,7 +30,7 @@ gymnax="~0.0.6"
 [tool.poetry.group.jax_gpu]
 optional = true
 [tool.poetry.group.jax_gpu.dependencies]
-jax=[{extras = ["gpu"], version="~0.4.26"}]
+jax=[{extras = ["cuda12"], version="~0.4.26"}]
 flax="~0.8.4"
 gymnax="~0.0.6"
 
