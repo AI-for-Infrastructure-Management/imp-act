@@ -269,7 +269,9 @@ if __name__ == "__main__":
 
         key = jax.random.PRNGKey(12345)
 
-        runner, metrics = scanned_rollout(subkey, NUM_EPISODES)
+        key, key_ = jax.random.split(key)
+
+        runner, metrics = scanned_rollout(key_, NUM_EPISODES)
 
         end_jax = time.time()
 
