@@ -114,9 +114,9 @@ if __name__ == "__main__":
     main_start = time.time()
 
     # experiments = [1, 10]
-    experiments = [1, 10, 100, 1_000]
-    # ENV_NAME = "ToyExample-v2"
-    # ENV_NAME = "Cologne-v1"
+    experiments = [1, 10, 100, 1000]
+    #ENV_NAME = "ToyExample-v2"
+    #ENV_NAME = "Cologne-v1"
     ENV_NAME = "Cologne-v1-unconstrained"
 
     print(f"Environment: {ENV_NAME}")
@@ -281,8 +281,29 @@ if __name__ == "__main__":
             evals = metrics["returns"] * metrics["dones"]
             jax_scan_returns = evals[jnp.nonzero(evals)]
 
+    ########################## JAX VMAP + SCAN ################################
+    jax_vmap_timings = []
+    jax_vmap_returns = []
+    print("Jax (vmap + scan)")
+    for NUM_EPISODES in experiments:
+        key, key_ = jax.random.split(key)
+        keys = jax.random.split(key_, NUM_EPISODES)
+        start_jax_= time.time()
+        runners, metrics = jax.block_until_ready(
+            jax.vmap(jax.jit(scanned_rollout, static_argnums=(1)), in_axes=(0, None))(keys, 1)
+        )
+
+        end_jax_ = time.time()
+        jax_vmap_timings.append(end_jax_ - start_jax_)
+
+        if NUM_EPISODES == store_returns_for:
+            evals = metrics["returns"] * metrics["dones"]
+            jax_vmap_returns = evals[jnp.nonzero(evals)]
+
+
     main_end = time.time()
     print(f"Total time: {main_end - main_start:.1f} s")
+
 
     ########################## Print results ###########################
 
@@ -292,6 +313,7 @@ if __name__ == "__main__":
         "numpy_mp": np.array(numpy_mp_timings),
         "jax_for_loop": np.array(jax_for_loop_timings),
         "jax_scan": np.array(jax_scan_timings),
+        "jax_vmap": np.array(jax_vmap_timings),
     }
 
     print("")
@@ -312,6 +334,7 @@ if __name__ == "__main__":
         "numpy_mp": np.mean(numpy_mp_returns) / normalizing_constant,
         "jax_for_loop": np.mean(jax_for_loop_returns) / normalizing_constant,
         "jax_scan": np.mean(jax_scan_returns).item() / normalizing_constant,
+        "jax_vmap": np.mean(jax_vmap_returns).item() / normalizing_constant,
     }
 
     print_formatted_returns(store_returns_for, mean_returns)
@@ -331,6 +354,7 @@ if __name__ == "__main__":
     )
     ax[0].plot(experiments, jax_for_loop_timings, ".-", label="Jax (for loop)")
     ax[0].plot(experiments, jax_scan_timings, ".-", label="Jax (scan)")
+    ax[0].plot(experiments, jax_vmap_timings, ".-", label="Jax (vmap + scan)")
 
     ax[0].set_xlabel("Number of episodes")
     ax[0].set_ylabel("Time (s)")
@@ -356,6 +380,14 @@ if __name__ == "__main__":
         alpha=0.5,
         fill=False,
         edgecolor="tab:green",
+    )
+
+    ax[1].hist(
+        jax_vmap_returns,
+        label="Jax (vmap + scan)",
+        alpha=0.5,
+        fill=False,
+        edgecolor="tab:red",
     )
 
     ax[1].set_xlabel("Return")
