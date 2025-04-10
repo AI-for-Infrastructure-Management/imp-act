@@ -40,6 +40,10 @@ class RoadSegment:
         # shape: A
         self.capacity_table = config["traffic"]["capacity_factors"] * self.capacity
 
+        # action durations
+        # shape: A
+        self.action_durations = config["maintenance"]["action_duration_factors"]
+
         # deterioration tables
         # shape: A x S x S or A x DR x S x S
         self.deterioration_table = config["maintenance"]["deterioration"]
@@ -68,7 +72,7 @@ class RoadSegment:
     def reset(self):
         self.forced_repair = False
         self.worst_observation_counter = 0
-
+        self.action_duration = 0
         self.deterioration_rate = 0
         self.belief = np.array(self.initial_damage_prob)
         self.state = self.random_generator.choice(
@@ -138,6 +142,8 @@ class RoadSegment:
                     raise ValueError(
                         f"Deterioration rate exceeded maximum value {self.deterioration_rate_max}"
                     )
+
+        self.action_duration = self.action_durations[action]
 
         return reward
 
@@ -343,6 +349,13 @@ class RoadEnvironment:
 
         self.reset(reset_edges=False)
 
+        self.base_traffic_factor = config["traffic"]["base_traffic_factor"]
+
+        for edge in self.graph.es:
+            edge["base_volume"] = self.base_traffic_factor * (
+                min([seg.capacity for seg in edge["road_edge"].segments])
+            )
+
         self.base_total_travel_time = self._get_total_travel_time(
             iterations=self.traffic_assignment_initial_max_iterations,
             set_initial_volumes=False,
@@ -407,7 +420,7 @@ class RoadEnvironment:
             self.graph.es["volume"] = self.initial_edge_volumes
         else:
             # Initialize with all-or-nothing assignment
-            self.graph.es["volume"] = 0
+            self.graph.es["volume"] = self.graph.es["base_volume"]
 
             self.graph.es["travel_time"] = [
                 edge["road_edge"].compute_edge_travel_time(edge["volume"])
@@ -429,7 +442,7 @@ class RoadEnvironment:
             ]
 
             # Find the shortest paths using updated travel times
-            new_volumes = np.zeros(len(self.graph.es))
+            new_volumes = np.array(self.graph.es["base_volume"])
             for source, target, num_cars in self.trips:
                 path = self.graph.get_shortest_paths(
                     source, target, weights="travel_time", output="epath"
@@ -479,10 +492,25 @@ class RoadEnvironment:
         for i, edge in enumerate(self.graph.es):
             maintenance_reward += edge["road_edge"].step(actions[i])
 
-        total_travel_time = self._get_total_travel_time(
-            iterations=self.traffic_assignment_max_iterations,
-            set_initial_volumes=self.traffic_assigmment_reuse_initial_volumes,
-        )
+        action_durations = []
+        for edge in self.graph.es:
+            for segment in edge["road_edge"].segments:
+                action_durations.append(segment.action_duration)
+
+        max_action_duration = max(action_durations)
+
+        if max_action_duration > 0:
+            worst_case_total_travel_time = self._get_total_travel_time(
+                iterations=self.traffic_assignment_max_iterations,
+                set_initial_volumes=self.traffic_assigmment_reuse_initial_volumes,
+            )
+
+            total_travel_time = (
+                (1 - max_action_duration) * self.base_total_travel_time
+                + max_action_duration * worst_case_total_travel_time
+            )
+        else:
+            total_travel_time = self.base_total_travel_time
 
         travel_time_reward = self.travel_time_reward_factor * (
             total_travel_time - self.base_total_travel_time
@@ -703,7 +731,7 @@ class RoadEnvironment:
 
     def _apply_forced_repair_constraint(self, actions):
         # Corrective replace action if the worst condition is observed
-        self.forced_replace_constraint_applied = False
+        self.forced_replace_constraint_applied = 0
         for i, edge in enumerate(self.graph.es):
             for j, segment in enumerate(edge["road_edge"].segments):
                 if segment.observation == segment.number_of_states - 1:
@@ -712,7 +740,7 @@ class RoadEnvironment:
                         segment.worst_observation_counter
                         > self.forced_replace_worst_observation_count
                     ):
-                        self.forced_replace_constraint_applied = True
+                        self.forced_replace_constraint_applied += 1
                         segment.forced_repair = True
                         actions[i][j] = 4
                 else:

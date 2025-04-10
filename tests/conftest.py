@@ -47,6 +47,11 @@ def cologne_environment():
 
 
 @pytest.fixture
+def cologne_bonn_dusseldorf_environment():
+    return make("CologneBonnDusseldorf-v1")
+
+
+@pytest.fixture
 def random_time_seed():
     return int(time())
 
