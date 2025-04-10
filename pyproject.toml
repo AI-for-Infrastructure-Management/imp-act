@@ -20,6 +20,27 @@ pandas="~2.1.4"
 pyyaml="~6.0.1"
 tqdm="~4.66.1"
 
+[tool.poetry.group.jax]
+optional = true
+[tool.poetry.group.jax.dependencies]
+jax=[{extras = ["cpu"], version="~0.4.26"}]
+flax="~0.8.4"
+gymnax="~0.0.6"
+
+[tool.poetry.group.jax_gpu]
+optional = true
+[tool.poetry.group.jax_gpu.dependencies]
+jax=[{extras = ["cuda12"], version="~0.4.26"}]
+flax="~0.8.4"
+gymnax="~0.0.6"
+
+[tool.poetry.group.jax_profiling]
+optional = true
+[tool.poetry.group.jax_profiling.dependencies]
+tensorflow="~2.18.0"
+tensorboard_plugin_profile="~2.15"
+tabulate="~0.9"
+
 [tool.poetry.group.dev]
 optional = true
 [tool.poetry.group.dev.dependencies]

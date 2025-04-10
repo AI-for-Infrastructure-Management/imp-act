@@ -1,4 +1,4 @@
-name: imp-rl-competition-env
+name: impact-env
 channels:
   - defaults
   - conda-forge
