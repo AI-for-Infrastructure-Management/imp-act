@@ -83,4 +83,16 @@ tensorboard --logdir=./jax-profile
 
 Select the run under "Runs" and trace_viewer in the "Tool" option to visualize the profiling data. It should look like this:
 
-![alt text](image.png)
+![alt text](jax_profiling.png)
+
+We can clearly see the annotated operations `sampling` and `mat_mul`.
+
+```
+A. sampling: 185ms 
+B. mat_mul: 472ms
+C. sampling + mat_mul: 657ms
+
+Time taken: 673ms (C + 16ms)
+
+```
+Device: MacBookPro 14, 2021.
