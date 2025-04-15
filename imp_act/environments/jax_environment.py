@@ -15,11 +15,6 @@ if DEBUG:
     jax.config.update("jax_disable_jit", True)
     jax.config.update("jax_check_tracer_leaks", True)
 
-jax.config.update(
-    "jax_enable_x64", True
-)  # Enable 64-bit precision, required for budget and reward precision
-
-
 @struct.dataclass
 class EnvState:
     # Segment properties
@@ -141,14 +136,14 @@ class JaxRoadEnvironment(environment.Environment):
 
         # rewards_table (shape: A x S)
         self.rewards_table = jnp.array(
-            imp_conf["reward"]["state_action_reward"], dtype=jnp.float64
+            imp_conf["reward"]["state_action_reward"].astype(np.float64)
         )
         # terminal state rewards (shape: S)
         self.terminal_state_reward = jnp.array(
             imp_conf["reward"]["terminal_state_reward"]
         )
         # Budget parameters
-        self.budget_amount = jnp.float64(imp_conf["budget_amount"])
+        self.budget_amount = jnp.array(float(imp_conf["budget_amount"]))
         self.budget_renewal_interval = imp_conf["budget_renewal_interval"]
 
         ## Environment properties
