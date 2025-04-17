@@ -6,7 +6,7 @@ Prerequisites:
 
 Installation via *Poetry*
 ```bash
-poetry install --with dev,vis
+poetry install --with dev,vis,jax
 ```
 
 Installation via *pip requirements*
@@ -19,7 +19,7 @@ pip install -e .
 You can install a [conda](https://www.anaconda.com/download#downloads) virtual environment as:
 ```bash
 conda env create -f conda_environment.yaml
-conda activate imp-rl-competition-env
+conda activate impact-env
 ```
 
 ### Pytests (Optional)

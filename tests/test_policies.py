@@ -14,11 +14,11 @@ def tcbm_heuristic_agent():
 
 
 def test_simple_heuristic_agents_shape(
-    simple_heuristic_agent, tcbm_heuristic_agent, small_environment  # noqa: F811;
+    simple_heuristic_agent, tcbm_heuristic_agent, toy_environment_2  # noqa: F811;
 ):
     """Test if the simple heuristic agent returns the correct shape of actions."""
     agent = simple_heuristic_agent
-    env = small_environment
+    env = toy_environment_2
 
     obs = env.reset()
     actions = agent.get_action(obs)
@@ -41,11 +41,11 @@ def test_simple_heuristic_agents_shape(
 
 
 def test_simple_heuristic_agent_one_episode(
-    simple_heuristic_agent, small_environment  # noqa: F811;
+    simple_heuristic_agent, toy_environment_2  # noqa: F811;
 ):
     """Test if the simple heuristic agent can run one episode."""
     agent = simple_heuristic_agent
-    env = small_environment
+    env = toy_environment_2
 
     obs = env.reset()
     actions = agent.get_action(obs)
@@ -130,11 +130,11 @@ def test_simple_heuristic_agent_all_action(
 
 
 def test_tcbm_heuristic_agent_one_episode(
-    tcbm_heuristic_agent, small_environment  # noqa: F811;
+    tcbm_heuristic_agent, toy_environment_2  # noqa: F811;
 ):
     """Test if the simple heuristic agent can run one episode."""
     agent = tcbm_heuristic_agent
-    env = small_environment
+    env = toy_environment_2
 
     obs = env.reset()
     actions = agent.get_action(obs)

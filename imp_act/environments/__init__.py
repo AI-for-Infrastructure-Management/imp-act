@@ -17,6 +17,8 @@ environment_path = __path__[0]
 presets = [
     "ToyExample-v1",
     "ToyExample-v2",
+    "ToyExample-v2-unconstrained",
+    "ToyExample-v2-only-maintenance",
     "Montenegro-v1",
     "Denmark-v1",
     "Belgium-v1",
