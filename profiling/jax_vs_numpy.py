@@ -115,8 +115,8 @@ if __name__ == "__main__":
 
     # experiments = [1, 10]
     experiments = [1, 10, 100, 1000]
-    #ENV_NAME = "ToyExample-v2"
-    #ENV_NAME = "Cologne-v1"
+    # ENV_NAME = "ToyExample-v2"
+    # ENV_NAME = "Cologne-v1"
     ENV_NAME = "Cologne-v1-unconstrained"
 
     print(f"Environment: {ENV_NAME}")
@@ -288,9 +288,11 @@ if __name__ == "__main__":
     for NUM_EPISODES in experiments:
         key, key_ = jax.random.split(key)
         keys = jax.random.split(key_, NUM_EPISODES)
-        start_jax_= time.time()
+        start_jax_ = time.time()
         runners, metrics = jax.block_until_ready(
-            jax.vmap(jax.jit(scanned_rollout, static_argnums=(1)), in_axes=(0, None))(keys, 1)
+            jax.vmap(jax.jit(scanned_rollout, static_argnums=(1)), in_axes=(0, None))(
+                keys, 1
+            )
         )
 
         end_jax_ = time.time()
@@ -300,10 +302,8 @@ if __name__ == "__main__":
             evals = metrics["returns"] * metrics["dones"]
             jax_vmap_returns = evals[jnp.nonzero(evals)]
 
-
     main_end = time.time()
     print(f"Total time: {main_end - main_start:.1f} s")
-
 
     ########################## Print results ###########################
 

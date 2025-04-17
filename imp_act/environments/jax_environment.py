@@ -15,6 +15,7 @@ if DEBUG:
     jax.config.update("jax_disable_jit", True)
     jax.config.update("jax_check_tracer_leaks", True)
 
+
 @struct.dataclass
 class EnvState:
     # Segment properties

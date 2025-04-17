@@ -1,5 +1,3 @@
-import itertools
-
 import time
 
 try:
@@ -12,7 +10,6 @@ except ImportError:
 import numpy as np
 
 import pytest
-from igraph import Graph
 
 from imp_act.environments.jax_environment import EnvState
 
@@ -134,14 +131,14 @@ def test_budget_action_costs_jax(
         numpy_initial_budget = numpy_env.current_budget
 
         numpy_obs, numpy_reward, numpy_done, numpy_info = numpy_env.step(numpy_action)
-       
+
         numpy_budget_spent = numpy_initial_budget - numpy_env.current_budget
-        
+
         jax_state = jax_state.replace(
-            budget_remaining = numpy_budget_spent 
+            budget_remaining=numpy_budget_spent
             * jax_env.get_budget_remaining_time(jax_state.timestep)
         )
-        
+
         jax_initial_budget = jax_state.budget_remaining
 
         key, step_key = jax.random.split(key)
