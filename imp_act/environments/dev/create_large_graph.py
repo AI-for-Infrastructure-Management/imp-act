@@ -61,7 +61,7 @@ def plot_network(G, pos, title, path, args):
 
     # Save the figure
     if path is not None:
-        fig.savefig(Path(path, f"{title}.png"))
+        fig.savefig(Path(path, f"{title}.svg"))
 
 
 def remove_nodes_with_degree_one_below_threshold(graph, threshold):
@@ -247,6 +247,16 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         args,
     )
 
+    # Add position data for nodes to graph
+    position_dict = {
+        id: {"position_x": pos[0], "position_y": pos[1]}
+        for id, pos in pos_filtered.items()
+    }
+    nx.set_node_attributes(G_filtered, position_dict)
+
+    # Export Fully graph to graphml
+    nx.write_graphml_lxml(G_filtered, f"{output_path.absolute()}/graph_full.graphml")
+
     # Merge nodes with only two edges
     G_reduced, new_edge_info = remove_nodes_and_merge_edges(G_filtered.copy())
 
@@ -260,11 +270,6 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         G_reduced_2.copy(), cleanup=True
     )
 
-    # Add position data for nodes to graph
-    position_dict = {
-        id: {"position_x": pos[0], "position_y": pos[1]}
-        for id, pos in pos_filtered.items()
-    }
     nx.set_node_attributes(G_reduced_3, position_dict)
 
     # Plotting the network
