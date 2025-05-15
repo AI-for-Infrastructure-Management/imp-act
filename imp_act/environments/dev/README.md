@@ -1,7 +1,9 @@
 # Dataset
 The required dataset can be downloaded [here](https://data.mendeley.com/datasets/py2zkrb65h/1). Please put the files in the `data` folder.
 
-The related publication can be found [here](https://publica-rest.fraunhofer.de/server/api/core/bitstreams/d4913d12-4cd1-473c-97cd-ed467ad19273/content)
+The related publication "Synthetic European road freight transport flow data" by Daniel Speth, Verena Sauter, Patrick Plötz, Tim Signer" can be found [here](https://publica-rest.fraunhofer.de/server/api/core/bitstreams/d4913d12-4cd1-473c-97cd-ed467ad19273/content)
+
+It is available under the [CC BY 4.0 license](https://creativecommons.org/licenses/by/4.0/).
 
 # Running the export
 To run the export, execute the following command after downloading the dataset and placing it in the `data` folder:
