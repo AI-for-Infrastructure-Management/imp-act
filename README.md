@@ -23,12 +23,11 @@ To set up the environment and install requirements:
 ```bash
 conda env create -f conda_environment.yaml
 conda activate impact-env
-# Then install packages using poetry as above
 ```
 
 #### Option B: Create a virtual environment impact-env using venv/poetry etc.
 ```bash
-# create `impact-jaxmarl-env` with python=3.10
+# create `impact-env` with python=3.10
 pip install poetry==1.7.1 lockfile==0.12.2
 ```
 
@@ -45,18 +44,20 @@ poetry install --with dev,vis,jax
 
 #### Option 2: Using pip
 If you prefer to use pip, you can install the required packages as follows:
-    ```setup
-    pip install -r requirements/requirements.txt
-    pip install -e .
-    ```
+```bash
+pip install -r requirements/requirements.txt
+pip install -e .
+```
 
 ### 4. Download Datasets
     
 
 ### 5. Verify Installation (Optional)
-    ```setup
-    pytest -v
-    ```
+To verify that the installation was successful, you can run the following command:
+```bash
+# ensure you are in the root directory of the repository, and pytest is installed
+pytest -v
+```
 
 ## Training & Evaluation
 Please refer to the imp-act-JaxMARL repository for a full training and evaluation reproducibility guide:
