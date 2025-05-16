@@ -2,50 +2,60 @@
 
 This repository is the official implementation of the research and environments described in "IMP-act: Benchmarking MARL for Infrastructure Management Planning at Scale with JAX". 
 
-
 * **Code Repositories:**
     * Main IMP-act Environment: [AI-for-Infrastructure-Management/imp-act](https://github.com/AI-for-Infrastructure-Management/imp-act)
     * JaxMARL Adaptation for IMP-act: [AI-for-Infrastructure-Management/imp-act-JaxMARL](https://github.com/AI-for-Infrastructure-Management/imp-act-JaxMARL)
     * Starter Kit: [AI-for-Infrastructure-Management/imp-act-starter-kit](https://github.com/AI-for-Infrastructure-Management/imp-act-starter-kit)
 * **Reproducibility:** Please refer to `imp-act-JaxMARL` for a full reproduction guide of all results presented in the paper.
 
-## Requirements
+## Installation
 
 To set up the environment and install requirements:
 
-1.  **Prerequisites:**
-    * Python: >=3.7, <3.11 (Note: For using PyMARL or EPyMARL with the NumPy version via the starter-kit, Python < 3.10 is required).
-    * Poetry: 1.7.1+ (if using Poetry for environment management).
-    * Ensure JAX is installed correctly for your specific hardware (CPU/GPU/TPU). Refer to the [official JAX installation guide](https://github.com/google/jax#installation).
+### 1. Prerequisites
+* Python: >=3.7, <3.11 (Note: For using PyMARL or EPyMARL with the NumPy version via the starter-kit, Python < 3.10 is required).
+* Poetry: 1.7.1+ (if using Poetry for environment management).
+* Ensure JAX is installed correctly for your specific hardware (CPU/GPU/TPU). Refer to the [official JAX installation guide](https://github.com/google/jax#installation).
+* We recommend using using `jax==0.4.30` as it was used for the experiments in the paper.
 
-2.  **Installation:**
+### 2. Create a virtual environment
+#### Option A : Create a conda environment using the environment YAML file,
+```bash
+conda env create -f conda_environment.yaml
+conda activate impact-env
+# Then install packages using poetry as above
+```
 
-    * **Using Poetry (recommended for `imp-act` if a `pyproject.toml` is provided):**
-        ```setup
-        poetry install --with dev,vis,jax
-        ```
-        (The exact groups like `dev,vis,jax` might vary; check the `pyproject.toml` in the `imp-act` repository.)
+#### Option B: Create a virtual environment impact-env using venv/poetry etc.
+```bash
+# create `impact-jaxmarl-env` with python=3.10
+pip install poetry==1.7.1 lockfile==0.12.2
+```
 
-    * **Using pip from `requirements.txt` (if provided):**
-        ```setup
-        pip install -r requirements/requirements.txt
-        pip install -e .
-        ```
-        (The path to `requirements.txt` might vary, e.g., just `requirements.txt`.)
+### 3. Install dependencies
 
-    * **Using Conda (optional, create an environment first):**
-        ```setup
-        conda env create -f conda_environment.yaml  # If a .yaml file is provided
-        conda activate impact-env # Or your chosen environment name
-        # Then install packages using pip or poetry as above
-        ```
+#### Option 1: Using Poetry (Recommended)
 
-3.  **Download Datasets:**
+The flags `--with dev,vis,jax,jax_gpu` are optional and can be used to install additional 
+dependencies for development, visualization, JAX support, and JAX GPU support.
+See the `pyproject.toml` file to see which dependencies are included in each group.
+```bash
+poetry install --with dev,vis,jax
+```
+
+#### Option 2: Using pip
+If you prefer to use pip, you can install the required packages as follows:
+    ```setup
+    pip install -r requirements/requirements.txt
+    pip install -e .
+    ```
+
+### 4. Download Datasets
     
 
-4.  **Verify Installation (Optional):**
+### 5. Verify Installation (Optional)
     ```setup
-    pytest
+    pytest -v
     ```
 
 ## Training & Evaluation
