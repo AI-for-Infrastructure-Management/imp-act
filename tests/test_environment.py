@@ -154,9 +154,9 @@ def test_one_episode(parameter_fixture):
     print("Test Result: ", end="")
 
 
-def test_timing(toy_environment_1):
+def test_timing(toy_environment_2):
     "Test if the average time per trajectory is below the threshold"
-    env = toy_environment_1
+    env = toy_environment_2
 
     obs = env.reset()
     actions = [[1] * len(e) for e in obs["edge_observations"]]

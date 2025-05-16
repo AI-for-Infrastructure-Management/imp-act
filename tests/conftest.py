@@ -10,14 +10,8 @@ from imp_act.environments.registry import Registry
 @pytest.fixture
 def toy_environment_loader():
     """Create a toy environment loader for testing."""
-    toy_example_path = Registry().get("ToyExample-v1")[1]["filename"]
+    toy_example_path = Registry().get("ToyExample-v2")[1]["filename"]
     return EnvironmentLoader(toy_example_path)
-
-
-@pytest.fixture
-def toy_environment_1():
-    """Create a toy environment loader for testing."""
-    return make("ToyExample-v1")
 
 
 @pytest.fixture
@@ -29,21 +23,6 @@ def toy_environment_2():
 @pytest.fixture
 def toy_environment_2_unconstrained():
     return make("ToyExample-v2-unconstrained")
-
-
-@pytest.fixture
-def small_environment():
-    return make("Montenegro-v1")
-
-
-@pytest.fixture
-def medium_environment():
-    return make("Denmark-v1")
-
-
-@pytest.fixture
-def large_environment():
-    return make("Belgium-v1")
 
 
 @pytest.fixture

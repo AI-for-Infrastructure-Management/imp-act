@@ -1,15 +1,28 @@
 igraph==0.11.3
 numpy==1.26.2
-pytest==7.4.3
 matplotlib==3.8.2
 networkx==3.2.1
 scipy==1.11.4
 Pillow==10.3.0
 tqdm==4.66.1
 pandas==2.1.4
-jax==0.4.23
-flax==0.7.5
+jax==0.4.30  # cpu version
+# jax[cuda12]==0.4.30  # gpu version
+flax==0.8.5
 gymnax==0.0.6
 PyYAML==6.0.1
 gymnasium==0.29.1
-PyYAML==6.0.1
+
+# JAX Profiling (optional)
+# tensorflow==2.18.0 
+# tensorboard_plugin_profile==2.15
+tabulate==0.9
+
+# Development tools (optional)
+pytest==8.0.1
+pre-commit==3.6.2
+
+# Visualization
+matplotlib==3.8.2
+networkx==3.2.1
+Pillow==10.3.0

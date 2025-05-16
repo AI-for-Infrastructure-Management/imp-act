@@ -164,6 +164,7 @@ class JaxRoadEnvironment(environment.Environment):
         (
             self.base_total_travel_time,
             self.initial_edge_volumes,
+            self.initial_edge_travel_times,
         ) = self._get_total_travel_time_and_edge_volumes(
             state,
             self.base_edge_volumes,
@@ -669,7 +670,7 @@ class JaxRoadEnvironment(environment.Environment):
         # 5. Calculate total travel time
         total_travel_time = jnp.sum(edge_travel_times * edge_volumes)
 
-        return total_travel_time, edge_volumes
+        return total_travel_time, edge_volumes, edge_travel_times
 
     @partial(jax.jit, static_argnums=0)
     def _get_worst_case_travel_time(self, state, max_duration):
@@ -680,7 +681,11 @@ class JaxRoadEnvironment(environment.Environment):
             lambda: self.base_edge_volumes,
         )
 
-        (worst_case_ttt, edge_volumes) = self._get_total_travel_time_and_edge_volumes(
+        (
+            worst_case_ttt,
+            edge_volumes,
+            edge_travel_times,
+        ) = self._get_total_travel_time_and_edge_volumes(
             state, initial_volumes, self.traffic_assignment_max_iterations
         )
 
@@ -688,7 +693,7 @@ class JaxRoadEnvironment(environment.Environment):
             1 - max_duration
         ) * self.base_total_travel_time + max_duration * worst_case_ttt
 
-        return total_travel_time
+        return total_travel_time, (edge_travel_times, edge_volumes)
 
     @partial(vmap, in_axes=(None, 0, 0, 0, 0))
     def _get_next_belief(
@@ -901,10 +906,13 @@ class JaxRoadEnvironment(environment.Environment):
 
         # Worst-case travel time
         max_duration = jnp.max(self.action_durations[constrained_action])
-        total_travel_time = jax.lax.cond(
+        total_travel_time, (travel_times, edge_volumes) = jax.lax.cond(
             max_duration > 0,
             lambda args: self._get_worst_case_travel_time(*args),
-            lambda _: self.base_total_travel_time,
+            lambda _: (
+                self.base_total_travel_time,
+                (self.initial_edge_travel_times, self.initial_edge_volumes),
+            ),
             (state, max_duration),
         )
         travel_time_reward = self.travel_time_reward_factor * (
@@ -933,6 +941,8 @@ class JaxRoadEnvironment(environment.Environment):
         # info
         info = {
             "total_travel_time": total_travel_time,
+            "travel_times": travel_times,
+            "traffic_volumes": edge_volumes,
             "reward_elements": {
                 "travel_time_reward": travel_time_reward,
                 "maintenance_reward": maintenance_reward,

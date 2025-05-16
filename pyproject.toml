@@ -8,8 +8,6 @@ readme = "README.md"
 packages = [
     {include = "imp_act"},
     {include = "imp_act/environments"},
-    {include = "imp_act/policies"},
-    {include = "imp_act/wrappers"}
 ]
 
 [tool.poetry.dependencies]
@@ -23,15 +21,15 @@ tqdm="~4.66.1"
 [tool.poetry.group.jax]
 optional = true
 [tool.poetry.group.jax.dependencies]
-jax=[{extras = ["cpu"], version="~0.4.26"}]
-flax="~0.8.4"
+jax=[{extras = ["cpu"], version="~0.4.30"}]
+flax="~0.8.5"
 gymnax="~0.0.6"
 
 [tool.poetry.group.jax_gpu]
 optional = true
 [tool.poetry.group.jax_gpu.dependencies]
-jax=[{extras = ["cuda12"], version="~0.4.26"}]
-flax="~0.8.4"
+jax=[{extras = ["cuda12"], version="~0.4.30"}]
+flax="~0.8.5"
 gymnax="~0.0.6"
 
 [tool.poetry.group.jax_profiling]
