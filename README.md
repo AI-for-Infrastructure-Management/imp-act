@@ -47,12 +47,9 @@ If you prefer to use pip, you can install the required packages as follows:
 ```bash
 pip install -r requirements/requirements.txt
 pip install -e .
-```
+``` 
 
-### 4. Download Datasets
-    
-
-### 5. Verify Installation (Optional)
+### 4. Verify Installation (Optional)
 To verify that the installation was successful, you can run the following command:
 ```bash
 # ensure you are in the root directory of the repository, and pytest is installed
