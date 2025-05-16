@@ -681,10 +681,12 @@ class JaxRoadEnvironment(environment.Environment):
             lambda: self.base_edge_volumes,
         )
 
-        (worst_case_ttt, edge_volumes, edge_travel_times) = (
-            self._get_total_travel_time_and_edge_volumes(
-                state, initial_volumes, self.traffic_assignment_max_iterations
-            )
+        (
+            worst_case_ttt,
+            edge_volumes,
+            edge_travel_times,
+        ) = self._get_total_travel_time_and_edge_volumes(
+            state, initial_volumes, self.traffic_assignment_max_iterations
         )
 
         total_travel_time = (
