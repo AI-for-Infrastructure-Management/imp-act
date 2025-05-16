@@ -670,6 +670,7 @@ def test_get_travel_time(toy_environment_2, toy_environment_2_jax):
         (
             total_travel_time_jax,
             edge_volumes_jax,
+            edge_travel_times,
         ) = toy_environment_2_jax._get_total_travel_time_and_edge_volumes(
             jax_state,
             toy_environment_2_jax.base_edge_volumes,
