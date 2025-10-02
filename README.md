@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="figures/logo.svg" alt="IMP-act Logo" width="50%">
+  <img src="figures/logo.png" alt="IMP-act Logo" width="50%">
 </p>
 
 # IMP-act: Benchmarking MARL for Infrastructure Management Planning at Scale with JAX
@@ -13,7 +13,7 @@ This repository is the official implementation of the research and environments 
     * Starter Kit: [AI-for-Infrastructure-Management/imp-act-starter-kit](https://github.com/AI-for-Infrastructure-Management/imp-act-starter-kit)
 
 <p align="center">
-  <img src="figures/logo+MARL_repos.svg" alt="IMP-act and MARL Repositories" width="70%">
+  <img src="figures/logo+MARL_repos.png" alt="IMP-act and MARL Repositories" width="60%">
 </p>
 
 * **Reproducibility:** Please refer to `imp-act-JaxMARL` for a full reproduction guide of all results presented in the paper.
