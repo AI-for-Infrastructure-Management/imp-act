@@ -1,12 +1,34 @@
+<p align="center">
+  <img src="figures/logo.svg" alt="IMP-act Logo" width="50%">
+</p>
+
 # IMP-act: Benchmarking MARL for Infrastructure Management Planning at Scale with JAX
 
-This repository is the official implementation of the research and environments described in "IMP-act: Benchmarking MARL for Infrastructure Management Planning at Scale with JAX". 
+This repository is the official implementation of the research and environments described in "IMP-act: Benchmarking MARL for Infrastructure Management Planning at Scale with JAX".
 
 * **Code Repositories:**
     * Main IMP-act Environment: [AI-for-Infrastructure-Management/imp-act](https://github.com/AI-for-Infrastructure-Management/imp-act)
     * JaxMARL Adaptation for IMP-act: [AI-for-Infrastructure-Management/imp-act-JaxMARL](https://github.com/AI-for-Infrastructure-Management/imp-act-JaxMARL)
+    * EPyMARL Adaptation for IMP-act: [AI-for-Infrastructure-Management/imp-act-EPyMARL](https://github.com/AI-for-Infrastructure-Management/imp-act-EPyMARL)
     * Starter Kit: [AI-for-Infrastructure-Management/imp-act-starter-kit](https://github.com/AI-for-Infrastructure-Management/imp-act-starter-kit)
+
+<p align="center">
+  <img src="figures/logo+MARL_repos.svg" alt="IMP-act and MARL Repositories" width="70%">
+</p>
+
 * **Reproducibility:** Please refer to `imp-act-JaxMARL` for a full reproduction guide of all results presented in the paper.
+
+## Environment Backends
+
+IMP-act provides two environment backends:
+
+- **NumPy environments**  
+  Ideal for fast prototyping on smaller environments. Ideal for integration with PyTorch-based MARL frameworks such as PyMARL/EPyMARL.
+
+- **JAX environments**  
+  Highly optimized for scalability and parallelization on GPUs/TPUs. Used for large-scale experiments in our paper and for integration with JaxMARL.
+
+Both environments have been tested for equivalence via unit tests (see `tests/test_jax_environment.py` directory).
 
 ## Installation
 
@@ -105,6 +127,13 @@ Best performance per algorithm in terms of expected return, 95% CI, and required
 ## Contribution guidelines
 Guidelines are outlined in the [contribution file](CONTRIBUTING.md).
 
+## Extending the Environments
+Researchers can modify simulation parameters through the environment configuration files. Each environment has a YAML configuration files under `imp_act/environments/presets/`, where budgets, traffic assignment parameters, maintenance parameters etc. can be modified. 
+
+In addition to modifying these settings, researchers can also add new maps. We provide a script [`create_large_graph.py`](imp_act/environments/dev/create_large_graph.py), located in `imp_act/environments/dev/`, which can:
+- Export subgraphs from the European road network by coordinate range.
+- Export full country-level graphs (e.g., `-c BE` for Belgium).
+- Optionally attach traffic demand data to the new network.
 
 ## License
 This project is licensed under the terms of the Apache Version 2.0 license. See the [LICENSE](LICENSE) file for details.
