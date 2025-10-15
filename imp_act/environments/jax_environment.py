@@ -729,15 +729,18 @@ class JaxRoadEnvironment(environment.Environment):
             actions, state.worst_obs_counter
         )
 
-        # 2. Budget constraint
-        key, key_budget = jax.random.split(key)
-        (
-            constrained_actions,
-            new_budget,
-            budget_constraint_applied,
-        ) = self._apply_budget_constraint(
-            key_budget, state, constrained_actions, forced_repair_flag
-        )
+        #! DISABLE BUDGET CONSTRAINT IN THIS BRANCH
+        # # 2. Budget constraint
+        # key, key_budget = jax.random.split(key)
+        # (
+        #     constrained_actions,
+        #     new_budget,
+        #     budget_constraint_applied,
+        # ) = self._apply_budget_constraint(
+        #     key_budget, state, constrained_actions, forced_repair_flag
+        # )
+        new_budget = state.budget_remaining
+        budget_constraint_applied = False
 
         return (
             constrained_actions,
