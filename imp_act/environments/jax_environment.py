@@ -949,6 +949,7 @@ class JaxRoadEnvironment(environment.Environment):
             "returns": returns,
             "budget_constraints_applied": budget_constraint_applied,
             "forced_replace_constraint_applied": jnp.sum(forced_repair_flag),
+            "forced_repair_flags": forced_repair_flag,
             "applied_actions": constrained_action,
         }
 
