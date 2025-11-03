@@ -3,8 +3,4 @@ include:
   override: False
 
 traffic:
-  travel_time_reward_factor: 0.0
-  traffic_assignment:
-    reuse_initial_volumes: true 
-    initial_max_iterations: 5
-    max_iterations: 0
+  SIMULATE_TRAFFIC: false

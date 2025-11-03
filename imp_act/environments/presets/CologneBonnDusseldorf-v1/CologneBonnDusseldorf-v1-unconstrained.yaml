@@ -1,5 +1,6 @@
 include:
   path: "./CologneBonnDusseldorf-v1.yaml"
   override: False
+
 maintenance:
-  budget_amount: 1_000_000_000_000
+  ENFORCE_BUDGET_CONSTRAINT: false
