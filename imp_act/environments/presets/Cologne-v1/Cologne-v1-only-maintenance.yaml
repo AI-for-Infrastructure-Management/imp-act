@@ -1,5 +1,5 @@
 include:
-  path: "../ToyExample-v2/ToyExample-v2.yaml"
+  path: "./Cologne-v1.yaml"
   override: False
 
 traffic:

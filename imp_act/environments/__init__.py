@@ -1,3 +1,4 @@
+from pathlib import Path
 from .environment_loader import EnvironmentLoader
 from .registry import Registry
 
@@ -12,32 +13,29 @@ def jax_environment_loader(filename):
     return EnvironmentLoader(filename).to_jax()
 
 
-environment_path = __path__[0]
+environment_path = Path(__file__).parent
+presets_root = environment_path / "presets"
 
-presets = [
-    "ToyExample-v2",
-    "ToyExample-v2-unconstrained",
-    "ToyExample-v2-only-maintenance",
-    "Cologne-v1",
-    "Cologne-v1-unconstrained",
-    "Cologne-v1-only-maintenance",
-    "CologneBonnDusseldorf-v1",
-    "CologneBonnDusseldorf-v1-unconstrained",
-    "CologneBonnDusseldorf-v1-only-maintenance",
-]
+# get all preset YAMLs
+for preset_dir in sorted(presets_root.iterdir()):
+    if not preset_dir.is_dir() or preset_dir.name == "common":
+        continue
 
-for name in presets:
+    # Loop through all YAML files in each map directory
+    for yaml_file in sorted(preset_dir.glob("*.yaml")):
+        name = yaml_file.stem  # e.g. "Cologne-v1-unconstrained"
+        yaml_path = str(yaml_file.resolve())
 
-    # Numpy environments
-    Registry().register(
-        name=name,
-        cls=numpy_environment_loader,
-        parameters={"filename": f"{environment_path}/presets/{name}/{name}.yaml"},
-    )
+        # Numpy environments
+        Registry().register(
+            name=name,
+            cls=numpy_environment_loader,
+            parameters={"filename": yaml_path},
+        )
 
-    # JAX environments
-    Registry().register(
-        name=f"{name}-jax",
-        cls=jax_environment_loader,
-        parameters={"filename": f"{environment_path}/presets/{name}/{name}.yaml"},
-    )
+        # JAX environments
+        Registry().register(
+            name=f"{name}-jax",
+            cls=jax_environment_loader,
+            parameters={"filename": yaml_path},
+        )

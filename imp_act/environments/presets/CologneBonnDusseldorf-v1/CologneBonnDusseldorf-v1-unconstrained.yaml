@@ -1,5 +1,5 @@
 include:
-  path: "../CologneBonnDusseldorf-v1/CologneBonnDusseldorf-v1.yaml"
+  path: "./CologneBonnDusseldorf-v1.yaml"
   override: False
 maintenance:
   budget_amount: 1_000_000_000_000
