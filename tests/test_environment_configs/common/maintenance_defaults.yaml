@@ -53,10 +53,10 @@ reward:
     type: "list"
     # Shape: S
     list: [0, -2_000_000, -2_000_000, -7_500_000, -42_000_000]
-ENFORCE_BUDGET_CONSTRAINT: true  #! Whether to apply budget limits, if false, unlimited budget
+enforce_budget_constraint: true  # Whether to apply budget limits, if false, unlimited budget
 budget_amount: 75000000
 budget_renewal_interval: 5
-ENFORCE_FORCED_REPAIR_CONSTRAINT: true  #! Whether to apply forced repair constraint
+enforce_forced_repair_constraint: true  # Whether to apply forced repair constraint
 forced_replace_worst_observation_count: 2
 action_duration_factors:
   type: "list"
