@@ -95,12 +95,10 @@ def test_trips_initialization(cologne_environment, cologne_environment_jax):
 
 
 @pytest.mark.skipif(jax is None, reason="JAX is not installed.")
-def test_budget_action_costs_jax(
-    toy_environment_2_unconstrained, toy_environment_2_unconstrained_jax
-):
+def test_budget_action_costs_jax(toy_environment_2, toy_environment_2_jax):
     """Test if budget costs match between JAX and NumPy implementations."""
-    numpy_env = toy_environment_2_unconstrained
-    jax_env = toy_environment_2_unconstrained_jax
+    numpy_env = toy_environment_2
+    jax_env = toy_environment_2_jax
 
     # Get random key
     key_seed = time.time_ns()
@@ -468,9 +466,7 @@ def test_mean_rewards_jax(toy_environment_2, toy_environment_2_jax):
         numpy_comp_se = numpy_vals.std() / np.sqrt(n_episodes)
         jax_comp_se = jax_vals.std() / np.sqrt(n_episodes)
         comp_rtol = (
-            1.96
-            * np.sqrt(numpy_comp_se**2 + jax_comp_se**2)
-            / abs(numpy_vals.mean())
+            1.96 * np.sqrt(numpy_comp_se**2 + jax_comp_se**2) / abs(numpy_vals.mean())
         )
 
         rel_diff = abs(numpy_vals.mean() - jax_vals.mean()) / abs(numpy_vals.mean())
@@ -495,9 +491,7 @@ def test_mean_rewards_jax(toy_environment_2, toy_environment_2_jax):
         numpy_comp_se = numpy_vals.std() / np.sqrt(n_episodes)
         jax_comp_se = jax_vals.std() / np.sqrt(n_episodes)
         comp_rtol = (
-            1.96
-            * np.sqrt(numpy_comp_se**2 + jax_comp_se**2)
-            / abs(numpy_vals.mean())
+            1.96 * np.sqrt(numpy_comp_se**2 + jax_comp_se**2) / abs(numpy_vals.mean())
         )
 
         assert np.allclose(
