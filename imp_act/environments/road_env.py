@@ -108,6 +108,7 @@ class RoadSegment:
             self.worst_observation_counter = 0
         else:
             reward = self.get_action_reward(action=action)
+        reward *= self.segment_length * MILES_PER_KILOMETER
 
         self.state = next_deterioration_state
 
@@ -163,10 +164,7 @@ class RoadSegment:
         )
 
     def get_action_reward(self, action):
-        reward = self.state_action_reward[action][self.state]
-        reward *= self.segment_length * MILES_PER_KILOMETER
-
-        return reward
+        return self.state_action_reward[action][self.state]
 
     def get_terminal_reward(self):
         return (

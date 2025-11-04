@@ -47,12 +47,9 @@ If you prefer to use pip, you can install the required packages as follows:
 ```bash
 pip install -r requirements/requirements.txt
 pip install -e .
-```
+``` 
 
-### 4. Download Datasets
-    
-
-### 5. Verify Installation (Optional)
+### 4. Verify Installation (Optional)
 To verify that the installation was successful, you can run the following command:
 ```bash
 # ensure you are in the root directory of the repository, and pytest is installed
@@ -107,7 +104,7 @@ Guidelines are outlined in the [contribution file](CONTRIBUTING.md).
 
 
 ## License
-This project is licensed under the terms of the Apache Version 2.0 license. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the terms of the Apache Licence Version 2.0. See the [LICENSE](LICENSE) file for details.
 
 ## Citation
 If you use this code in your research, please cite our paper as soon as it is published. The BibTeX entry will be provided here.

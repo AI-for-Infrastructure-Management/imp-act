@@ -360,11 +360,9 @@ class JaxRoadEnvironment(environment.Environment):
         reward = jax.lax.cond(
             forced_repair_mask,
             lambda: self.rewards_table[-1][-1],
-            lambda: self.rewards_table[action, dam_state]
-            * segment_length
-            * MILES_PER_KILOMETER,
+            lambda: self.rewards_table[action, dam_state],
         )
-        return reward
+        return reward * segment_length * MILES_PER_KILOMETER
 
     @partial(jax.jit, static_argnums=(0,))
     def _get_campaign_reward(self, action: jnp.array) -> float:
@@ -750,7 +748,7 @@ class JaxRoadEnvironment(environment.Environment):
     @partial(vmap, in_axes=(None, 0, 0))
     def _apply_forced_repair_constraint(
         self, action: int, worst_obs_counter: int
-    ) -> int:
+    ) -> Tuple[int, bool]:
         # if worst_obs_counter > forced_replace_worst_observation_count
         # then action = replace
 
@@ -765,7 +763,7 @@ class JaxRoadEnvironment(environment.Environment):
     @partial(jax.jit, static_argnums=0)
     def _get_budget_action_cost(
         self, state: EnvState, action: jnp.array, forced_repair_mask: jnp.array
-    ) -> float:
+    ) -> jnp.array:
         """Calculate total cost of actions across all segments."""
         # Get base costs from rewards table
         costs = -self._get_rewards_from_table(
@@ -951,6 +949,7 @@ class JaxRoadEnvironment(environment.Environment):
             "returns": returns,
             "budget_constraints_applied": budget_constraint_applied,
             "forced_replace_constraint_applied": jnp.sum(forced_repair_flag),
+            "forced_repair_flags": forced_repair_flag,
             "applied_actions": constrained_action,
         }
 
