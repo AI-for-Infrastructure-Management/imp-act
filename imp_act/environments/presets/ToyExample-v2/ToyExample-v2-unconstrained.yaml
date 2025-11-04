@@ -3,4 +3,4 @@ include:
   override: False
 
 maintenance:
-  ENFORCE_BUDGET_CONSTRAINT: false
+  enforce_budget_constraint: false

@@ -69,8 +69,8 @@ class JaxRoadEnvironment(environment.Environment):
         self.idxs_map = self._compute_idxs_map(self.segment_idxs)
 
         ## 2) Traffic modeling
-        self.SIMULATE_TRAFFIC = config["traffic"]["SIMULATE_TRAFFIC"]
-        if self.SIMULATE_TRAFFIC:
+        self.simulate_traffic = config["traffic"]["simulate_traffic"]
+        if self.simulate_traffic:
             self.travel_time_reward_factor = config["traffic"][
                 "travel_time_reward_factor"
             ]
@@ -116,10 +116,10 @@ class JaxRoadEnvironment(environment.Environment):
         self.initial_damage_prob = jnp.array(imp_conf["initial_damage_distribution"])
         self.num_damage_states = imp_conf["deterioration"].shape[-1]
         self.num_observations = imp_conf["observation"].shape[-1]
-        self.ENFORCE_FORCED_REPAIR_CONSTRAINT = imp_conf[
-            "ENFORCE_FORCED_REPAIR_CONSTRAINT"
+        self.enforce_forced_repair_constraint = imp_conf[
+            "enforce_forced_repair_constraint"
         ]
-        if self.ENFORCE_FORCED_REPAIR_CONSTRAINT:
+        if self.enforce_forced_repair_constraint:
             self.forced_replace_worst_observation_count = imp_conf[
                 "forced_replace_worst_observation_count"
             ]
@@ -155,8 +155,8 @@ class JaxRoadEnvironment(environment.Environment):
             imp_conf["reward"]["terminal_state_reward"]
         )
         # Budget parameters
-        self.ENFORCE_BUDGET_CONSTRAINT = imp_conf["ENFORCE_BUDGET_CONSTRAINT"]
-        if self.ENFORCE_BUDGET_CONSTRAINT:
+        self.enforce_budget_constraint = imp_conf["enforce_budget_constraint"]
+        if self.enforce_budget_constraint:
             self.budget_amount = jnp.array(float(imp_conf["budget_amount"]))
             self.budget_renewal_interval = imp_conf["budget_renewal_interval"]
         else:
@@ -167,7 +167,7 @@ class JaxRoadEnvironment(environment.Environment):
         key = jax.random.PRNGKey(9898)  # dummy key, doesn't matter
         _, state = self.reset(key)
 
-        if self.SIMULATE_TRAFFIC:
+        if self.simulate_traffic:
             # Base total travel time
             # base volumes such as cars, always on the road
             self.base_volumes = (
@@ -740,7 +740,7 @@ class JaxRoadEnvironment(environment.Environment):
         """Apply all action constraints in sequence."""
         # 1. Forced repair constraint
         # Update worst observation counter
-        if self.ENFORCE_FORCED_REPAIR_CONSTRAINT:
+        if self.enforce_forced_repair_constraint:
             constrained_actions, forced_repair_flag = (
                 self._apply_forced_repair_constraint(actions, state.worst_obs_counter)
             )
@@ -749,7 +749,7 @@ class JaxRoadEnvironment(environment.Environment):
             forced_repair_flag = jnp.full_like(actions, False)
 
         # 2. Budget constraint
-        if self.ENFORCE_BUDGET_CONSTRAINT:
+        if self.enforce_budget_constraint:
             key, key_budget = jax.random.split(key)
             (
                 constrained_actions,
@@ -921,7 +921,7 @@ class JaxRoadEnvironment(environment.Environment):
         )
 
         ## Traffic modeling
-        if self.SIMULATE_TRAFFIC:
+        if self.simulate_traffic:
             base_travel_time = self.btt_table[constrained_action] * self.initial_btts
             capacity = self.capacity_table[constrained_action] * self.initial_capacities
 
@@ -986,7 +986,7 @@ class JaxRoadEnvironment(environment.Environment):
         }
 
         # Update budget at renewal interval
-        if self.ENFORCE_BUDGET_CONSTRAINT:
+        if self.enforce_budget_constraint:
             new_budget = jax.lax.cond(
                 self.get_budget_remaining_time(timestep)
                 == self.budget_renewal_interval,

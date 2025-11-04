@@ -261,10 +261,10 @@ class RoadEnvironment:
     ):
         self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = config["maintenance"]["max_timesteps"]
-        self.ENFORCE_FORCED_REPAIR_CONSTRAINT = config["maintenance"][
-            "ENFORCE_FORCED_REPAIR_CONSTRAINT"
+        self.enforce_forced_repair_constraint = config["maintenance"][
+            "enforce_forced_repair_constraint"
         ]
-        if self.ENFORCE_FORCED_REPAIR_CONSTRAINT:
+        if self.enforce_forced_repair_constraint:
             self.forced_replace_worst_observation_count = config["maintenance"][
                 "forced_replace_worst_observation_count"
             ]
@@ -331,10 +331,10 @@ class RoadEnvironment:
             graph_edge["road_edge"] = road_edge
 
         # Budget parameters
-        self.ENFORCE_BUDGET_CONSTRAINT = config["maintenance"][
-            "ENFORCE_BUDGET_CONSTRAINT"
+        self.enforce_budget_constraint = config["maintenance"][
+            "enforce_budget_constraint"
         ]
-        if self.ENFORCE_BUDGET_CONSTRAINT:
+        if self.enforce_budget_constraint:
             self.budget_amount = config["maintenance"]["budget_amount"]
             assert type(self.budget_amount) in [int, float]
             self.budget_amount = float(self.budget_amount)
@@ -347,8 +347,8 @@ class RoadEnvironment:
             self.budget_renewal_interval = self.max_timesteps + 1
 
         # Traffic assignment parameters
-        self.SIMULATE_TRAFFIC = config["traffic"]["SIMULATE_TRAFFIC"]
-        if self.SIMULATE_TRAFFIC:
+        self.simulate_traffic = config["traffic"]["simulate_traffic"]
+        if self.simulate_traffic:
             ta_conf = config["traffic"]["traffic_assignment"]
             self.traffic_assigmment_reuse_initial_volumes = ta_conf[
                 "reuse_initial_volumes"
@@ -368,7 +368,7 @@ class RoadEnvironment:
 
         self.reset(reset_edges=False)
 
-        if self.SIMULATE_TRAFFIC:
+        if self.simulate_traffic:
             self.base_traffic_factor = config["traffic"]["base_traffic_factor"]
 
             for edge in self.graph.es:
@@ -517,7 +517,7 @@ class RoadEnvironment:
             for segment in edge["road_edge"].segments:
                 action_durations.append(segment.action_duration)
 
-        if self.SIMULATE_TRAFFIC:
+        if self.simulate_traffic:
             max_action_duration = max(action_durations)
 
             if max_action_duration > 0:
@@ -550,7 +550,7 @@ class RoadEnvironment:
 
         # Update budget at renewal interval
         if (
-            self.ENFORCE_BUDGET_CONSTRAINT
+            self.enforce_budget_constraint
             and self.timestep % self.budget_renewal_interval == 0
         ):
             self.current_budget = self.budget_amount
@@ -754,9 +754,9 @@ class RoadEnvironment:
     def _apply_action_constraints(self, actions):
         actions = [action.copy() for action in actions]
 
-        if self.ENFORCE_FORCED_REPAIR_CONSTRAINT:
+        if self.enforce_forced_repair_constraint:
             actions = self._apply_forced_repair_constraint(actions)
-        if self.ENFORCE_BUDGET_CONSTRAINT:
+        if self.enforce_budget_constraint:
             actions = self._apply_budget_constraint(actions)
 
         return actions

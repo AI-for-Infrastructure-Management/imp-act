@@ -3,4 +3,4 @@ include:
   override: False
 
 traffic:
-  SIMULATE_TRAFFIC: false
+  simulate_traffic: false
