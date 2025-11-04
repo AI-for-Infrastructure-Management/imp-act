@@ -1,3 +1,5 @@
+SIMULATE_TRAFFIC: true #! Whether to simulate traffic in the environment, no traffic-based rewards if false
+
 base_traffic_factor: 0.7
 traffic_assignment:
   reuse_initial_volumes: true
