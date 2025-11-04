@@ -84,9 +84,11 @@ class JaxRoadEnvironment(environment.Environment):
             self.btt_table = jnp.array(config["traffic"]["base_travel_time_factors"])
 
             # 2.2) Network traffic
-            self.trips, self.trip_sources, self.trip_destinations = (
-                self._extract_trip_info(config)
-            )
+            (
+                self.trips,
+                self.trip_sources,
+                self.trip_destinations,
+            ) = self._extract_trip_info(config)
 
             # 2.3) Traffic assignment
             ta_conf = config["traffic"]["traffic_assignment"]
@@ -156,12 +158,9 @@ class JaxRoadEnvironment(environment.Environment):
         )
         # Budget parameters
         self.enforce_budget_constraint = imp_conf["enforce_budget_constraint"]
-        if self.enforce_budget_constraint:
-            self.budget_amount = jnp.array(float(imp_conf["budget_amount"]))
-            self.budget_renewal_interval = imp_conf["budget_renewal_interval"]
-        else:
-            self.budget_amount = jnp.inf
-            self.budget_renewal_interval = self.max_timesteps + 1
+
+        self.budget_amount = jnp.array(float(imp_conf["budget_amount"]))
+        self.budget_renewal_interval = imp_conf["budget_renewal_interval"]
 
         ## Environment properties
         key = jax.random.PRNGKey(9898)  # dummy key, doesn't matter
@@ -741,9 +740,10 @@ class JaxRoadEnvironment(environment.Environment):
         # 1. Forced repair constraint
         # Update worst observation counter
         if self.enforce_forced_repair_constraint:
-            constrained_actions, forced_repair_flag = (
-                self._apply_forced_repair_constraint(actions, state.worst_obs_counter)
-            )
+            (
+                constrained_actions,
+                forced_repair_flag,
+            ) = self._apply_forced_repair_constraint(actions, state.worst_obs_counter)
         else:
             constrained_actions = actions
             forced_repair_flag = jnp.full_like(actions, False)
@@ -759,7 +759,11 @@ class JaxRoadEnvironment(environment.Environment):
                 key_budget, state, constrained_actions, forced_repair_flag
             )
         else:
-            new_budget = state.budget_remaining
+            new_budget = state.budget_remaining - jnp.sum(
+                self._get_budget_action_cost(
+                    state, constrained_actions, forced_repair_flag
+                )
+            )
             budget_constraint_applied = False
 
         return (
@@ -986,14 +990,12 @@ class JaxRoadEnvironment(environment.Environment):
         }
 
         # Update budget at renewal interval
-        if self.enforce_budget_constraint:
-            new_budget = jax.lax.cond(
-                self.get_budget_remaining_time(timestep)
-                == self.budget_renewal_interval,
-                lambda _: self.budget_amount,
-                lambda x: x,
-                new_budget,
-            )
+        new_budget = jax.lax.cond(
+            self.get_budget_remaining_time(timestep) == self.budget_renewal_interval,
+            lambda _: self.budget_amount,
+            lambda x: x,
+            new_budget,
+        )
 
         next_state = EnvState(
             damage_state=damage_state,

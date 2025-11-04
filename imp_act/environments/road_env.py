@@ -334,17 +334,11 @@ class RoadEnvironment:
         self.enforce_budget_constraint = config["maintenance"][
             "enforce_budget_constraint"
         ]
-        if self.enforce_budget_constraint:
-            self.budget_amount = config["maintenance"]["budget_amount"]
-            assert type(self.budget_amount) in [int, float]
-            self.budget_amount = float(self.budget_amount)
-            self.budget_renewal_interval = config["maintenance"][
-                "budget_renewal_interval"
-            ]
-            assert type(self.budget_renewal_interval) is int
-        else:
-            self.budget_amount = float("inf")
-            self.budget_renewal_interval = self.max_timesteps + 1
+        self.budget_amount = config["maintenance"]["budget_amount"]
+        assert type(self.budget_amount) in [int, float]
+        self.budget_amount = float(self.budget_amount)
+        self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
+        assert type(self.budget_renewal_interval) is int
 
         # Traffic assignment parameters
         self.simulate_traffic = config["traffic"]["simulate_traffic"]
@@ -549,10 +543,7 @@ class RoadEnvironment:
         self.timestep += 1
 
         # Update budget at renewal interval
-        if (
-            self.enforce_budget_constraint
-            and self.timestep % self.budget_renewal_interval == 0
-        ):
+        if self.timestep % self.budget_renewal_interval == 0:
             self.current_budget = self.budget_amount
 
         observation = self._get_observation()
@@ -756,8 +747,8 @@ class RoadEnvironment:
 
         if self.enforce_forced_repair_constraint:
             actions = self._apply_forced_repair_constraint(actions)
-        if self.enforce_budget_constraint:
-            actions = self._apply_budget_constraint(actions)
+
+        actions = self._apply_budget_constraint(actions)
 
         return actions
 
@@ -829,41 +820,42 @@ class RoadEnvironment:
             - total_future_upfront_cost * (self._get_budget_remaining_time() - 1)
         )
 
-        assert remaining_budget >= 0, "Remaining budget is negative"
+        if self.enforce_budget_constraint:
+            assert remaining_budget >= 0, "Remaining budget is negative"
 
-        # if we do not have enough budget to take all actions,
-        # we prioritize actions and select a random possible set of actions
-        # that satisfies the budget
-        if total_adjusted_cost > remaining_budget:
+            # if we do not have enough budget to take all actions,
+            # we prioritize actions and select a random possible set of actions
+            # that satisfies the budget
+            if total_adjusted_cost > remaining_budget:
 
-            self.budget_constraint_applied = True
+                self.budget_constraint_applied = True
 
-            edge_indices = np.array(edge_indices)
-            segment_indices = np.array(segment_indices)
-            adjusted_costs = np.array(adjusted_costs)
+                edge_indices = np.array(edge_indices)
+                segment_indices = np.array(segment_indices)
+                adjusted_costs = np.array(adjusted_costs)
 
-            # Shuffle the costs to randomly select valid actions
-            indices = np.arange(len(adjusted_costs))
-            self.random_generator.shuffle(indices)
+                # Shuffle the costs to randomly select valid actions
+                indices = np.arange(len(adjusted_costs))
+                self.random_generator.shuffle(indices)
 
-            shuffled_costs = adjusted_costs[indices]
-            cumulative_costs = np.cumsum(shuffled_costs)
+                shuffled_costs = adjusted_costs[indices]
+                cumulative_costs = np.cumsum(shuffled_costs)
 
-            # Find the index where the cumulative costs exceed the budget
-            cutoff_index = np.searchsorted(
-                cumulative_costs, remaining_budget, side="right"
-            )
+                # Find the index where the cumulative costs exceed the budget
+                cutoff_index = np.searchsorted(
+                    cumulative_costs, remaining_budget, side="right"
+                )
 
-            # Set the actions that cannot be taken to 0
-            zero_indices = indices[cutoff_index:]
-            adjusted_costs[zero_indices] = 0
-            for idx in zero_indices:
-                if (
-                    not self.graph.es[edge_indices[idx]]["road_edge"]
-                    .segments[segment_indices[idx]]
-                    .forced_repair
-                ):
-                    actions[edge_indices[idx]][segment_indices[idx]] = 0
+                # Set the actions that cannot be taken to 0
+                zero_indices = indices[cutoff_index:]
+                adjusted_costs[zero_indices] = 0
+                for idx in zero_indices:
+                    if (
+                        not self.graph.es[edge_indices[idx]]["road_edge"]
+                        .segments[segment_indices[idx]]
+                        .forced_repair
+                    ):
+                        actions[edge_indices[idx]][segment_indices[idx]] = 0
 
         self.current_budget -= total_upfront_cost + np.sum(adjusted_costs)
 

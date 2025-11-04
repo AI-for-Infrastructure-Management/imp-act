@@ -95,10 +95,12 @@ def test_trips_initialization(cologne_environment, cologne_environment_jax):
 
 
 @pytest.mark.skipif(jax is None, reason="JAX is not installed.")
-def test_budget_action_costs_jax(toy_environment_2, toy_environment_2_jax):
+def test_budget_action_costs_jax(
+    toy_environment_2_unconstrained, toy_environment_2_unconstrained_jax
+):
     """Test if budget costs match between JAX and NumPy implementations."""
-    numpy_env = toy_environment_2
-    jax_env = toy_environment_2_jax
+    numpy_env = toy_environment_2_unconstrained
+    jax_env = toy_environment_2_unconstrained_jax
 
     # Get random key
     key_seed = time.time_ns()
@@ -164,9 +166,11 @@ def test_budget_action_costs_jax(toy_environment_2, toy_environment_2_jax):
             numpy_budget_spent, jax_budget_spent, rtol=1e-5
         ), f"Budget mismatch for action {action}"
 
-        # Check no negative budgets
-        assert numpy_env.current_budget >= 0, "NumPy budget went negative"
-        assert jax_state.budget_remaining >= 0, "JAX budget went negative"
+        # Check no negative budgets if the constraint is enforced
+        if numpy_env.enforce_budget_constraint:
+            assert numpy_env.current_budget >= 0, "NumPy budget went negative"
+        if jax_env.enforce_budget_constraint:
+            assert jax_state.budget_remaining >= 0, "JAX budget went negative"
 
 
 @pytest.mark.skipif(jax is None, reason="JAX is not installed.")
@@ -466,7 +470,9 @@ def test_mean_rewards_jax(toy_environment_2, toy_environment_2_jax):
         numpy_comp_se = numpy_vals.std() / np.sqrt(n_episodes)
         jax_comp_se = jax_vals.std() / np.sqrt(n_episodes)
         comp_rtol = (
-            1.96 * np.sqrt(numpy_comp_se**2 + jax_comp_se**2) / abs(numpy_vals.mean())
+            1.96
+            * np.sqrt(numpy_comp_se**2 + jax_comp_se**2)
+            / abs(numpy_vals.mean())
         )
 
         rel_diff = abs(numpy_vals.mean() - jax_vals.mean()) / abs(numpy_vals.mean())
@@ -491,7 +497,9 @@ def test_mean_rewards_jax(toy_environment_2, toy_environment_2_jax):
         numpy_comp_se = numpy_vals.std() / np.sqrt(n_episodes)
         jax_comp_se = jax_vals.std() / np.sqrt(n_episodes)
         comp_rtol = (
-            1.96 * np.sqrt(numpy_comp_se**2 + jax_comp_se**2) / abs(numpy_vals.mean())
+            1.96
+            * np.sqrt(numpy_comp_se**2 + jax_comp_se**2)
+            / abs(numpy_vals.mean())
         )
 
         assert np.allclose(
