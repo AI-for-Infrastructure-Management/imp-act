@@ -134,11 +134,6 @@ def test_budget_action_costs_jax(
 
         numpy_budget_spent = numpy_initial_budget - numpy_env.current_budget
 
-        jax_state = jax_state.replace(
-            budget_remaining=numpy_budget_spent
-            * jax_env.get_budget_remaining_time(jax_state.timestep)
-        )
-
         jax_initial_budget = jax_state.budget_remaining
 
         key, step_key = jax.random.split(key)
@@ -166,9 +161,11 @@ def test_budget_action_costs_jax(
             numpy_budget_spent, jax_budget_spent, rtol=1e-5
         ), f"Budget mismatch for action {action}"
 
-        # Check no negative budgets
-        assert numpy_env.current_budget >= 0, "NumPy budget went negative"
-        assert jax_state.budget_remaining >= 0, "JAX budget went negative"
+        # Check no negative budgets if the constraint is enforced
+        if numpy_env.enforce_budget_constraint:
+            assert numpy_env.current_budget >= 0, "NumPy budget went negative"
+        if jax_env.enforce_budget_constraint:
+            assert jax_state.budget_remaining >= 0, "JAX budget went negative"
 
 
 @pytest.mark.skipif(jax is None, reason="JAX is not installed.")

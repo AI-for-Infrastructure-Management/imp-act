@@ -261,9 +261,13 @@ class RoadEnvironment:
     ):
         self.random_generator = np.random.default_rng(seed)
         self.max_timesteps = config["maintenance"]["max_timesteps"]
-        self.forced_replace_worst_observation_count = config["maintenance"][
-            "forced_replace_worst_observation_count"
+        self.enforce_forced_repair_constraint = config["maintenance"][
+            "enforce_forced_repair_constraint"
         ]
+        if self.enforce_forced_repair_constraint:
+            self.forced_replace_worst_observation_count = config["maintenance"][
+                "forced_replace_worst_observation_count"
+            ]
 
         self.graph = config["topology"]["graph"]
 
@@ -327,38 +331,50 @@ class RoadEnvironment:
             graph_edge["road_edge"] = road_edge
 
         # Budget parameters
+        self.enforce_budget_constraint = config["maintenance"][
+            "enforce_budget_constraint"
+        ]
         self.budget_amount = config["maintenance"]["budget_amount"]
         assert type(self.budget_amount) in [int, float]
         self.budget_amount = float(self.budget_amount)
         self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
-        assert type(self.budget_renewal_interval) == int
+        assert type(self.budget_renewal_interval) is int
 
         # Traffic assignment parameters
-        ta_conf = config["traffic"]["traffic_assignment"]
-        self.traffic_assigmment_reuse_initial_volumes = ta_conf["reuse_initial_volumes"]
-        self.traffic_assignment_initial_max_iterations = ta_conf[
-            "initial_max_iterations"
-        ]
-        self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
-        self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
-        self.traffic_assignment_update_weight = ta_conf["update_weight"]
+        self.simulate_traffic = config["traffic"]["simulate_traffic"]
+        if self.simulate_traffic:
+            ta_conf = config["traffic"]["traffic_assignment"]
+            self.traffic_assigmment_reuse_initial_volumes = ta_conf[
+                "reuse_initial_volumes"
+            ]
+            self.traffic_assignment_initial_max_iterations = ta_conf[
+                "initial_max_iterations"
+            ]
+            self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
+            self.traffic_assignment_convergence_threshold = ta_conf[
+                "convergence_threshold"
+            ]
+            self.traffic_assignment_update_weight = ta_conf["update_weight"]
 
-        self.travel_time_reward_factor = config["traffic"]["travel_time_reward_factor"]
+            self.travel_time_reward_factor = config["traffic"][
+                "travel_time_reward_factor"
+            ]
 
         self.reset(reset_edges=False)
 
-        self.base_traffic_factor = config["traffic"]["base_traffic_factor"]
+        if self.simulate_traffic:
+            self.base_traffic_factor = config["traffic"]["base_traffic_factor"]
 
-        for edge in self.graph.es:
-            edge["base_volume"] = self.base_traffic_factor * (
-                min([seg.capacity for seg in edge["road_edge"].segments])
+            for edge in self.graph.es:
+                edge["base_volume"] = self.base_traffic_factor * (
+                    min([seg.capacity for seg in edge["road_edge"].segments])
+                )
+
+            self.base_total_travel_time = self._get_total_travel_time(
+                iterations=self.traffic_assignment_initial_max_iterations,
+                set_initial_volumes=False,
             )
-
-        self.base_total_travel_time = self._get_total_travel_time(
-            iterations=self.traffic_assignment_initial_max_iterations,
-            set_initial_volumes=False,
-        )
-        self.initial_edge_volumes = np.array(self.graph.es["volume"])
+            self.initial_edge_volumes = np.array(self.graph.es["volume"])
 
     def reset(self, reset_edges=True):
         """Resets the environment to the initial state.
@@ -495,24 +511,30 @@ class RoadEnvironment:
             for segment in edge["road_edge"].segments:
                 action_durations.append(segment.action_duration)
 
-        max_action_duration = max(action_durations)
+        if self.simulate_traffic:
+            max_action_duration = max(action_durations)
 
-        if max_action_duration > 0:
-            worst_case_total_travel_time = self._get_total_travel_time(
-                iterations=self.traffic_assignment_max_iterations,
-                set_initial_volumes=self.traffic_assigmment_reuse_initial_volumes,
-            )
+            if max_action_duration > 0:
+                worst_case_total_travel_time = self._get_total_travel_time(
+                    iterations=self.traffic_assignment_max_iterations,
+                    set_initial_volumes=self.traffic_assigmment_reuse_initial_volumes,
+                )
 
-            total_travel_time = (
-                (1 - max_action_duration) * self.base_total_travel_time
-                + max_action_duration * worst_case_total_travel_time
+                total_travel_time = (
+                    (1 - max_action_duration) * self.base_total_travel_time
+                    + max_action_duration * worst_case_total_travel_time
+                )
+            else:
+                total_travel_time = self.base_total_travel_time
+
+            travel_time_reward = self.travel_time_reward_factor * (
+                total_travel_time - self.base_total_travel_time
             )
         else:
-            total_travel_time = self.base_total_travel_time
-
-        travel_time_reward = self.travel_time_reward_factor * (
-            total_travel_time - self.base_total_travel_time
-        )
+            self.graph.es["volume"] = 0.0  # set all volumes to zero
+            self.graph.es["travel_time"] = 0.0  # set all travel times to zero
+            total_travel_time = 0.0
+            travel_time_reward = 0
 
         reward = maintenance_reward + travel_time_reward
 
@@ -520,6 +542,7 @@ class RoadEnvironment:
 
         self.timestep += 1
 
+        # Update budget at renewal interval
         if self.timestep % self.budget_renewal_interval == 0:
             self.current_budget = self.budget_amount
 
@@ -722,7 +745,9 @@ class RoadEnvironment:
     def _apply_action_constraints(self, actions):
         actions = [action.copy() for action in actions]
 
-        actions = self._apply_forced_repair_constraint(actions)
+        if self.enforce_forced_repair_constraint:
+            actions = self._apply_forced_repair_constraint(actions)
+
         actions = self._apply_budget_constraint(actions)
 
         return actions
@@ -795,41 +820,42 @@ class RoadEnvironment:
             - total_future_upfront_cost * (self._get_budget_remaining_time() - 1)
         )
 
-        assert remaining_budget >= 0, "Remaining budget is negative"
+        if self.enforce_budget_constraint:
+            assert remaining_budget >= 0, "Remaining budget is negative"
 
-        # if we do not have enough budget to take all actions,
-        # we prioritize actions and select a random possible set of actions
-        # that satisfies the budget
-        if total_adjusted_cost > remaining_budget:
+            # if we do not have enough budget to take all actions,
+            # we prioritize actions and select a random possible set of actions
+            # that satisfies the budget
+            if total_adjusted_cost > remaining_budget:
 
-            self.budget_constraint_applied = True
+                self.budget_constraint_applied = True
 
-            edge_indices = np.array(edge_indices)
-            segment_indices = np.array(segment_indices)
-            adjusted_costs = np.array(adjusted_costs)
+                edge_indices = np.array(edge_indices)
+                segment_indices = np.array(segment_indices)
+                adjusted_costs = np.array(adjusted_costs)
 
-            # Shuffle the costs to randomly select valid actions
-            indices = np.arange(len(adjusted_costs))
-            self.random_generator.shuffle(indices)
+                # Shuffle the costs to randomly select valid actions
+                indices = np.arange(len(adjusted_costs))
+                self.random_generator.shuffle(indices)
 
-            shuffled_costs = adjusted_costs[indices]
-            cumulative_costs = np.cumsum(shuffled_costs)
+                shuffled_costs = adjusted_costs[indices]
+                cumulative_costs = np.cumsum(shuffled_costs)
 
-            # Find the index where the cumulative costs exceed the budget
-            cutoff_index = np.searchsorted(
-                cumulative_costs, remaining_budget, side="right"
-            )
+                # Find the index where the cumulative costs exceed the budget
+                cutoff_index = np.searchsorted(
+                    cumulative_costs, remaining_budget, side="right"
+                )
 
-            # Set the actions that cannot be taken to 0
-            zero_indices = indices[cutoff_index:]
-            adjusted_costs[zero_indices] = 0
-            for idx in zero_indices:
-                if (
-                    not self.graph.es[edge_indices[idx]]["road_edge"]
-                    .segments[segment_indices[idx]]
-                    .forced_repair
-                ):
-                    actions[edge_indices[idx]][segment_indices[idx]] = 0
+                # Set the actions that cannot be taken to 0
+                zero_indices = indices[cutoff_index:]
+                adjusted_costs[zero_indices] = 0
+                for idx in zero_indices:
+                    if (
+                        not self.graph.es[edge_indices[idx]]["road_edge"]
+                        .segments[segment_indices[idx]]
+                        .forced_repair
+                    ):
+                        actions[edge_indices[idx]][segment_indices[idx]] = 0
 
         self.current_budget -= total_upfront_cost + np.sum(adjusted_costs)
 

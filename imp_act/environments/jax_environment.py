@@ -69,31 +69,40 @@ class JaxRoadEnvironment(environment.Environment):
         self.idxs_map = self._compute_idxs_map(self.segment_idxs)
 
         ## 2) Traffic modeling
-        self.travel_time_reward_factor = config["traffic"]["travel_time_reward_factor"]
+        self.simulate_traffic = config["traffic"]["simulate_traffic"]
+        if self.simulate_traffic:
+            self.travel_time_reward_factor = config["traffic"][
+                "travel_time_reward_factor"
+            ]
+            # 2.1) BPR function parameters, capacity, and base travel times
+            self.traffic_alpha = config["traffic"]["bpr_alpha"]
+            self.traffic_beta = config["traffic"]["bpr_beta"]
+            self.base_traffic_factor = config["traffic"]["base_traffic_factor"]
+            # fractions of the initial capacities, multiplied by the initial capacities later
+            self.capacity_table = jnp.array(config["traffic"]["capacity_factors"])
+            # fractions of the initial btts, multiplied by the initial btts later
+            self.btt_table = jnp.array(config["traffic"]["base_travel_time_factors"])
 
-        # 2.1) BPR function parameters, capacity, and base travel times
-        self.traffic_alpha = config["traffic"]["bpr_alpha"]
-        self.traffic_beta = config["traffic"]["bpr_beta"]
-        self.base_traffic_factor = config["traffic"]["base_traffic_factor"]
-        # fractions of the initial capacities, multiplied by the initial capacities later
-        self.capacity_table = jnp.array(config["traffic"]["capacity_factors"])
-        # fractions of the initial btts, multiplied by the initial btts later
-        self.btt_table = jnp.array(config["traffic"]["base_travel_time_factors"])
+            # 2.2) Network traffic
+            (
+                self.trips,
+                self.trip_sources,
+                self.trip_destinations,
+            ) = self._extract_trip_info(config)
 
-        # 2.2) Network traffic
-        self.trips, self.trip_sources, self.trip_destinations = self._extract_trip_info(
-            config
-        )
-
-        # 2.3) Traffic assignment
-        ta_conf = config["traffic"]["traffic_assignment"]
-        self.traffic_assigmment_reuse_initial_volumes = ta_conf["reuse_initial_volumes"]
-        self.traffic_assignment_initial_max_iterations = ta_conf[
-            "initial_max_iterations"
-        ]
-        self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
-        self.traffic_assignment_convergence_threshold = ta_conf["convergence_threshold"]
-        self.traffic_assignment_update_weight = ta_conf["update_weight"]
+            # 2.3) Traffic assignment
+            ta_conf = config["traffic"]["traffic_assignment"]
+            self.traffic_assigmment_reuse_initial_volumes = ta_conf[
+                "reuse_initial_volumes"
+            ]
+            self.traffic_assignment_initial_max_iterations = ta_conf[
+                "initial_max_iterations"
+            ]
+            self.traffic_assignment_max_iterations = ta_conf["max_iterations"]
+            self.traffic_assignment_convergence_threshold = ta_conf[
+                "convergence_threshold"
+            ]
+            self.traffic_assignment_update_weight = ta_conf["update_weight"]
 
         ## 3) Inspection and maintenance modeling
         imp_conf = config["maintenance"]
@@ -109,9 +118,13 @@ class JaxRoadEnvironment(environment.Environment):
         self.initial_damage_prob = jnp.array(imp_conf["initial_damage_distribution"])
         self.num_damage_states = imp_conf["deterioration"].shape[-1]
         self.num_observations = imp_conf["observation"].shape[-1]
-        self.forced_replace_worst_observation_count = imp_conf[
-            "forced_replace_worst_observation_count"
+        self.enforce_forced_repair_constraint = imp_conf[
+            "enforce_forced_repair_constraint"
         ]
+        if self.enforce_forced_repair_constraint:
+            self.forced_replace_worst_observation_count = imp_conf[
+                "forced_replace_worst_observation_count"
+            ]
 
         # 3.2) Action space
         # action durations (shape: A)
@@ -144,6 +157,8 @@ class JaxRoadEnvironment(environment.Environment):
             imp_conf["reward"]["terminal_state_reward"]
         )
         # Budget parameters
+        self.enforce_budget_constraint = imp_conf["enforce_budget_constraint"]
+
         self.budget_amount = jnp.array(float(imp_conf["budget_amount"]))
         self.budget_renewal_interval = imp_conf["budget_renewal_interval"]
 
@@ -151,25 +166,26 @@ class JaxRoadEnvironment(environment.Environment):
         key = jax.random.PRNGKey(9898)  # dummy key, doesn't matter
         _, state = self.reset(key)
 
-        # Base total travel time
-        # base volumes such as cars, always on the road
-        self.base_volumes = (
-            self._gather(state.capacity, fill_value=jnp.inf).min(axis=1)
-            * self.base_traffic_factor
-        )
-        # base edge volumes: base_volume + 1 iteration TA
-        self.base_edge_volumes = self._get_base_edge_volumes(state)
+        if self.simulate_traffic:
+            # Base total travel time
+            # base volumes such as cars, always on the road
+            self.base_volumes = (
+                self._gather(state.capacity, fill_value=jnp.inf).min(axis=1)
+                * self.base_traffic_factor
+            )
+            # base edge volumes: base_volume + 1 iteration TA
+            self.base_edge_volumes = self._get_base_edge_volumes(state)
 
-        # initial edge volumes: base_volume + 1 full TA
-        (
-            self.base_total_travel_time,
-            self.initial_edge_volumes,
-            self.initial_edge_travel_times,
-        ) = self._get_total_travel_time_and_edge_volumes(
-            state,
-            self.base_edge_volumes,
-            self.traffic_assignment_initial_max_iterations,
-        )
+            # initial edge volumes: base_volume + 1 full TA
+            (
+                self.base_total_travel_time,
+                self.initial_edge_volumes,
+                self.initial_edge_travel_times,
+            ) = self._get_total_travel_time_and_edge_volumes(
+                state,
+                self.base_edge_volumes,
+                self.traffic_assignment_initial_max_iterations,
+            )
 
     def _extract_segments_info(self, config: Dict):
         """Extract segments information from the configuration file.
@@ -723,19 +739,32 @@ class JaxRoadEnvironment(environment.Environment):
         """Apply all action constraints in sequence."""
         # 1. Forced repair constraint
         # Update worst observation counter
-        constrained_actions, forced_repair_flag = self._apply_forced_repair_constraint(
-            actions, state.worst_obs_counter
-        )
+        if self.enforce_forced_repair_constraint:
+            (
+                constrained_actions,
+                forced_repair_flag,
+            ) = self._apply_forced_repair_constraint(actions, state.worst_obs_counter)
+        else:
+            constrained_actions = actions
+            forced_repair_flag = jnp.full_like(actions, False)
 
         # 2. Budget constraint
-        key, key_budget = jax.random.split(key)
-        (
-            constrained_actions,
-            new_budget,
-            budget_constraint_applied,
-        ) = self._apply_budget_constraint(
-            key_budget, state, constrained_actions, forced_repair_flag
-        )
+        if self.enforce_budget_constraint:
+            key, key_budget = jax.random.split(key)
+            (
+                constrained_actions,
+                new_budget,
+                budget_constraint_applied,
+            ) = self._apply_budget_constraint(
+                key_budget, state, constrained_actions, forced_repair_flag
+            )
+        else:
+            new_budget = state.budget_remaining - jnp.sum(
+                self._get_budget_action_cost(
+                    state, constrained_actions, forced_repair_flag
+                )
+            )
+            budget_constraint_applied = False
 
         return (
             constrained_actions,
@@ -896,26 +925,33 @@ class JaxRoadEnvironment(environment.Environment):
         )
 
         ## Traffic modeling
-        base_travel_time = self.btt_table[constrained_action] * self.initial_btts
-        capacity = self.capacity_table[constrained_action] * self.initial_capacities
+        if self.simulate_traffic:
+            base_travel_time = self.btt_table[constrained_action] * self.initial_btts
+            capacity = self.capacity_table[constrained_action] * self.initial_capacities
 
-        # udpate state
-        state = state.replace(base_travel_time=base_travel_time, capacity=capacity)
+            # udpate state
+            state = state.replace(base_travel_time=base_travel_time, capacity=capacity)
 
-        # Worst-case travel time
-        max_duration = jnp.max(self.action_durations[constrained_action])
-        total_travel_time, (travel_times, edge_volumes) = jax.lax.cond(
-            max_duration > 0,
-            lambda args: self._get_worst_case_travel_time(*args),
-            lambda _: (
-                self.base_total_travel_time,
-                (self.initial_edge_travel_times, self.initial_edge_volumes),
-            ),
-            (state, max_duration),
-        )
-        travel_time_reward = self.travel_time_reward_factor * (
-            total_travel_time - self.base_total_travel_time
-        )
+            # Worst-case travel time
+            max_duration = jnp.max(self.action_durations[constrained_action])
+            total_travel_time, (travel_times, edge_volumes) = jax.lax.cond(
+                max_duration > 0,
+                lambda args: self._get_worst_case_travel_time(*args),
+                lambda _: (
+                    self.base_total_travel_time,
+                    (self.initial_edge_travel_times, self.initial_edge_volumes),
+                ),
+                (state, max_duration),
+            )
+            travel_time_reward = self.travel_time_reward_factor * (
+                total_travel_time - self.base_total_travel_time
+            )
+        else:
+            base_travel_time, capacity = state.base_travel_time, state.capacity
+            travel_times, edge_volumes = jnp.zeros(self.num_edges), jnp.zeros(
+                self.num_edges
+            )
+            total_travel_time, travel_time_reward = 0.0, 0.0
 
         # reward
         reward = maintenance_reward + travel_time_reward
