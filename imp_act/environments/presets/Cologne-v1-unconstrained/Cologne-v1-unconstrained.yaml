@@ -1,5 +1,0 @@
-include:
-  path: "../Cologne-v1/Cologne-v1.yaml"
-  override: False
-maintenance:
-  budget_amount: 10_000_000_000
