@@ -107,13 +107,6 @@ class JaxRoadEnvironment(environment.Environment):
 
         ## 3) Inspection and maintenance modeling
         imp_conf = config["maintenance"]
-        self.action_map = {
-            "do-nothing": jnp.int32(0),
-            "inspect": jnp.int32(1),
-            "minor-repair": jnp.int32(2),
-            "major-repair": jnp.int32(3),
-            "replace": jnp.int32(4),
-        }
 
         # 3.1) Damage states and observations
         self.initial_damage_prob = jnp.array(imp_conf["initial_damage_distribution"])
@@ -128,6 +121,13 @@ class JaxRoadEnvironment(environment.Environment):
             ]
 
         # 3.2) Action space
+        self.action_map = {
+            "do-nothing": jnp.int32(0),
+            "inspect": jnp.int32(1),
+            "minor-repair": jnp.int32(2),
+            "major-repair": jnp.int32(3),
+            "replace": jnp.int32(4),
+        }
         # action durations (shape: A)
         self.action_durations = jnp.array(imp_conf["action_duration_factors"])
 
