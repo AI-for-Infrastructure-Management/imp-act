@@ -1,46 +1,50 @@
 <p align="center">
-  <img src="figures/logo.png" alt="IMP-act Logo" width="50%">
+  <img src="figures/logo.png" alt="IMP-act Logo" width="40%">
 </p>
 
-# IMP-act: Benchmarking MARL for Infrastructure Management Planning at Scale with JAX
+<h2 align="center">IMP-act: Benchmarking MARL for Infrastructure Management Planning at Scale with JAX</h2>
 
-This repository is the official implementation of the research and environments described in "IMP-act: Benchmarking MARL for Infrastructure Management Planning at Scale with JAX".
+![Python version](https://img.shields.io/badge/Python-3.10-blue)
+![JAX version](https://img.shields.io/badge/JAX-0.4.30-orange)
+[![License](https://img.shields.io/github/license/AI-for-Infrastructure-Management/imp-act)](LICENSE)
 
-* **Code Repositories:**
-    * Main IMP-act Environment: [AI-for-Infrastructure-Management/imp-act](https://github.com/AI-for-Infrastructure-Management/imp-act)
-    * JaxMARL Adaptation for IMP-act: [AI-for-Infrastructure-Management/imp-act-JaxMARL](https://github.com/AI-for-Infrastructure-Management/imp-act-JaxMARL)
-    * EPyMARL Adaptation for IMP-act: [AI-for-Infrastructure-Management/imp-act-EPyMARL](https://github.com/AI-for-Infrastructure-Management/imp-act-EPyMARL)
-    * Starter Kit: [AI-for-Infrastructure-Management/imp-act-starter-kit](https://github.com/AI-for-Infrastructure-Management/imp-act-starter-kit)
+This repository is the official implementation of the research and environments described in *IMP-act: Benchmarking MARL for Infrastructure Management Planning at Scale with JAX*.
+
+Please refer to `imp-act-JaxMARL` for a full reproduction guide of all results presented in the paper.
+
+## Environment Overview 🌍
+The infrastructure management planning (imp-act) environment simulates a real-world road network consisting of multiple road edges, decomposed into distinct road segments, which must be adequately maintained over a planning horizon. The environment involves multiple agents, where each agent is responsible for maintaining a road segment in order to minimize certain shared objectives while meeting specific budget constraints.
 
 <p align="center">
-  <img src="figures/logo+MARL_repos.png" alt="IMP-act and MARL Repositories" width="60%">
+  <img src="figures/Figure_1.svg" alt="IMP-act Environment Overview" width="85%">
+ </p>
+
+## Backends ⚙️
+
+<p align="center">
+  <img src="figures/logo+MARL_repos.svg" alt="IMP-act and MARL Repositories" width="100%">
 </p>
 
-* **Reproducibility:** Please refer to `imp-act-JaxMARL` for a full reproduction guide of all results presented in the paper.
-
-## Environment Backends
-
 IMP-act provides two environment backends:
+- **🧮 NumPy environments**  
+  Ideal for prototyping with PyTorch on smaller environments and integration with PyTorch-based MARL frameworks such as [PyMARL](https://github.com/oxwhirl/pymarl) or [EPyMARL](https://github.com/uoe-agents/epymarl). See our [EPyMARL adaptation](https://github.com/AI-for-Infrastructure-Management/imp-act-EPyMARL) for details.
 
-- **NumPy environments**  
-  Ideal for fast prototyping on smaller environments. Ideal for integration with PyTorch-based MARL frameworks such as PyMARL/EPyMARL.
-
-- **JAX environments**  
-  Highly optimized for scalability and parallelization on GPUs/TPUs. Used for large-scale experiments in our paper and for integration with JaxMARL.
+- **⚡ JAX environments**  
+  Highly optimized for scalability and parallelization on GPUs/TPUs. Used for large-scale experiments in our paper and for integration with [JaxMARL](https://github.com/FLAIROx/JaxMARL). See our [JaxMARL adaptation](https://github.com/AI-for-Infrastructure-Management/imp-act-JaxMARL) for details.
 
 Both environments have been tested for equivalence via unit tests (see `tests/test_jax_environment.py` directory).
 
-## Installation
+## Installation 🛠️
 
 To set up the environment and install requirements:
 
-### 1. Prerequisites
-* Python: >=3.7, <3.11 (Note: For using PyMARL or EPyMARL with the NumPy version via the starter-kit, Python < 3.10 is required).
-* Poetry: 1.7.1+ (if using Poetry for environment management).
-* Ensure JAX is installed correctly for your specific hardware (CPU/GPU/TPU). Refer to the [official JAX installation guide](https://github.com/google/jax#installation).
-* We recommend using using `jax==0.4.30` as it was used for the experiments in the paper.
+### 1. Prerequisites 📋
+* 🐍 Python: >=3.7, <3.11 (Note: For using PyMARL or EPyMARL with the NumPy Python < 3.10 is required).
+* 📜 Poetry: 1.7.1+ (if using Poetry for environment management).
+* ⚙️ Ensure JAX is installed correctly for your specific hardware (CPU/GPU/TPU). Refer to the [official JAX installation guide](https://github.com/google/jax#installation).
+* 🔖 We recommend using `jax==0.4.30` as it was used for the experiments in the paper.
 
-### 2. Create a virtual environment
+### 2. Create a virtual environment 🌐
 #### Option A : Create a conda environment using the environment YAML file,
 ```bash
 conda env create -f conda_environment.yaml
@@ -53,7 +57,7 @@ conda activate impact-env
 pip install poetry==1.7.1 lockfile==0.12.2
 ```
 
-### 3. Install dependencies
+### 3. Install dependencies 📦
 
 #### Option 1: Using Poetry (Recommended)
 
@@ -71,20 +75,63 @@ pip install -r requirements/requirements.txt
 pip install -e .
 ``` 
 
-### 4. Verify Installation (Optional)
+### 4. Verify Installation (Optional) ✅
 To verify that the installation was successful, you can run the following command:
 ```bash
 # ensure you are in the root directory of the repository, and pytest is installed
 pytest -v
 ```
 
-## Training & Evaluation
-Please refer to the imp-act-JaxMARL repository for a full training and evaluation reproducibility guide:
-[AI-for-Infrastructure-Management/imp-act-JaxMARL](https://github.com/AI-for-Infrastructure-Management/imp-act-JaxMARL)
+## Getting Started 🚀
 
-## Results
+### Example: Using the JAX Environment
+
+```python
+import jax
+from imp_act import make
+
+key = jax.random.PRNGKey(42)
+key, reset_key, act_key, step_key = jax.random.split(key, 4)
+
+# Initialize an IMP-act JAX environment
+env = make("ToyExample-v2-jax")
+
+# Reset the environment
+obs, state = env.reset(reset_key)
+
+# Samples random actions for all agents
+actions = env.action_space().sample(act_key)
+
+# Step the environment
+next_obs, next_state, rewards, dones, infos = env.step(step_key, state, actions)
+```
+
+### Example: Using the NumPy Environment
+
+```python
+import numpy as np
+from imp_act import make
+
+# Initialize an IMP-act NumPy environment
+env = make("ToyExample-v2")
+
+# Reset the environment
+obs = env.reset()
+
+# Samples random actions for all agents
+actions = np.random.randint(len(env.action_map), size=env.num_edges)
+actions = actions.reshape(-1, 1) # reshape to (num_edges, 1)
+
+# Step the environment
+next_obs, reward, done, info = env.step(actions)
+```
+
+## Results 📈
 ![Figure 3](figures/Figure_3.png)
 Normalized best policy returns, for all tested IMP-act environments and MARL algorithms over 10 training seeds. Returns are normalized with respect to the baseline heuristic policy $\text{H}_\text{PS}$.
+
+<details>
+<summary>Detailed Results</summary>
 
 Best performance per algorithm in terms of expected return, 95% CI, and required VRAM for each environment. The best performance per environment is highlighted in bold, and performances within their 95% CI are marked with *.
 
@@ -121,19 +168,15 @@ Best performance per algorithm in terms of expected return, 95% CI, and required
 | IPPO                | -15.03%                  | [-15.31, -14.75] | 2.14         |
 | $\text{VDN}_{\text{BA}}$ | +25.70%                  | [25.09, 26.29]   | --           |
 
-## Contribution guidelines
-Guidelines are outlined in the [contribution file](CONTRIBUTING.md).
+</details>
 
-## Extending the Environments
+## Extending the Environments 🧩
 Researchers can modify simulation parameters through the environment configuration files. Each environment has a YAML configuration files under `imp_act/environments/presets/`, where budgets, traffic assignment parameters, maintenance parameters etc. can be modified. 
 
 In addition to modifying these settings, researchers can also add new maps. We provide a script [`create_large_graph.py`](imp_act/environments/dev/create_large_graph.py), located in `imp_act/environments/dev/`, which can:
-- Export subgraphs from the European road network by coordinate range.
-- Export full country-level graphs (e.g., `-c BE` for Belgium).
-- Optionally attach traffic demand data to the new network.
+- 🗺️ Export subgraphs from the European road network by coordinate range.
+- 🌍 Export full country-level graphs (e.g., `-c BE` for Belgium).
+- 📊 Optionally attach traffic demand data to the new network.
 
-## License
-This project is licensed under the terms of the Apache Licence Version 2.0. See the [LICENSE](LICENSE) file for details.
-
-## Citation
+## Citation 
 If you use this code in your research, please cite our paper as soon as it is published. The BibTeX entry will be provided here.
