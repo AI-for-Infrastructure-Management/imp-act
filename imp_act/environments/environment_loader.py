@@ -6,7 +6,7 @@ import pandas as pd
 import yaml
 from igraph import Graph
 
-from .road_env import RoadEnvironment
+from .numpy_environment import RoadEnvironment
 
 
 class EnvironmentLoader:
