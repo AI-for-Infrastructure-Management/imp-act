@@ -22,7 +22,7 @@ The infrastructure management planning (imp-act) environment simulates a real-wo
 ## Backends ⚙️
 
 <p align="center">
-  <img src="figures/logo+MARL_repos.svg" alt="IMP-act and MARL Repositories" width="100%">
+  <img src="figures/logo+MARL_repos.png" alt="IMP-act and MARL Repositories" width="100%">
 </p>
 
 IMP-act provides two environment backends:
