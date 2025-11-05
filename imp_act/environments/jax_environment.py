@@ -43,6 +43,7 @@ class JaxRoadEnvironment(environment.Environment):
 
     def __init__(self, config: Dict):
         super().__init__()
+        self.config = config
 
         # Episode time horizon
         self.max_timesteps = config["maintenance"]["max_timesteps"]
@@ -1102,21 +1103,90 @@ class JaxRoadEnvironment(environment.Environment):
     def is_terminal(self, timestep: int) -> bool:
         return timestep >= self.max_timesteps
 
-    def action_space(self) -> spaces.Discrete:
-        pass
+    def action_space(self):
+        return spaces.Box(
+            low=0,
+            high=len(self.action_map) - 1,
+            shape=(self.total_num_segments,),
+            dtype=jnp.int32,
+        )
 
     def state_space(self):
-        pass
+        # Describe the shapes/dtypes of EnvState.
+        high_large = 1e12
+        return spaces.Dict(
+            {
+                "damage_state": spaces.Box(
+                    0,
+                    self.num_damage_states - 1,
+                    (self.total_num_segments,),
+                    dtype=jnp.int32,
+                ),
+                "observation": spaces.Box(
+                    0,
+                    self.num_observations - 1,
+                    (self.total_num_segments,),
+                    dtype=jnp.int32,
+                ),
+                "belief": spaces.Box(
+                    0.0,
+                    1.0,
+                    (self.total_num_segments, self.num_damage_states),
+                    dtype=jnp.float32,
+                ),
+                "base_travel_time": spaces.Box(
+                    0.0, high_large, (self.total_num_segments,), dtype=jnp.float32
+                ),
+                "capacity": spaces.Box(
+                    0.0, high_large, (self.total_num_segments,), dtype=jnp.float32
+                ),
+                "worst_obs_counter": spaces.Box(
+                    0,
+                    self.max_timesteps,
+                    (self.total_num_segments,),
+                    dtype=jnp.int32,
+                ),
+                "deterioration_rate": spaces.Box(
+                    0,
+                    (
+                        self.deterioration_rate_max
+                        if self.deterioration_rate_enabled
+                        else 0
+                    ),
+                    (self.total_num_segments,),
+                    dtype=jnp.int32,
+                ),
+                "timestep": spaces.Box(0, self.max_timesteps, (), dtype=jnp.int32),
+                "budget_remaining": spaces.Box(
+                    0.0, float(self.budget_amount), (), dtype=jnp.float32
+                ),
+                "episode_return": spaces.Box(
+                    -high_large, 0, (), dtype=jnp.float32
+                ),
+            }
+        )
 
     def observation_space(self) -> spaces.Discrete:
-        pass
+        # Observation equals belief in this base env.
+        return spaces.Box(
+            0.0,
+            1.0,
+            (self.total_num_segments, self.num_damage_states),
+            dtype=jnp.float32,
+        )
 
     def belief_space(self):
-        pass
+        # Belief per segment over damage states.
+        return spaces.Box(
+            0.0,
+            1.0,
+            (self.total_num_segments, self.num_damage_states),
+            dtype=jnp.float32,
+        )
 
     @property
     def name(self) -> str:
-        pass
+        return self.config["map"]
 
     @property
     def num_actions(self) -> int:
