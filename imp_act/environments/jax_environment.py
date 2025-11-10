@@ -1160,9 +1160,7 @@ class JaxRoadEnvironment(environment.Environment):
                 "budget_remaining": spaces.Box(
                     0.0, float(self.budget_amount), (), dtype=jnp.float32
                 ),
-                "episode_return": spaces.Box(
-                    -high_large, 0, (), dtype=jnp.float32
-                ),
+                "episode_return": spaces.Box(-high_large, 0, (), dtype=jnp.float32),
             }
         )
 
