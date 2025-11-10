@@ -6,7 +6,7 @@ import pandas as pd
 import yaml
 from igraph import Graph
 
-from .road_env import RoadEnvironment
+from .numpy_environment import RoadEnvironment
 
 
 class EnvironmentLoader:
@@ -17,6 +17,7 @@ class EnvironmentLoader:
     def _load(self, filename):
         """Load the environment from the config file"""
         config = yaml.load(open(filename, "r"), Loader=yaml.FullLoader)
+        config["map"] = Path(filename).stem
 
         root_path = Path(filename).parent
         config = self._handle_includes(config, root_path=root_path)

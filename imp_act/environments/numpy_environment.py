@@ -259,39 +259,20 @@ class RoadEnvironment:
         config: Dict,
         seed: Optional[int] = None,
     ):
+        self.config = config
+        self.name = config["map"]
         self.random_generator = np.random.default_rng(seed)
+
+        # Episode time horizon
         self.max_timesteps = config["maintenance"]["max_timesteps"]
-        self.enforce_forced_repair_constraint = config["maintenance"][
-            "enforce_forced_repair_constraint"
-        ]
-        if self.enforce_forced_repair_constraint:
-            self.forced_replace_worst_observation_count = config["maintenance"][
-                "forced_replace_worst_observation_count"
-            ]
 
+        ## 1) Network modeling
+
+        # 1.1) Topology
         self.graph = config["topology"]["graph"]
+        self.num_edges = self.graph.ecount()
 
-        # Convert trips dataframe to list of tuples with correct vertex indices
-        trips_df = config["traffic"]["trips"]
-        trips = []
-        for index in trips_df.index:
-            vertex_1_list = self.graph.vs.select(id_eq=trips_df["origin"][index])
-            vertex_2_list = self.graph.vs.select(id_eq=trips_df["destination"][index])
-            if (len(vertex_1_list) == 0) or (len(vertex_2_list) == 0):
-                raise ValueError(
-                    f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}"
-                )
-            trips.append(
-                (
-                    vertex_1_list[0].index,
-                    vertex_2_list[0].index,
-                    trips_df["volume"][index],
-                )
-            )
-
-        self.trips = trips
-
-        # Add road segments to graph edges
+        # 1.2) Road Segments (add road segments to graph edges)
         for nodes, edge_segments in config["topology"]["segments"].items():
             segments = []
             for segment in edge_segments:
@@ -330,15 +311,26 @@ class RoadEnvironment:
             graph_edge = self.graph.es[edge_id]
             graph_edge["road_edge"] = road_edge
 
-        # Budget parameters
-        self.enforce_budget_constraint = config["maintenance"][
-            "enforce_budget_constraint"
-        ]
-        self.budget_amount = config["maintenance"]["budget_amount"]
-        assert type(self.budget_amount) in [int, float]
-        self.budget_amount = float(self.budget_amount)
-        self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
-        assert type(self.budget_renewal_interval) is int
+        ## 2) Traffic modeling
+        # Convert trips dataframe to list of tuples with correct vertex indices
+        trips_df = config["traffic"]["trips"]
+        trips = []
+        for index in trips_df.index:
+            vertex_1_list = self.graph.vs.select(id_eq=trips_df["origin"][index])
+            vertex_2_list = self.graph.vs.select(id_eq=trips_df["destination"][index])
+            if (len(vertex_1_list) == 0) or (len(vertex_2_list) == 0):
+                raise ValueError(
+                    f"Trip not in graph: {trips_df['origin'][index]} -> {trips_df['destination'][index]}"
+                )
+            trips.append(
+                (
+                    vertex_1_list[0].index,
+                    vertex_2_list[0].index,
+                    trips_df["volume"][index],
+                )
+            )
+
+        self.trips = trips
 
         # Traffic assignment parameters
         self.simulate_traffic = config["traffic"]["simulate_traffic"]
@@ -359,6 +351,36 @@ class RoadEnvironment:
             self.travel_time_reward_factor = config["traffic"][
                 "travel_time_reward_factor"
             ]
+
+        ## 3) Inspection and maintenance modeling
+
+        # 3.1) Damage states and observations
+        self.enforce_forced_repair_constraint = config["maintenance"][
+            "enforce_forced_repair_constraint"
+        ]
+        if self.enforce_forced_repair_constraint:
+            self.forced_replace_worst_observation_count = config["maintenance"][
+                "forced_replace_worst_observation_count"
+            ]
+
+        # 3.2) Action space
+        self.action_map = {
+            "do-nothing": 0,
+            "inspect": 1,
+            "minor-repair": 2,
+            "major-repair": 3,
+            "replace": 4,
+        }
+
+        # 3.3) Budget and rewards
+        self.enforce_budget_constraint = config["maintenance"][
+            "enforce_budget_constraint"
+        ]
+        self.budget_amount = config["maintenance"]["budget_amount"]
+        assert type(self.budget_amount) in [int, float]
+        self.budget_amount = float(self.budget_amount)
+        self.budget_renewal_interval = config["maintenance"]["budget_renewal_interval"]
+        assert type(self.budget_renewal_interval) is int
 
         self.reset(reset_edges=False)
 
