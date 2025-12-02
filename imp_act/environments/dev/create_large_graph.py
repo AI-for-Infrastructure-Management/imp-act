@@ -22,7 +22,8 @@ nuts_regions_file = "02_NUTS-3-Regions.csv"
 nodes_file_name = "03_network-nodes.csv"
 edges_file_name = "04_network-edges.csv"
 
-NEW_EDGE_ID_OFFSET = 5_000_000 # Highest id in dataset 2616216
+NEW_EDGE_ID_OFFSET = 5_000_000  # Highest id in dataset 2616216
+
 
 def plot_network(G, pos, title, path, args):
     # Create a new figure and axis
@@ -162,7 +163,6 @@ def parse_string_list_of_integer(string_list):
         return []
     else:
         return [int(x) for x in string_list[1:-1].split(",")]
-
 
 
 def edge_nodes_get_shared_node(edge_nodes_1, edge_nodes_2):
@@ -400,8 +400,8 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         # Edge ID to nodes lookup
         edge_id_to_nodes = {}
         for _, row in edges_df.iterrows():
-            eid = row['Network_Edge_ID']
-            u, v = row['Network_Node_A_ID'], row['Network_Node_B_ID']
+            eid = row["Network_Edge_ID"]
+            u, v = row["Network_Node_A_ID"], row["Network_Node_B_ID"]
             edge_id_to_nodes[eid] = (u, v)
 
         nodes_in_graph = [
@@ -415,10 +415,13 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         for edge in new_edge_info:
             nodes_in_graph += edge["node_ids"]
 
+        all_edges_in_graph = [
+            G_reduced_3.edges[edge]["id"] for edge in G_reduced_3.edges()
+        ]
+        edges_in_graph = [
+            edge for edge in all_edges_in_graph if edge < NEW_EDGE_ID_OFFSET
+        ]
 
-        all_edges_in_graph = [G_reduced_3.edges[edge]["id"] for edge in G_reduced_3.edges()]
-        edges_in_graph = [edge for edge in all_edges_in_graph if edge < NEW_EDGE_ID_OFFSET]
-        
         # Add edges which have been removed during reduction
         for edge in new_edge_info:
             edges_in_graph += edge["edge_ids"]
@@ -459,7 +462,9 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
                 state = "find_trip_end"
                 first_edge_nodes = set(edge_id_to_nodes[first_edge])
                 second_edge_nodes = set(edge_id_to_nodes[path_edges[1]])
-                shared_node = edge_nodes_get_shared_node(first_edge_nodes, second_edge_nodes)
+                shared_node = edge_nodes_get_shared_node(
+                    first_edge_nodes, second_edge_nodes
+                )
                 start_node = first_edge_nodes.difference(set([shared_node])).pop()
 
             for i, edge in enumerate(path_edges[1:]):
@@ -468,40 +473,40 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
                         state = "find_trip_end"
                         edge_nodes = edge_id_to_nodes[edge]
                         last_edge_nodes = edge_id_to_nodes[path_edges[i]]
-                        start_node = edge_nodes_get_shared_node(edge_nodes, last_edge_nodes)
+                        start_node = edge_nodes_get_shared_node(
+                            edge_nodes, last_edge_nodes
+                        )
                 elif state == "find_trip_end":
                     if edge not in edges_in_graph_set:
                         state = "find_trip_start"
                         edge_nodes = edge_id_to_nodes[edge]
                         last_edge_nodes = edge_id_to_nodes[path_edges[i]]
-                        end_node = edge_nodes_get_shared_node(edge_nodes, last_edge_nodes)
+                        end_node = edge_nodes_get_shared_node(
+                            edge_nodes, last_edge_nodes
+                        )
                         found_trips.append(
                             {
                                 "origin_node": start_node,
                                 "destination_node": end_node,
-                                **{
-                                    key: row[key]
-                                    for key in trip_export_keys
-                                }
+                                **{key: row[key] for key in trip_export_keys},
                             }
                         )
             if state == "find_trip_end":
                 # trip ends at last edge
                 last_edge_nodes = set(edge_id_to_nodes[path_edges[-1]])
                 second_last_edge_nodes = set(edge_id_to_nodes[path_edges[-2]])
-                shared_node = edge_nodes_get_shared_node(last_edge_nodes, second_last_edge_nodes)
+                shared_node = edge_nodes_get_shared_node(
+                    last_edge_nodes, second_last_edge_nodes
+                )
                 end_node = last_edge_nodes.difference(set([shared_node])).pop()
                 found_trips.append(
                     {
                         "origin_node": start_node,
                         "destination_node": end_node,
-                        **{
-                            key: row[key]
-                            for key in trip_export_keys
-                        }
+                        **{key: row[key] for key in trip_export_keys},
                     }
                 )
-        
+
         truck_traffic_df_filtered = pd.DataFrame(found_trips)
 
         # Create reduced graph node lookup table
@@ -527,8 +532,12 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
             removed_coords = all_node_coords[removed_node]
             endpoint_a_coords = all_node_coords[endpoints[0]]
             endpoint_b_coords = all_node_coords[endpoints[1]]
-            dist_to_a = (removed_coords[0] - endpoint_a_coords[0])**2 + (removed_coords[1] - endpoint_a_coords[1])**2
-            dist_to_b = (removed_coords[0] - endpoint_b_coords[0])**2 + (removed_coords[1] - endpoint_b_coords[1])**2
+            dist_to_a = (removed_coords[0] - endpoint_a_coords[0]) ** 2 + (
+                removed_coords[1] - endpoint_a_coords[1]
+            ) ** 2
+            dist_to_b = (removed_coords[0] - endpoint_b_coords[0]) ** 2 + (
+                removed_coords[1] - endpoint_b_coords[1]
+            ) ** 2
             return endpoints[0] if dist_to_a <= dist_to_b else endpoints[1]
 
         nodes_in_reduced_graph = [node for node in G_reduced_3.nodes()]
@@ -543,9 +552,9 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
             if destination_node not in nodes_in_reduced_graph:
                 destination_node = get_closest_endpoint(destination_node)
             truck_traffic_df_filtered.loc[index, "origin_node_reduced"] = origin_node
-            truck_traffic_df_filtered.loc[
-                index, "destination_node_reduced"
-            ] = destination_node
+            truck_traffic_df_filtered.loc[index, "destination_node_reduced"] = (
+                destination_node
+            )
 
         # clean data before exporting
         # change datatype of [origin_node	destination_node	origin_node_reduced	destination_node_reduced] to int
@@ -780,7 +789,9 @@ if __name__ == "__main__":
         # Check if fixed traffic file exists, create it if not
         fixed_traffic_path = os.path.join(args.data_dir, truck_traffic_file_fixed)
         if not os.path.exists(fixed_traffic_path):
-            print("Fixed traffic file not found, creating it... (This may take a few minutes)")
+            print(
+                "Fixed traffic file not found, creating it... (This may take a few minutes)"
+            )
             # Load required data files
             edges_df = pd.read_csv(os.path.join(args.data_dir, edges_file_name))
             regions_df = pd.read_csv(os.path.join(args.data_dir, nuts_regions_file))
@@ -789,12 +800,9 @@ if __name__ == "__main__":
                     f"Truck traffic file {truck_traffic_file} does not exist in {args.data_dir}. Please download the data from {data_url} and extract it to {args.data_dir}"
                 )
             traffic_df = pd.read_csv(os.path.join(args.data_dir, truck_traffic_file))
-            
+
             fixed_traffic_df = analyze_and_fix_traffic(
-                traffic_df,
-                edges_df,
-                regions_df,
-                fix=True
+                traffic_df, edges_df, regions_df, fix=True
             )
             fixed_traffic_df.to_csv(fixed_traffic_path, index=False)
             print(f"Saved fixed traffic data to: {fixed_traffic_path}")
