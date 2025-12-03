@@ -316,6 +316,9 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
             del G_reduced_3.edges[edge]["Traffic_flow_trucks_2030"]
 
     # Make the graph directed
+    # Note: converting to a directed graph duplicates each undirected edge
+    # into (u->v) and (v->u). Both directed edges retain the same 'id'.
+    # This duplicate id across directions is expected.
     G_reduced_3 = G_reduced_3.to_directed()
 
     # Validate reduced graph structure before saving
@@ -442,7 +445,24 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         print(f"\tLoading truck traffic data from: {fixed_traffic_path}")
         truck_traffic_df = pd.read_csv(fixed_traffic_path)
 
-        # filter trips to include only trips which have edges in the graph
+        # Filtering trips (include only those that traverse the reduced graph)
+        # Logic
+        # 1) Each trip row contains Edge_path_E_road: an ordered
+        #   list of edge IDs from origin to destination.
+        # 2) Build edges_in_graph_set = IDs present in the reduced graph
+        #    (including both original and newly created edges).
+        # 3) Scan the path using a simple state machine:
+        #    - ENTER a segment when we hit the first in-graph edge:
+        #        origin := non-shared endpoint of the first two edges
+        #        (via edge_nodes_get_shared_node on their endpoints).
+        #    - STAY inside while edges remain in edges_in_graph_set.
+        #    - EXIT the segment on the first out-of-graph edge after being inside:
+        #        destination := shared endpoint between the last in-graph edge
+        #        and the current out-of-graph edge → record OD.
+        # 4) If we reach the end still inside a segment:
+        #        destination := non-shared endpoint of the last two edges → record OD.
+        # 5) Each detected in-graph segment yields one OD pair with traffic
+        #    attributes copied from the trip row (keys in trip_export_keys).
         print("\tFinding trips which go through the filtered graph")
         found_trips = []
         trip_export_keys = [
@@ -520,12 +540,10 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         truck_traffic_df_filtered = pd.DataFrame(found_trips)
 
         # Create reduced graph node lookup table
-        new_edge_info_lookup = {}
         new_node_info_lookup = {}
 
         for edge in new_edge_info:
             for node in edge["node_ids"]:
-                new_edge_info_lookup[node] = edge["Network_Edge_ID"]
                 new_node_info_lookup[node] = [
                     edge[ab] for ab in ["Network_Node_A_ID", "Network_Node_B_ID"]
                 ]
@@ -550,16 +568,16 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
             ) ** 2
             return endpoints[0] if dist_to_a <= dist_to_b else endpoints[1]
 
-        nodes_in_reduced_graph = [node for node in G_reduced_3.nodes()]
+        nodes_in_reduced_graph_set = set(G_reduced_3.nodes())
 
         # lookup new nodes in reduced graph
         for index, row in truck_traffic_df_filtered.iterrows():
             origin_node = int(row["origin_node"])
             destination_node = int(row["destination_node"])
 
-            if origin_node not in nodes_in_reduced_graph:
+            if origin_node not in nodes_in_reduced_graph_set:
                 origin_node = get_closest_endpoint(origin_node)
-            if destination_node not in nodes_in_reduced_graph:
+            if destination_node not in nodes_in_reduced_graph_set:
                 destination_node = get_closest_endpoint(destination_node)
             truck_traffic_df_filtered.loc[index, "origin_node_reduced"] = origin_node
             truck_traffic_df_filtered.loc[index, "destination_node_reduced"] = (
@@ -789,8 +807,6 @@ if __name__ == "__main__":
         default=script_dir / "output",
         help="Directory for output files (default: <script_dir>/output)",
     )
-
-    parser.add_argument("--directed", type=bool, default=True)
 
     parser.add_argument("--skip-traffic", action="store_true", default=False)
     parser.add_argument(
