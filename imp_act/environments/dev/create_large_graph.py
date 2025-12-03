@@ -11,6 +11,7 @@ import yaml
 from tqdm import tqdm
 
 from fix_traffic_paths import analyze_and_fix_traffic
+from validate_large_graph import validate_graph_structure, validate_trips_connectivity
 
 paper_url = "https://publica-rest.fraunhofer.de/server/api/core/bitstreams/d4913d12-4cd1-473c-97cd-ed467ad19273/content"
 data_url = "https://data.mendeley.com/datasets/py2zkrb65h/1"
@@ -316,6 +317,12 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
 
     # Make the graph directed
     G_reduced_3 = G_reduced_3.to_directed()
+
+    # Validate reduced graph structure before saving
+    if not args.no_validate:
+        print("\tValidating graph structure...")
+        validate_graph_structure(G_reduced_3)
+        print("\tGraph validation passed!")
 
     # Export graph to graphml
     nx.write_graphml_lxml(G_reduced_3, output_path / "graph.graphml")
@@ -625,6 +632,17 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
             {"origin": int, "destination": int}
         )
 
+        # Validate trips connectivity before saving full traffic
+        if not args.no_validate:
+            print("\tValidating trips connectivity...")
+            validate_trips_connectivity(
+                G_reduced_3,
+                truck_traffic_df_filtered,
+                origin_col="origin",
+                destination_col="destination",
+            )
+            print("\tTrips validation passed!")
+
         # export to csv
         truck_traffic_df_filtered.to_csv(output_path / "traffic_full.csv", index=False)
 
@@ -774,6 +792,12 @@ if __name__ == "__main__":
     parser.add_argument("--directed", type=bool, default=True)
 
     parser.add_argument("--skip-traffic", action="store_true", default=False)
+    parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        default=False,
+        help="Skip validation of graph and trips before saving",
+    )
 
     args = parser.parse_args()
 
