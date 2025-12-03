@@ -132,14 +132,17 @@ def analyze_and_fix_traffic(
     # Work on a copy of the dataframe
     traffic_df = traffic_df.copy()
 
-    for idx, row in tqdm(
-        traffic_df.iterrows(), total=len(traffic_df), desc="Analyzing trips"
+    for row in tqdm(
+        traffic_df.itertuples(),
+        total=len(traffic_df),
+        desc="Analyzing trips",
     ):
+        idx = row.Index  # original DataFrame index
         stats["total"] += 1
 
-        origin_region_id = row["ID_origin_region"]
-        dest_region_id = row["ID_destination_region"]
-        edge_path_str = row["Edge_path_E_road"]
+        origin_region_id = row.ID_origin_region
+        dest_region_id = row.ID_destination_region
+        edge_path_str = row.Edge_path_E_road
 
         # Parse edge path
         try:

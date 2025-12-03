@@ -454,10 +454,11 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
             "Traffic_flow_tons_2030",
         ]
 
-        for index, row in tqdm(
-            truck_traffic_df.iterrows(), total=len(truck_traffic_df)
+        for row in tqdm(
+            truck_traffic_df.itertuples(index=False),
+            total=len(truck_traffic_df),
         ):
-            path_edges = parse_string_list_of_integer(row["Edge_path_E_road"])
+            path_edges = parse_string_list_of_integer(row.Edge_path_E_road)
 
             if len(path_edges) < 2:
                 continue
@@ -497,7 +498,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
                             {
                                 "origin_node": start_node,
                                 "destination_node": end_node,
-                                **{key: row[key] for key in trip_export_keys},
+                                **{key: getattr(row, key) for key in trip_export_keys},
                             }
                         )
             if state == "find_trip_end":
@@ -512,7 +513,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
                     {
                         "origin_node": start_node,
                         "destination_node": end_node,
-                        **{key: row[key] for key in trip_export_keys},
+                        **{key: getattr(row, key) for key in trip_export_keys},
                     }
                 )
 
