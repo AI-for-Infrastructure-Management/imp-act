@@ -1,5 +1,4 @@
 import argparse
-import os
 from pathlib import Path
 
 import matplotlib.patches as patches
@@ -12,7 +11,6 @@ import yaml
 from tqdm import tqdm
 
 from fix_traffic_paths import analyze_and_fix_traffic
-
 
 paper_url = "https://publica-rest.fraunhofer.de/server/api/core/bitstreams/d4913d12-4cd1-473c-97cd-ed467ad19273/content"
 data_url = "https://data.mendeley.com/datasets/py2zkrb65h/1"
@@ -66,7 +64,9 @@ def plot_network(G, pos, title, path, args):
 
     # Save the figure
     if path is not None:
-        fig.savefig(Path(path, f"{title}.svg"))
+        outdir = Path(path)
+        outdir.mkdir(parents=True, exist_ok=True)
+        fig.savefig(outdir / f"{title}.svg")
 
 
 def remove_nodes_with_degree_one_below_threshold(graph, threshold):
@@ -172,18 +172,20 @@ def edge_nodes_get_shared_node(edge_nodes_1, edge_nodes_2):
     if len(shared_nodes) == 1:
         return shared_nodes.pop()
     else:
-        raise Exception(f"Could not determine shared node between edges.")
+        raise Exception(
+            f"Could not determine shared node between edges. Edge 1 nodes: {edge_nodes_1}, Edge 2 nodes: {edge_nodes_2}"
+        )
 
 
 def export_coordinate_range(args):
     print(f"Exporting graph for coordinate range {args.coordinate_range}")
     # load data
-    nodes_df = pd.read_csv(os.path.join(args.data_dir, nodes_file_name))
-    edges_df = pd.read_csv(os.path.join(args.data_dir, edges_file_name))
+    nodes_df = pd.read_csv(args.data_dir / nodes_file_name)
+    edges_df = pd.read_csv(args.data_dir / edges_file_name)
 
     # Create folder for output
     folder_name = "_".join([str(c) for c in args.coordinate_range])
-    output_path = Path(args.output_dir, f"coordinate_ranges/{folder_name}")
+    output_path = args.output_dir / "coordinate_ranges" / folder_name
     output_path.mkdir(parents=True, exist_ok=True)
 
     min_x, max_x, min_y, max_y = args.coordinate_range
@@ -204,11 +206,11 @@ def export_coordinate_range(args):
 def export_country(args):
     print(f"Exporting graph for {args.country}")
     # load data
-    nodes_df = pd.read_csv(os.path.join(args.data_dir, nodes_file_name))
-    edges_df = pd.read_csv(os.path.join(args.data_dir, edges_file_name))
+    nodes_df = pd.read_csv(args.data_dir / nodes_file_name)
+    edges_df = pd.read_csv(args.data_dir / edges_file_name)
 
     # Create folder for country
-    country_output_path = Path(args.output_dir, f"countries/{args.country}")
+    country_output_path = args.output_dir / "countries" / args.country
     country_output_path.mkdir(parents=True, exist_ok=True)
 
     # Filtering for a Specific Country
@@ -222,8 +224,8 @@ def export_country(args):
 
 
 def export_graph(filtered_nodes, filtered_edges, output_path, args):
-    nodes_df = pd.read_csv(os.path.join(args.data_dir, nodes_file_name))
-    edges_df = pd.read_csv(os.path.join(args.data_dir, edges_file_name))
+    nodes_df = pd.read_csv(args.data_dir / nodes_file_name)
+    edges_df = pd.read_csv(args.data_dir / edges_file_name)
 
     # Create a graph from the filtered edges
     G_filtered = nx.from_pandas_edgelist(
@@ -267,7 +269,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
     nx.set_node_attributes(G_filtered, position_dict)
 
     # Export Fully graph to graphml
-    nx.write_graphml_lxml(G_filtered, f"{output_path.absolute()}/graph_full.graphml")
+    nx.write_graphml_lxml(G_filtered, output_path / "graph_full.graphml")
 
     # Merge nodes with only two edges
     G_reduced, new_edge_info = remove_nodes_and_merge_edges(G_filtered.copy())
@@ -316,10 +318,10 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
     G_reduced_3 = G_reduced_3.to_directed()
 
     # Export graph to graphml
-    nx.write_graphml_lxml(G_reduced_3, f"{output_path.absolute()}/graph.graphml")
+    nx.write_graphml_lxml(G_reduced_3, output_path / "graph.graphml")
 
     # store new edge information as yaml
-    with open(f"{output_path.absolute()}/new-edges.yaml", "w") as file:
+    with open(output_path / "new-edges.yaml", "w") as file:
         yaml.dump(new_edge_info, file)
 
     print(f"\tNumber of nodes: {len(G_reduced_3.nodes)}")
@@ -386,7 +388,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         ],
     )
     # save
-    segments_df.to_csv(f"{output_path.absolute()}/segments.csv", index=False)
+    segments_df.to_csv(output_path / "segments.csv", index=False)
 
     print(f"\tTotal number of segments: {total_number_of_segments}")
 
@@ -429,8 +431,8 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         edges_in_graph_set = set(edges_in_graph)
 
         # load truck traffic data (fixed version)
-        print("\tLoading truck traffic data")
-        fixed_traffic_path = os.path.join(args.data_dir, truck_traffic_file_fixed)
+        fixed_traffic_path = args.data_dir / truck_traffic_file_fixed
+        print(f"\tLoading truck traffic data from: {fixed_traffic_path}")
         truck_traffic_df = pd.read_csv(fixed_traffic_path)
 
         # filter trips to include only trips which have edges in the graph
@@ -624,9 +626,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         )
 
         # export to csv
-        truck_traffic_df_filtered.to_csv(
-            f"{output_path.absolute()}/traffic_full.csv", index=False
-        )
+        truck_traffic_df_filtered.to_csv(output_path / "traffic_full.csv", index=False)
 
         # drop everything except origin, destination, Traffic_flow_trucks_2019
         truck_traffic_df_filtered = truck_traffic_df_filtered[
@@ -641,14 +641,12 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         print(f"\tNumber of Trips: {len(truck_traffic_df_filtered)}")
 
         # export to csv
-        truck_traffic_df_filtered.to_csv(
-            f"{output_path.absolute()}/traffic.csv", index=False
-        )
+        truck_traffic_df_filtered.to_csv(output_path / "traffic.csv", index=False)
 
         info["trips"] = len(truck_traffic_df_filtered)
 
     # store info
-    with open(f"{output_path.absolute()}/info.yaml", "w") as file:
+    with open(output_path / "info.yaml", "w") as file:
         yaml.dump(info, file)
 
     # create config file
@@ -658,14 +656,18 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         "segments": {"type": "file", "path": "./segments.csv"},
     }
 
-    with open(f"{output_path.absolute()}/network.yaml", "w") as file:
+    with open(output_path / "network.yaml", "w") as file:
         yaml.dump(config_dict, file)
 
 
 def main(args):
+    # Normalize to Path (in case called programmatically)
+    args.data_dir = Path(args.data_dir)
+    args.output_dir = Path(args.output_dir)
+
     # load data
-    nodes_df = pd.read_csv(os.path.join(args.data_dir, nodes_file_name))
-    edges_df = pd.read_csv(os.path.join(args.data_dir, edges_file_name))
+    nodes_df = pd.read_csv(args.data_dir / nodes_file_name)
+    edges_df = pd.read_csv(args.data_dir / edges_file_name)
 
     # Create a graph from the edges
     G = nx.from_pandas_edgelist(edges_df, "Network_Node_A_ID", "Network_Node_B_ID")
@@ -716,6 +718,7 @@ def main(args):
 
 
 if __name__ == "__main__":
+    script_dir = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser()
     parser.add_argument("--country", "-c", type=str, default=None)
     parser.add_argument(
@@ -755,13 +758,17 @@ if __name__ == "__main__":
         help="Threshold for pruning edges in km",
     )
     parser.add_argument(
-        "--data-dir", "-d", type=str, default="imp_act/environments/dev/data"
+        "--data-dir",
+        type=Path,
+        default=script_dir / "data",
+        help="Directory containing input data (default: <script_dir>/data)",
     )
+
     parser.add_argument(
         "--output-dir",
-        "-o",
-        type=str,
-        default="imp_act/environments/dev/output",
+        type=Path,
+        default=script_dir / "output",
+        help="Directory for output files (default: <script_dir>/output)",
     )
 
     parser.add_argument("--directed", type=bool, default=True)
@@ -771,7 +778,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # check that data is in data directory
-    if not os.path.exists(args.data_dir):
+    if not args.data_dir.exists():
         raise ValueError(f"Data directory {args.data_dir} does not exist")
 
     required_files = [
@@ -780,26 +787,26 @@ if __name__ == "__main__":
         edges_file_name,
     ]
     for file in required_files:
-        if not os.path.exists(os.path.join(args.data_dir, file)):
+        if not (args.data_dir / file).exists():
             raise ValueError(
                 f"Data file {file} does not exist in {args.data_dir}. Please download the data from {data_url} and extract it to {args.data_dir}"
             )
 
     if not args.skip_traffic:
         # Check if fixed traffic file exists, create it if not
-        fixed_traffic_path = os.path.join(args.data_dir, truck_traffic_file_fixed)
-        if not os.path.exists(fixed_traffic_path):
+        fixed_traffic_path = args.data_dir / truck_traffic_file_fixed
+        if not fixed_traffic_path.exists():
             print(
                 "Fixed traffic file not found, creating it... (This may take a few minutes)"
             )
             # Load required data files
-            edges_df = pd.read_csv(os.path.join(args.data_dir, edges_file_name))
-            regions_df = pd.read_csv(os.path.join(args.data_dir, nuts_regions_file))
-            if not os.path.exists(os.path.join(args.data_dir, truck_traffic_file)):
+            edges_df = pd.read_csv(args.data_dir / edges_file_name)
+            regions_df = pd.read_csv(args.data_dir / nuts_regions_file)
+            if not (args.data_dir / truck_traffic_file).exists():
                 raise ValueError(
                     f"Truck traffic file {truck_traffic_file} does not exist in {args.data_dir}. Please download the data from {data_url} and extract it to {args.data_dir}"
                 )
-            traffic_df = pd.read_csv(os.path.join(args.data_dir, truck_traffic_file))
+            traffic_df = pd.read_csv(args.data_dir / truck_traffic_file)
 
             fixed_traffic_df = analyze_and_fix_traffic(
                 traffic_df, edges_df, regions_df, fix=True

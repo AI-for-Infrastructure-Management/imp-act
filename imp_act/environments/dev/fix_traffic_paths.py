@@ -13,21 +13,21 @@ Usage:
 
 import pandas as pd
 import ast
-import os
 import argparse
+from pathlib import Path
 from tqdm import tqdm
 
 
-def load_data(data_dir: str, custom_traffic_file: str = None) -> tuple:
+def load_data(data_dir: Path, custom_traffic_file=None) -> tuple:
     """Load all required data files."""
-    edges_file = os.path.join(data_dir, "04_network-edges.csv")
-    regions_file = os.path.join(data_dir, "02_NUTS-3-Regions.csv")
+    edges_file = data_dir / "04_network-edges.csv"
+    regions_file = data_dir / "02_NUTS-3-Regions.csv"
 
     # Use provided input file or default
     if custom_traffic_file:
-        traffic_file = custom_traffic_file
+        traffic_file = Path(custom_traffic_file)
     else:
-        traffic_file = os.path.join(data_dir, "01_Trucktrafficflow.csv")
+        traffic_file = data_dir / "01_Trucktrafficflow.csv"
 
     edges_df = pd.read_csv(edges_file)
     regions_df = pd.read_csv(regions_file)
@@ -210,20 +210,21 @@ def analyze_and_fix_traffic(
 
 
 def main():
+    script_dir = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(
         description="Check and fix trip edge path directions in truck traffic flow data."
     )
     parser.add_argument(
         "--data-dir",
         "-d",
-        type=str,
-        default="data",
-        help="Directory containing the data files (default: data)",
+        type=Path,
+        default=script_dir / "data",
+        help="Directory containing the data files (default: <script_dir>/data)",
     )
     parser.add_argument(
         "--input",
         "-i",
-        type=str,
+        type=Path,
         default=None,
         help="Input traffic flow file (default: 01_Trucktrafficflow.csv in data dir)",
     )
@@ -233,8 +234,8 @@ def main():
     parser.add_argument(
         "--output",
         "-o",
-        type=str,
-        default="01_Trucktrafficflow_fixed.csv",
+        type=Path,
+        default=Path("01_Trucktrafficflow_fixed.csv"),
         help="Output file path (default: 01_Trucktrafficflow_fixed.csv in data dir)",
     )
 
@@ -251,7 +252,10 @@ def main():
 
     # Save if fixing
     if args.fix:
-        output_path = args.output or os.path.join(args.data_dir, args.output)
+        output_path: Path = args.output
+        if not output_path.is_absolute():
+            output_path = args.data_dir / output_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         fixed_df.to_csv(output_path, index=False)
         print(f"\nSaved fixed data to: {output_path}")
 
