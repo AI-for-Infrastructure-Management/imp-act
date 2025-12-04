@@ -19,8 +19,11 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import yaml
 import re
+
+from imp_act import make
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -31,6 +34,42 @@ def compute_reward_factor_for_preset(preset_dir: Path) -> Optional[float]:
     Implement your logic here (e.g., run a heuristic policy for rollouts and
     compute the ratio as described). Return a float or None if unavailable.
     """
+    preset_name = preset_dir.name
+    env = make(preset_name)
+
+    # Match notebook scaling
+    env.budget_amount = env.budget_amount * 1e8
+    env.travel_time_reward_factor = 0.0
+
+    def compute_reward_elements(idx_edge: int, action_value: int) -> tuple[float, float]:
+        """Return (maintenance_reward, delay) for a single-edge action."""
+        _ = env.reset()
+        actions = [[0 for _ in edge["road_edge"].segments] for edge in env.graph.es]
+        actions[idx_edge][0] = action_value
+
+        _ = env.reset()
+        _, _, _, info = env.step(actions)
+
+        rew_maintenance = info["reward_elements"]["maintenance_reward"] / 1e8
+        delays = (info["total_travel_time"] - env.base_total_travel_time) / 1e8
+        return rew_maintenance, delays
+
+    # Corrective replacements (action_value=4)
+    rew_maintenance_list = []
+    delays_list = []
+    for i in range(len(env.graph.es)):
+        rew_maintenance, delays = compute_reward_elements(i, 4)
+        rew_maintenance_list.append(rew_maintenance)
+        delays_list.append(delays)
+
+    rew_maintenance_mean = float(np.mean(rew_maintenance_list))
+    rew_delays_mean = float(np.mean(delays_list))
+
+    if abs(rew_delays_mean) < 1e-9:
+        raise ValueError("Mean delays is ~0; cannot compute reward factor safely.")
+
+    reward_factor = round((rew_maintenance_mean / rew_delays_mean) * 1.25, 2)
+    return -abs(reward_factor)
     return None
 
 
