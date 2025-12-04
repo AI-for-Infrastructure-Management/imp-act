@@ -1,0 +1,40 @@
+## Create Large Graph — Configuration
+
+# 1) Selection (choose one)
+country: null                      # e.g., DE, FR, or ALL
+coordinate_range: [6.7, 7.2, 50.5, 51]   # [min_x, max_x, min_y, max_y]
+
+# 2) Graph simplification & segmentation
+segment_length: null               # km; null → one segment per edge
+segment_capacity: 9e6              # trucks per year
+segment_speed: 100.0               # km/h
+pruning_threshold: 1.0             # km; prune short dead-ends
+
+# 3) Paths
+data_dir: ./data                   # input CSVs
+output_dir: ./output               # export destination
+
+# 4) Behavior
+directed: true                     # export directed graph
+skip_traffic: false                # skip trip filtering/aggregation
+validate: true                     # validate graph structure and trips before export
+
+# 5) Preset export
+export_preset: true                # if true, write preset file alongside graph
+preset_name: null                  # if null, auto-derive from scope (country or bbox)
+
+# 6) Preset fields (written into maintenance/traffic blocks)
+# Must be provided; length=5 and sums to 1.0
+initial_damage_distribution: [0.6, 0.134, 0.133, 0.133, 0.0]
+budget_amount: null                # set a numeric budget or leave null
+
+# 7) Hydra runtime (keeps CWD; avoids .hydra folders)
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+  output_subdir: null
+  sweep:
+    dir: .
+    subdir: .

@@ -1,5 +1,5 @@
-import argparse
 from pathlib import Path
+import shutil
 
 import matplotlib.patches as patches
 
@@ -9,9 +9,14 @@ import numpy as np
 import pandas as pd
 import yaml
 from tqdm import tqdm
+import hydra
+from omegaconf import DictConfig, open_dict
 
 from fix_traffic_paths import analyze_and_fix_traffic
+import re
 from validate_large_graph import validate_graph_structure, validate_trips_connectivity
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 paper_url = "https://publica-rest.fraunhofer.de/server/api/core/bitstreams/d4913d12-4cd1-473c-97cd-ed467ad19273/content"
 data_url = "https://data.mendeley.com/datasets/py2zkrb65h/1"
@@ -24,7 +29,139 @@ edges_file_name = "04_network-edges.csv"
 NEW_EDGE_ID_OFFSET = 5_000_000  # Highest id in dataset 2616216
 
 
-def plot_network(G, pos, title, path, args):
+def check_config_validity(args) -> None:
+    """Validate required config before doing any heavy work.
+
+    Raises ValueError with a concise message if invalid.
+    """
+    problems = []
+    # Area selection must be provided
+    if (
+        getattr(args, "country", None) is None
+        and getattr(args, "coordinate_range", None) is None
+    ):
+        problems.append(
+            "Either 'country' or 'coordinate_range' must be set in the config."
+        )
+
+    # coordinate_range must be a list of 4 numbers if provided
+    cr = getattr(args, "coordinate_range", None)
+    if cr is not None:
+        # Accept Hydra's ListConfig or any iterable; just require length 4
+        try:
+            cr_list = list(cr)
+        except TypeError:
+            cr_list = None
+        if not (cr_list is not None and len(cr_list) == 4):
+            problems.append("'coordinate_range' must be a 4-item list: [min_x, max_x, min_y, max_y].")
+
+    # initial_damage_distribution must be provided, length 5, sums to 1.0
+    idd = getattr(args, "initial_damage_distribution", None)
+    if idd is None:
+        problems.append(
+            "'initial_damage_distribution' must be set in the config (length 5, sums to 1)."
+        )
+    else:
+        try:
+            idd_list = list(idd)
+        except TypeError:
+            idd_list = None
+        if not (idd_list is not None and len(idd_list) == 5):
+            problems.append(
+                "'initial_damage_distribution' must be a 5-item list (e.g., [0.6, 0.134, 0.133, 0.133, 0])."
+            )
+        else:
+            # numeric and finite and sums to 1
+            try:
+                vals = [float(x) for x in idd_list]
+            except Exception:
+                vals = None
+            if vals is None:
+                problems.append("'initial_damage_distribution' must contain numeric values.")
+            else:
+                total = sum(vals)
+                if not (abs(total - 1.0) <= 1e-6):
+                    problems.append(
+                        f"'initial_damage_distribution' must sum to 1.0 (got {total})."
+                    )
+
+    if problems:
+        raise ValueError("Invalid configuration:\n- " + "\n- ".join(problems))
+
+
+def export_presets(
+    preset_name: str, source_dir: Path, reward_factor: float | None, cfg
+):
+    """Create preset configs and copy artifacts under presets/<preset_name>."""
+    presets_root = SCRIPT_DIR.parent / "presets"
+    preset_dir = presets_root / preset_name
+    preset_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy artifacts
+    for fname in ["graph.graphml", "segments.csv", "traffic.csv"]:
+        src = source_dir / fname
+        if src.exists():
+            shutil.copy2(src, preset_dir / fname)
+
+    base_cfg = {
+        "maintenance": {
+            "initial_damage_distribution": list(cfg.initial_damage_distribution),
+            "budget_amount": cfg.get("budget_amount", None),
+            "include": {
+                "path": "../common/maintenance_defaults.yaml",
+                "override": False,
+            },
+        },
+        "traffic": {
+            "travel_time_reward_factor": float(reward_factor)
+            if reward_factor is not None
+            else None,
+            "trips": {"path": "./traffic.csv", "type": "file"},
+            "include": {
+                "path": "../common/traffic_defaults.yaml",
+                "override": False,
+            },
+        },
+        "topology": {
+            "graph": {"directed": True, "path": "./graph.graphml", "type": "file"},
+            "segments": {"path": "./segments.csv", "type": "file"},
+        },
+    }
+
+    # Dump YAML with a blank line between top-level sections for readability
+    yaml_text = yaml.safe_dump(base_cfg, sort_keys=False)
+    # Inline the initial_damage_distribution as a one-line [a, b, c, d, e]
+    idd_inline = ", ".join(str(x) for x in cfg.initial_damage_distribution)
+    pattern = r"^([ \t]*)initial_damage_distribution:\n(?:^[ \t]*-[^\n]*\n){5}"
+    yaml_text = re.sub(
+        pattern,
+        lambda m: f"{m.group(1)}initial_damage_distribution: [{idd_inline}]\n",
+        yaml_text,
+        flags=re.MULTILINE,
+    )
+    yaml_text = yaml_text.replace("\ntraffic:\n", "\n\ntraffic:\n")
+    yaml_text = yaml_text.replace("\ntopology:\n", "\n\ntopology:\n")
+    with open(preset_dir / f"{preset_name}.yaml", "w") as f:
+        f.write(yaml_text)
+
+    # Unconstrained
+    unconstrained = {
+        "include": {"path": f"./{preset_name}.yaml", "override": False},
+        "maintenance": {"enforce_budget_constraint": False},
+    }
+    with open(preset_dir / f"{preset_name}-unconstrained.yaml", "w") as f:
+        yaml.safe_dump(unconstrained, f, sort_keys=False)
+
+    # Only maintenance (no traffic simulation)
+    only_maint = {
+        "include": {"path": f"./{preset_name}.yaml", "override": False},
+        "traffic": {"simulate_traffic": False},
+    }
+    with open(preset_dir / f"{preset_name}-only-maintenance.yaml", "w") as f:
+        yaml.safe_dump(only_maint, f, sort_keys=False)
+
+
+def plot_network(G, pos, title, path, cfg):
     # Create a new figure and axis
     fig, ax = plt.subplots(figsize=(12, 8))
 
@@ -39,8 +176,8 @@ def plot_network(G, pos, title, path, args):
     # Add grid
     ax.grid(True)
 
-    if args.coordinate_range is not None:
-        x_min, x_max, y_min, y_max = args.coordinate_range
+    if cfg.coordinate_range is not None:
+        x_min, x_max, y_min, y_max = cfg.coordinate_range
         box_points = [
             (x_min, y_min),
             (x_min, y_max),
@@ -178,18 +315,18 @@ def edge_nodes_get_shared_node(edge_nodes_1, edge_nodes_2):
         )
 
 
-def export_coordinate_range(args):
-    print(f"Exporting graph for coordinate range {args.coordinate_range}")
+def export_coordinate_range(cfg):
+    print(f"Exporting graph for coordinate range {cfg.coordinate_range}")
     # load data
-    nodes_df = pd.read_csv(args.data_dir / nodes_file_name)
-    edges_df = pd.read_csv(args.data_dir / edges_file_name)
+    nodes_df = pd.read_csv(cfg.data_dir / nodes_file_name)
+    edges_df = pd.read_csv(cfg.data_dir / edges_file_name)
 
     # Create folder for output
-    folder_name = "_".join([str(c) for c in args.coordinate_range])
-    output_path = args.output_dir / "coordinate_ranges" / folder_name
+    folder_name = "_".join([str(c) for c in cfg.coordinate_range])
+    output_path = cfg.output_dir / "coordinate_ranges" / folder_name
     output_path.mkdir(parents=True, exist_ok=True)
 
-    min_x, max_x, min_y, max_y = args.coordinate_range
+    min_x, max_x, min_y, max_y = cfg.coordinate_range
     filtered_nodes = nodes_df[
         (nodes_df["Network_Node_X"] > min_x)
         & (nodes_df["Network_Node_X"] < max_x)
@@ -201,32 +338,32 @@ def export_coordinate_range(args):
         & edges_df["Network_Node_B_ID"].isin(filtered_nodes["Network_Node_ID"])
     ]
 
-    export_graph(filtered_nodes, filtered_edges, output_path, args)
+    export_graph(filtered_nodes, filtered_edges, output_path, cfg)
 
 
-def export_country(args):
-    print(f"Exporting graph for {args.country}")
+def export_country(cfg):
+    print(f"Exporting graph for {cfg.country}")
     # load data
-    nodes_df = pd.read_csv(args.data_dir / nodes_file_name)
-    edges_df = pd.read_csv(args.data_dir / edges_file_name)
+    nodes_df = pd.read_csv(cfg.data_dir / nodes_file_name)
+    edges_df = pd.read_csv(cfg.data_dir / edges_file_name)
 
     # Create folder for country
-    country_output_path = args.output_dir / "countries" / args.country
+    country_output_path = cfg.output_dir / "countries" / cfg.country
     country_output_path.mkdir(parents=True, exist_ok=True)
 
     # Filtering for a Specific Country
-    filtered_nodes = nodes_df[nodes_df["Country"] == args.country]
+    filtered_nodes = nodes_df[nodes_df["Country"] == cfg.country]
     filtered_edges = edges_df[
         edges_df["Network_Node_A_ID"].isin(filtered_nodes["Network_Node_ID"])
         & edges_df["Network_Node_B_ID"].isin(filtered_nodes["Network_Node_ID"])
     ]
 
-    export_graph(filtered_nodes, filtered_edges, country_output_path, args)
+    export_graph(filtered_nodes, filtered_edges, country_output_path, cfg)
 
 
-def export_graph(filtered_nodes, filtered_edges, output_path, args):
-    nodes_df = pd.read_csv(args.data_dir / nodes_file_name)
-    edges_df = pd.read_csv(args.data_dir / edges_file_name)
+def export_graph(filtered_nodes, filtered_edges, output_path, cfg):
+    nodes_df = pd.read_csv(cfg.data_dir / nodes_file_name)
+    edges_df = pd.read_csv(cfg.data_dir / edges_file_name)
 
     # Create a graph from the filtered edges
     G_filtered = nx.from_pandas_edgelist(
@@ -257,9 +394,9 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
     plot_network(
         G_filtered,
         pos_filtered,
-        f"Network for {args.country} (N: {len(G_filtered.nodes)}, E: {len(G_filtered.edges)})",
+        f"Network for {cfg.country} (N: {len(G_filtered.nodes)}, E: {len(G_filtered.edges)})",
         output_path,
-        args,
+        cfg,
     )
 
     # Add position data for nodes to graph
@@ -277,7 +414,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
 
     # Remove edges which are below threshold
     G_reduced_2 = remove_nodes_with_degree_one_below_threshold(
-        G_reduced.copy(), args.pruning_threshold
+        G_reduced.copy(), cfg.pruning_threshold
     )
 
     # Merge nodes with only two edges again after removing edges below threshold
@@ -291,9 +428,9 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
     plot_network(
         G_reduced_3,
         pos_filtered,
-        f"Reduced Network for {args.country} (N: {len(G_reduced_3.nodes)}, E: {len(G_reduced_3.edges)})",
+        f"Reduced Network for {cfg.country} (N: {len(G_reduced_3.nodes)}, E: {len(G_reduced_3.edges)})",
         output_path,
-        args,
+        cfg,
     )
 
     # rename attribute "Distance" to "distance" and make sure it is a float
@@ -322,7 +459,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
     G_reduced_3 = G_reduced_3.to_directed()
 
     # Validate reduced graph structure before saving
-    if not args.no_validate:
+    if cfg.validate:
         print("\tValidating graph structure...")
         validate_graph_structure(G_reduced_3)
         print("\tGraph validation passed!")
@@ -342,9 +479,9 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
     for edge in G_reduced_3.edges():
         node_a = G_reduced_3.nodes()[edge[0]]
         node_b = G_reduced_3.nodes()[edge[1]]
-        if args.segment_length is not None:  # split edges into segments
+        if cfg.segment_length is not None:  # split edges into segments
             no_segments = int(
-                np.ceil(G_reduced_3.edges[edge]["distance"] / args.segment_length)
+                np.ceil(G_reduced_3.edges[edge]["distance"] / cfg.segment_length)
             )
 
             # linear interpolation of coordinates
@@ -362,9 +499,9 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
                         edge[1],
                         x,
                         y,
-                        args.segment_capacity,
-                        args.segment_speed,
-                        args.segment_length,
+                        cfg.segment_capacity,
+                        cfg.segment_speed,
+                        cfg.segment_length,
                     )
                 )
         else:  # one segment per edge
@@ -376,8 +513,8 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
                     edge[1],
                     x,
                     y,
-                    args.segment_capacity,
-                    args.segment_speed,
+                    cfg.segment_capacity,
+                    cfg.segment_speed,
                     G_reduced_3.edges[edge]["distance"],
                 )
             )
@@ -408,7 +545,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         "segments": total_number_of_segments,
     }
 
-    if not args.skip_traffic:
+    if not cfg.skip_traffic:
         # Edge ID to nodes lookup
         edge_id_to_nodes = {}
         for _, row in edges_df.iterrows():
@@ -441,7 +578,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         edges_in_graph_set = set(edges_in_graph)
 
         # load truck traffic data (fixed version)
-        fixed_traffic_path = args.data_dir / truck_traffic_file_fixed
+        fixed_traffic_path = cfg.data_dir / truck_traffic_file_fixed
         print(f"\tLoading truck traffic data from: {fixed_traffic_path}")
         truck_traffic_df = pd.read_csv(fixed_traffic_path)
 
@@ -652,7 +789,7 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
         )
 
         # Validate trips connectivity before saving full traffic
-        if not args.no_validate:
+        if cfg.validate:
             print("\tValidating trips connectivity...")
             validate_trips_connectivity(
                 G_reduced_3,
@@ -696,15 +833,25 @@ def export_graph(filtered_nodes, filtered_edges, output_path, args):
     with open(output_path / "network.yaml", "w") as file:
         yaml.dump(config_dict, file)
 
+    # Optionally export preset configs and copy artifacts
+    if getattr(cfg, "export_preset", False):
+        # Derive preset name from scope folder if not provided
+        preset_name = getattr(cfg, "preset_name", None) or output_path.name
+        reward_factor = None  # compute later after preset is created
+        print(
+            f"\tExporting presets to presets/{preset_name} (reward_factor will be computed later)"
+        )
+        export_presets(preset_name, output_path, reward_factor, cfg)
 
-def main(args):
+
+def run(cfg):
     # Normalize to Path (in case called programmatically)
-    args.data_dir = Path(args.data_dir)
-    args.output_dir = Path(args.output_dir)
+    cfg.data_dir = Path(cfg.data_dir)
+    cfg.output_dir = Path(cfg.output_dir)
 
     # load data
-    nodes_df = pd.read_csv(args.data_dir / nodes_file_name)
-    edges_df = pd.read_csv(args.data_dir / edges_file_name)
+    nodes_df = pd.read_csv(cfg.data_dir / nodes_file_name)
+    edges_df = pd.read_csv(cfg.data_dir / edges_file_name)
 
     # Create a graph from the edges
     G = nx.from_pandas_edgelist(edges_df, "Network_Node_A_ID", "Network_Node_B_ID")
@@ -731,22 +878,22 @@ def main(args):
 
     # Plotting the network
     plot_network(
-        G, pos, f"Europe (N: {len(G.nodes)}, E: {len(G.edges)})", args.output_dir, args
+        G, pos, f"Europe (N: {len(G.nodes)}, E: {len(G.edges)})", cfg.output_dir, cfg
     )
 
     countries = nodes_df["Country"].unique()
 
     # ensure country code is correct
-    if args.country == "ALL":
+    if cfg.country == "ALL":
         for country in countries:
-            args.country = country
-            export_country(args)
+            cfg.country = country
+            export_country(cfg)
 
-    elif args.country in countries:
-        export_country(args)
+    elif cfg.country in countries:
+        export_country(cfg)
 
-    elif args.coordinate_range is not None:
-        export_coordinate_range(args)
+    elif cfg.coordinate_range is not None:
+        export_coordinate_range(cfg)
 
     else:
         raise ValueError(
@@ -754,105 +901,57 @@ def main(args):
         )
 
 
-if __name__ == "__main__":
-    script_dir = Path(__file__).resolve().parent
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--country", "-c", type=str, default=None)
-    parser.add_argument(
-        "--coordinate-range",
-        "-cr",
-        type=float,
-        nargs=4,
-        default=None,
-        help="Coordinate range to filter for. Format: min_x max_x min_y max_y",
-    )
-    parser.add_argument(
-        "--segment-length",
-        "-sl",
-        type=float,
-        default=None,
-        help="Length of a segment in km",
-    )
-    parser.add_argument(
-        "--segment-capacity",
-        "-sc",
-        type=float,
-        default=9e6,
-        help="Capacity of a segment in trucks per year",
-    )
-    parser.add_argument(
-        "--segment-speed",
-        "-ss",
-        type=float,
-        default=100.0,
-        help="Travel speed on a segment in km/h",
-    )
-    parser.add_argument(
-        "--pruning-threshold",
-        "-p",
-        type=float,
-        default=1.0,
-        help="Threshold for pruning edges in km",
-    )
-    parser.add_argument(
-        "--data-dir",
-        type=Path,
-        default=script_dir / "data",
-        help="Directory containing input data (default: <script_dir>/data)",
-    )
+@hydra.main(config_path=".", config_name="create_large_graph_config", version_base=None)
+def main(cfg: DictConfig) -> None:
+    # Use Hydra config directly
+    # Rebase relative data/output dirs against this script directory
+    data_dir = Path(cfg.data_dir)
+    output_dir = Path(cfg.output_dir)
+    if not data_dir.is_absolute():
+        data_dir = (SCRIPT_DIR / data_dir).resolve()
+    if not output_dir.is_absolute():
+        output_dir = (SCRIPT_DIR / output_dir).resolve()
+    # Safely write back normalized paths into config
+    with open_dict(cfg):
+        cfg.data_dir = str(data_dir)
+        cfg.output_dir = str(output_dir)
 
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=script_dir / "output",
-        help="Directory for output files (default: <script_dir>/output)",
-    )
+    # Validate config early
+    check_config_validity(cfg)
 
-    parser.add_argument("--skip-traffic", action="store_true", default=False)
-    parser.add_argument(
-        "--no-validate",
-        action="store_true",
-        default=False,
-        help="Skip validation of graph and trips before saving",
-    )
+    # Check required inputs
+    if not Path(cfg.data_dir).exists():
+        raise ValueError(f"Data directory {cfg.data_dir} does not exist")
 
-    args = parser.parse_args()
-
-    # check that data is in data directory
-    if not args.data_dir.exists():
-        raise ValueError(f"Data directory {args.data_dir} does not exist")
-
-    required_files = [
-        nuts_regions_file,
-        nodes_file_name,
-        edges_file_name,
-    ]
+    required_files = [nuts_regions_file, nodes_file_name, edges_file_name]
     for file in required_files:
-        if not (args.data_dir / file).exists():
+        if not (Path(cfg.data_dir) / file).exists():
             raise ValueError(
-                f"Data file {file} does not exist in {args.data_dir}. Please download the data from {data_url} and extract it to {args.data_dir}"
+                f"Data file {file} does not exist in {cfg.data_dir}. Please download the data from {data_url} and extract it to {cfg.data_dir}"
             )
 
-    if not args.skip_traffic:
-        # Check if fixed traffic file exists, create it if not
-        fixed_traffic_path = args.data_dir / truck_traffic_file_fixed
+    if not cfg.skip_traffic:
+        # Ensure fixed traffic file exists
+        fixed_traffic_path = Path(cfg.data_dir) / truck_traffic_file_fixed
         if not fixed_traffic_path.exists():
             print(
                 "Fixed traffic file not found, creating it... (This may take a few minutes)"
             )
-            # Load required data files
-            edges_df = pd.read_csv(args.data_dir / edges_file_name)
-            regions_df = pd.read_csv(args.data_dir / nuts_regions_file)
-            if not (args.data_dir / truck_traffic_file).exists():
+            edges_df = pd.read_csv(Path(cfg.data_dir) / edges_file_name)
+            regions_df = pd.read_csv(Path(cfg.data_dir) / nuts_regions_file)
+            if not (Path(cfg.data_dir) / truck_traffic_file).exists():
                 raise ValueError(
-                    f"Truck traffic file {truck_traffic_file} does not exist in {args.data_dir}. Please download the data from {data_url} and extract it to {args.data_dir}"
+                    f"Truck traffic file {truck_traffic_file} does not exist in {cfg.data_dir}. Please download the data from {data_url} and extract it to {cfg.data_dir}"
                 )
-            traffic_df = pd.read_csv(args.data_dir / truck_traffic_file)
-
+            traffic_df = pd.read_csv(Path(cfg.data_dir) / truck_traffic_file)
             fixed_traffic_df = analyze_and_fix_traffic(
                 traffic_df, edges_df, regions_df, fix=True
             )
             fixed_traffic_df.to_csv(fixed_traffic_path, index=False)
             print(f"Saved fixed traffic data to: {fixed_traffic_path}")
 
-    main(args)
+    run(cfg)
+
+
+if __name__ == "__main__":
+    main()

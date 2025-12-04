@@ -15,46 +15,19 @@ We validate and correct trip edge-path directions in `01_Trucktrafficflow.csv` s
   ```
   By default, the fixed file is saved to `<script_dir>/data/01_Trucktrafficflow_fixed.csv`.
 
-# Running the export
-To run the export, execute the following command after downloading the dataset and placing it in the `data` folder:
+## Create Large Graph (config-driven)
+This script uses a Hydra YAML config: `imp-act/imp_act/environments/dev/create_large_graph_config.yaml`.
 
-```bash
-python imp_act/environments/dev/create_large_graph.py --coordinate-range {X_min} {X_max} {Y_min} {Y_max}
-```
+- Edit the config to set either `country: DE|ALL` or `coordinate_range: [min_x,max_x,min_y,max_y]`.
+- Run with Hydra overrides if needed:
+  - `python imp_act/environments/dev/create_large_graph.py country=DE`
+  - `python imp_act/environments/dev/create_large_graph.py coordinate_range=[6.5,7.5,50.5,51.5]`
+- Optional flags in config: `skip_traffic`, `validate`, `export_preset`, `preset_name`.
 
-For example:
-
-```bash
-python imp_act/environments/dev/create_large_graph.py --coordinate-range 6.5 7.5 50.5 51.5
-```
-
-To export a single country use:
-```bash
-python imp_act/environments/dev/create_large_graph.py -c {COUNTRY_CODE}
-```
-
-For example:
-```bash
-python imp_act/environments/dev/create_large_graph.py -c BE
-```
-
-To export all countries, use:
-
-```bash
-python imp_act/environments/dev/create_large_graph.py -c ALL
-```
-
-To skip the traffic filtering which can take a long time, use the `--skip-traffic` flag:
-
-```bash
-python imp_act/environments/dev/create_large_graph.py -c ALL --skip-traffic
-```
-
-For more information on the available flags, use the `--help` flag:
-
-```bash
-python imp_act/environments/dev/create_large_graph.py --help
-```
+Preset export
+- If `export_preset: true`, the script copies `graph.graphml`, `segments.csv`, `traffic.csv` and writes preset configs into `imp-act/imp_act/environments/presets/<preset_name>/`:
+  - `<preset_name>.yaml` (base), `<preset_name>-unconstrained.yaml`, `<preset_name>-only-maintenance.yaml`.
+- The `travel_time_reward_factor` is not set at creation time; compute it later (see below).
 
 ## Outputs
 Results are written under `--output-dir` (default: `<script_dir>/output`) into a scope-specific subfolder:
