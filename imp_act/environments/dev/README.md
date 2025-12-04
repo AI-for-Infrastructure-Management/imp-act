@@ -38,3 +38,14 @@ Each scope contains:
 - `graph_full.graphml`, `graph.graphml`, `new-edges.yaml`
 - `segments.csv`, `traffic_full.csv`, `traffic.csv`
 - `info.yaml`, `network.yaml`
+
+## Compute Reward Factor (separate step)
+Use the helper to set `traffic.travel_time_reward_factor` in a preset after creation. It only updates the base preset YAML; variants inherit it.
+
+- Set value in base config:
+  - `python imp_act/environments/dev/compute_reward_factor.py --preset <preset_name> --value -250.0`
+
+- Compute (stub):
+  - `python imp_act/environments/dev/compute_reward_factor.py --preset <preset_name>`
+
+Note: The computation function is intentionally left empty; pass `--value` or implement it in `compute_reward_factor_for_preset`.
