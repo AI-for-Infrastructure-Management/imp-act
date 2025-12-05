@@ -106,7 +106,8 @@ def export_presets(
     base_cfg = {
         "maintenance": {
             "initial_damage_distribution": list(cfg.initial_damage_distribution),
-            "budget_amount": cfg.get("budget_amount", None),
+            # Set budget to 0.0 by default in exported presets (float)
+            "budget_amount": 0.0,
             "include": {
                 "path": "../common/maintenance_defaults.yaml",
                 "override": False,
@@ -150,7 +151,10 @@ def export_presets(
         "maintenance": {"enforce_budget_constraint": False},
     }
     with open(preset_dir / f"{preset_name}-unconstrained.yaml", "w") as f:
-        yaml.safe_dump(unconstrained, f, sort_keys=False)
+        unconstrained_text = yaml.safe_dump(unconstrained, sort_keys=False)
+        # Add a blank line between top-level blocks for readability
+        unconstrained_text = unconstrained_text.replace("\nmaintenance:\n", "\n\nmaintenance:\n")
+        f.write(unconstrained_text)
 
     # Only maintenance (no traffic simulation)
     only_maint = {
@@ -158,7 +162,10 @@ def export_presets(
         "traffic": {"simulate_traffic": False},
     }
     with open(preset_dir / f"{preset_name}-only-maintenance.yaml", "w") as f:
-        yaml.safe_dump(only_maint, f, sort_keys=False)
+        only_maint_text = yaml.safe_dump(only_maint, sort_keys=False)
+        # Add a blank line between top-level blocks for readability
+        only_maint_text = only_maint_text.replace("\ntraffic:\n", "\n\ntraffic:\n")
+        f.write(only_maint_text)
 
 
 def plot_network(G, pos, title, path, cfg):
@@ -839,7 +846,8 @@ def export_graph(filtered_nodes, filtered_edges, output_path, cfg):
         preset_name = getattr(cfg, "preset_name", None) or output_path.name
         reward_factor = None  # compute later after preset is created
         print(
-            f"\tExporting presets to presets/{preset_name} (reward_factor will be computed later)"
+            f"\tExporting presets to presets/{preset_name} "
+            f"(reward_factor will be computed later; budget_amount=0 by default)"
         )
         export_presets(preset_name, output_path, reward_factor, cfg)
 
