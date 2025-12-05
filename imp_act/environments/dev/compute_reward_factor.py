@@ -2,7 +2,7 @@
 Compute and set the travel_time_reward_factor for a preset.
 
 Usage examples
-- Compute (stubbed) and update the base config:
+- Compute and update the base config:
   python compute_reward_factor.py --preset Cologne-v1
 
 - Manually set a value in the base config:
@@ -23,54 +23,103 @@ import numpy as np
 import yaml
 import re
 
+import jax
 from imp_act import make
+import jax.numpy as jnp
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 
 def compute_reward_factor_for_preset(preset_dir: Path) -> Optional[float]:
-    """Placeholder for computing travel_time_reward_factor for a preset.
+    """Estimate travel_time_reward_factor for a preset (fast heuristic).
 
-    Implement your logic here (e.g., run a heuristic policy for rollouts and
-    compute the ratio as described). Return a float or None if unavailable.
+    Method
+    - Build the unconstrained JAX env ("<preset>-unconstrained-jax").
+    - For each segment, apply a single corrective
+      action with value 4, step once, and read from `info`:
+        maintenance_reward and total_travel_time - base_total_travel_time.
+    - Compute factor = -abs(mean(maintenance) / mean(delay) x 1.25), with
+      simple scaling to keep numbers well-behaved.
+
+    Inputs/assumptions
+    - `preset_dir` points to the preset folder; its name matches the base YAML.
+    - The unconstrained variant is registered and loadable via `make()`.
+
+    Returns
+    - Negative float on success; None if the computation cannot be performed.
+    - This function does not write files; callers choose whether to persist.
     """
-    preset_name = preset_dir.name
-    env = make(preset_name)
+    try:
+        preset_name = preset_dir.name
+        # Use JAX env variant for speed and reproducibility: registered as "<name>-unconstrained-jax"
+        env = make(f"{preset_name}-unconstrained-jax")
 
-    # Match notebook scaling
-    env.budget_amount = env.budget_amount * 1e8
-    env.travel_time_reward_factor = 0.0
+        SCALE = 1e8
+        # Disable any existing reward factor to isolate effects
+        env.travel_time_reward_factor = 0.0
 
-    def compute_reward_elements(idx_edge: int, action_value: int) -> tuple[float, float]:
-        """Return (maintenance_reward, delay) for a single-edge action."""
-        _ = env.reset()
-        actions = [[0 for _ in edge["road_edge"].segments] for edge in env.graph.es]
-        actions[idx_edge][0] = action_value
+        # RNG setup
+        SEED = 998
+        key = jax.random.PRNGKey(SEED)
+        print(f"Computing reward factor for preset: {preset_name}")
 
-        _ = env.reset()
-        _, _, _, info = env.step(actions)
+        def compute_reward_elements(
+            idx_segment: int, action_value: int
+        ) -> tuple[float, float]:
+            nonlocal key
+            key, reset_key = jax.random.split(key)
+            obs, state = env.reset(reset_key)
 
-        rew_maintenance = info["reward_elements"]["maintenance_reward"] / 1e8
-        delays = (info["total_travel_time"] - env.base_total_travel_time) / 1e8
-        return rew_maintenance, delays
+            actions = jnp.zeros((env.total_num_segments,), dtype=jnp.int32)
+            actions = actions.at[idx_segment].set(jnp.int32(action_value))
 
-    # Corrective replacements (action_value=4)
-    rew_maintenance_list = []
-    delays_list = []
-    for i in range(len(env.graph.es)):
-        rew_maintenance, delays = compute_reward_elements(i, 4)
-        rew_maintenance_list.append(rew_maintenance)
-        delays_list.append(delays)
+            key, step_key = jax.random.split(key)
+            obs, next_state, reward, done, info = env.step(step_key, state, actions)
 
-    rew_maintenance_mean = float(np.mean(rew_maintenance_list))
-    rew_delays_mean = float(np.mean(delays_list))
+            rew_maintenance = info["reward_elements"]["maintenance_reward"] / SCALE
+            total_tt = info["total_travel_time"]
+            base_tt = env.base_total_travel_time
+            delay = (total_tt - base_tt) / SCALE
+            return rew_maintenance, delay
 
-    if abs(rew_delays_mean) < 1e-9:
-        raise ValueError("Mean delays is ~0; cannot compute reward factor safely.")
+        action_value = 4
+        rew_maintenance_list = []
+        delays_list = []
+        for i in range(env.total_num_segments):
+            rew_maintenance, delay = compute_reward_elements(i, action_value)
+            rew_maintenance_list.append(rew_maintenance)
+            delays_list.append(delay)
 
-    reward_factor = round((rew_maintenance_mean / rew_delays_mean) * 1.25, 2)
-    return -abs(reward_factor)
-    return None
+        rew_maint_mean = np.mean(rew_maintenance_list)
+        rew_delay_mean = np.mean(delays_list)
+        # Nicely formatted summary stats for quick inspection
+        print(
+            f"Mean maintenance reward: {rew_maint_mean:.4f}, "
+            f"Mean delay: {rew_delay_mean:.4f}"
+        )
+        if abs(rew_delay_mean) < 1e-9:
+            raise ValueError(
+                f"Mean delays is {rew_delay_mean}; cannot compute reward factor safely."
+            )
+        raw_reward_factor = (rew_maint_mean / rew_delay_mean) * 1.25
+        reward_factor = -abs(round(raw_reward_factor, 2))
+        print(
+            f"Reward factor: {rew_maint_mean:.4f}/{rew_delay_mean:.4f} ~ {reward_factor:.2f}"
+        )
+        return reward_factor
+    except ValueError as e:
+        # Known benign: zero (or near-zero) mean delay makes the ratio unstable.
+        if "Mean delays is" in str(e):
+            print("[reward-factor] Mean delay ~ 0; cannot compute a stable factor.")
+            return None
+        # Otherwise, let the precise ValueError propagate.
+        raise
+    except Exception as e:
+        # Compact surface of unexpected failures with context.
+        raise RuntimeError(
+            f"[reward-factor] Unexpected error during computation: {type(e).__name__}: {e}"
+        ) from e
 
 
 def _resolve_preset_dir(preset: str) -> Path:
@@ -101,6 +150,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Manual reward factor to set. If omitted, attempts to compute.",
     )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Compute (or use --value) and print the factor without writing to the YAML",
+    )
     return p.parse_args()
 
 
@@ -120,7 +175,7 @@ def main() -> None:
         if factor is None:
             raise ValueError(
                 "Reward factor is not provided and the computation is not implemented. "
-                "Pass --value to set it explicitly."
+                "Pass --value or use a preset where computation succeeds."
             )
 
     # Ensure reward factor is strictly negative
@@ -129,6 +184,10 @@ def main() -> None:
         raise ValueError("Reward factor must be non-zero and negative.")
     if factor > 0.0:
         factor = -abs(factor)
+
+    # If dry-run, just exit
+    if args.dry_run:
+        return
 
     base_yaml = preset_dir / f"{preset_dir.name}.yaml"
     if not base_yaml.exists():
@@ -151,7 +210,9 @@ def main() -> None:
             idd = data.get("maintenance", {}).get("initial_damage_distribution")
             if isinstance(idd, (list, tuple)) and len(idd) == 5:
                 idd_inline = ", ".join(str(x) for x in idd)
-                pattern = r"^([ \t]*)initial_damage_distribution:\n(?:^[ \t]*-[^\n]*\n){5}"
+                pattern = (
+                    r"^([ \t]*)initial_damage_distribution:\n(?:^[ \t]*-[^\n]*\n){5}"
+                )
                 yaml_text = re.sub(
                     pattern,
                     lambda m: f"{m.group(1)}initial_damage_distribution: [{idd_inline}]\n",
