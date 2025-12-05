@@ -33,6 +33,10 @@ from typing import Tuple
 
 import numpy as np
 import yaml
+import logging
+
+# Silence JAX backend probing logs (do not force CPU/GPU selection)
+logging.getLogger("jax._src.xla_bridge").setLevel(logging.ERROR)
 
 import jax
 import jax.numpy as jnp
@@ -339,6 +343,10 @@ def _update_base_budget(base_yaml: Path, budget: float) -> None:
     config_path=".", config_name="create_budget_scenarios_config", version_base=None
 )
 def main(cfg: DictConfig) -> None:
+    # Hydra can reconfigure logging to INFO; re‑silence JAX probing logs
+    import logging as _logging
+    _logging.getLogger("jax._src.xla_bridge").setLevel(_logging.ERROR)
+    _logging.getLogger("jax._src.xla_bridge").propagate = False
     _check_cfg(cfg)
 
     # Resolve preset directory (name or path)
