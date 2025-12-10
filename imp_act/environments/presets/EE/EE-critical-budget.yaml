@@ -1,0 +1,7 @@
+include:
+  path: ./EE.yaml
+  override: false
+
+maintenance:
+  enforce_budget_constraint: true
+  budget_amount: 550000000.0

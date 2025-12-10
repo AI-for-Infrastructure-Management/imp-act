@@ -1,0 +1,7 @@
+include:
+  path: ./HU.yaml
+  override: false
+
+maintenance:
+  enforce_budget_constraint: true
+  budget_amount: 1500000000.0

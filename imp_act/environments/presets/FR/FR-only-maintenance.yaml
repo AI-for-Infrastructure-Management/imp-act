@@ -1,0 +1,6 @@
+include:
+  path: ./FR.yaml
+  override: false
+
+traffic:
+  simulate_traffic: false

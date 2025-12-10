@@ -1,0 +1,7 @@
+include:
+  path: ./IT.yaml
+  override: false
+
+maintenance:
+  enforce_budget_constraint: true
+  budget_amount: 7000000000.0
