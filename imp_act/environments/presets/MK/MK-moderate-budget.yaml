@@ -1,0 +1,7 @@
+include:
+  path: ./MK.yaml
+  override: false
+
+maintenance:
+  enforce_budget_constraint: true
+  budget_amount: 650000000.0

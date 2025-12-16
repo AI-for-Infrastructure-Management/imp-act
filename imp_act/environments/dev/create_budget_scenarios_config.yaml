@@ -1,0 +1,31 @@
+# Configuration for create_budget_scenarios.py
+
+# Input preset (name or full path to preset directory)
+preset: Cologne-v1
+
+# Heuristic policy parameters (inline)
+policy_parameters:
+  inspection_interval: 1
+  repair_threshold: 2
+
+# Rollout/horizon settings
+num_rollouts: 1_000
+num_steps: 50
+seed: 442
+period: 5
+quantiles: [0.50, 0.75, 0.95]
+
+# Scenario labels (must match number of quantiles)
+labels: [moderate-budget, limited-budget, critical-budget]
+
+# Behavior flags
+dry_run: true
+overwrite: false
+
+# Hydra runtime: keep working directory stable; avoid auto output dirs
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

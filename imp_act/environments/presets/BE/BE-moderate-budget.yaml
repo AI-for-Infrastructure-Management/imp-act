@@ -1,0 +1,7 @@
+include:
+  path: ./BE.yaml
+  override: false
+
+maintenance:
+  enforce_budget_constraint: true
+  budget_amount: 2500000000.0

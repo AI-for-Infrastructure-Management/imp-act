@@ -1,0 +1,7 @@
+include:
+  path: ./RU.yaml
+  override: false
+
+maintenance:
+  enforce_budget_constraint: true
+  budget_amount: 20000000000.0

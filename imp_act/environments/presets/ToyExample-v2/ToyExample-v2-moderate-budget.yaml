@@ -1,6 +1,7 @@
 include:
-  path: "./ToyExample-v2.yaml"
-  override: False
+  path: ./ToyExample-v2.yaml
+  override: false
 
 maintenance:
-  budget_amount: 10_000_000
+  enforce_budget_constraint: true
+  budget_amount: 10000000.0
