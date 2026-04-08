@@ -853,38 +853,17 @@ class RoadEnvironment:
             assert remaining_budget >= 0, "Remaining budget is negative"
 
             # if we do not have enough budget to take all actions,
-            # we prioritize actions and select a random possible set of actions
-            # that satisfies the budget
+            # downgrade every non-forced action to do-nothing
             if total_adjusted_cost > remaining_budget:
 
                 self.budget_constraint_applied = True
 
-                edge_indices = np.array(edge_indices)
-                segment_indices = np.array(segment_indices)
                 adjusted_costs = np.array(adjusted_costs)
-
-                # Shuffle the costs to randomly select valid actions
-                indices = np.arange(len(adjusted_costs))
-                self.random_generator.shuffle(indices)
-
-                shuffled_costs = adjusted_costs[indices]
-                cumulative_costs = np.cumsum(shuffled_costs)
-
-                # Find the index where the cumulative costs exceed the budget
-                cutoff_index = np.searchsorted(
-                    cumulative_costs, remaining_budget, side="right"
-                )
-
-                # Set the actions that cannot be taken to 0
-                zero_indices = indices[cutoff_index:]
-                adjusted_costs[zero_indices] = 0
-                for idx in zero_indices:
-                    if (
-                        not self.graph.es[edge_indices[idx]]["road_edge"]
-                        .segments[segment_indices[idx]]
-                        .forced_repair
-                    ):
-                        actions[edge_indices[idx]][segment_indices[idx]] = 0
+                adjusted_costs[:] = 0
+                for i, edge in enumerate(self.graph.es):
+                    for j, segment in enumerate(edge["road_edge"].segments):
+                        if not segment.forced_repair:
+                            actions[i][j] = 0
 
         self.current_budget -= total_upfront_cost + np.sum(adjusted_costs)
 

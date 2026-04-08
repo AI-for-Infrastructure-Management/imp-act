@@ -842,24 +842,10 @@ class JaxRoadEnvironment(environment.Environment):
 
         # Apply constraints if needed
         def apply_constraints():
-            # Randomly select actions that fit within budget
-            priorities = jax.random.uniform(key, shape=action.shape)
-            # Don't constrain forced repairs
-            priorities = jnp.where(forced_repair_mask, -jnp.inf, priorities)
-            sorted_indices = jnp.argsort(priorities)
-            cumulative_costs = jnp.cumsum(adjusted_cost[sorted_indices])
-            valid_mask = cumulative_costs <= remaining_budget
-
-            # Create array of constrained actions in original order
-            constrained_action = jnp.zeros_like(action)
-            constrained_action = constrained_action.at[sorted_indices].set(
-                jnp.where(
-                    valid_mask,
-                    action[sorted_indices],
-                    do_nothing_action[sorted_indices],
-                )
+            # Keep forced repairs and downgrade every other action to do-nothing.
+            constrained_action = jnp.where(
+                forced_repair_mask, action, do_nothing_action
             )
-
             return constrained_action, True
 
         constrained_action, constraint_applied = jax.lax.cond(
