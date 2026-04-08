@@ -323,11 +323,11 @@ def test_forced_repair_trigger_jax(toy_environment_2_jax):
     # Set up conditions for forced repair
     # Set worst observation and counter for first segment
     state = state.replace(
-        observation=state.observation.at[0].set(
-            env.num_observations - 1
-        ),  # Worst state
-        worst_obs_counter=state.worst_obs_counter.at[0].set(
-            env.forced_replace_worst_observation_count + 1
+        damage_state=state.damage_state.at[0].set(
+            env.num_damage_states - 1
+        ),  # Worst damage state
+        worst_damage_state_counter=state.worst_damage_state_counter.at[0].set(
+            env.forced_replace_worst_damage_state_count + 1
         ),  # Above threshold
     )
 
@@ -465,9 +465,7 @@ def test_mean_rewards_jax(toy_environment_2, toy_environment_2_jax):
         numpy_comp_se = numpy_vals.std() / np.sqrt(n_episodes)
         jax_comp_se = jax_vals.std() / np.sqrt(n_episodes)
         comp_rtol = (
-            1.96
-            * np.sqrt(numpy_comp_se**2 + jax_comp_se**2)
-            / abs(numpy_vals.mean())
+            1.96 * np.sqrt(numpy_comp_se**2 + jax_comp_se**2) / abs(numpy_vals.mean())
         )
 
         rel_diff = abs(numpy_vals.mean() - jax_vals.mean()) / abs(numpy_vals.mean())
@@ -492,9 +490,7 @@ def test_mean_rewards_jax(toy_environment_2, toy_environment_2_jax):
         numpy_comp_se = numpy_vals.std() / np.sqrt(n_episodes)
         jax_comp_se = jax_vals.std() / np.sqrt(n_episodes)
         comp_rtol = (
-            1.96
-            * np.sqrt(numpy_comp_se**2 + jax_comp_se**2)
-            / abs(numpy_vals.mean())
+            1.96 * np.sqrt(numpy_comp_se**2 + jax_comp_se**2) / abs(numpy_vals.mean())
         )
 
         assert np.allclose(
@@ -638,7 +634,13 @@ def test_get_travel_time(toy_environment_2, toy_environment_2_jax):
         max_action_duration = jnp.array(max(action_durations))
         worst_obs_counter = jnp.array(
             [
-                [segment.worst_observation_counter for segment in edge.segments]
+                [segment.worst_obs_counter for segment in edge.segments]
+                for edge in toy_environment_2.graph.es["road_edge"]
+            ]
+        ).flatten()
+        worst_damage_state_counter = jnp.array(
+            [
+                [segment.worst_damage_state_counter for segment in edge.segments]
                 for edge in toy_environment_2.graph.es["road_edge"]
             ]
         ).flatten()
@@ -654,10 +656,11 @@ def test_get_travel_time(toy_environment_2, toy_environment_2_jax):
         jax_state = EnvState(
             damage_state=jnp.array(info["edge_states"]).flatten(),
             observation=jnp.array(obs["edge_observations"]).flatten(),
+            worst_obs_counter=worst_obs_counter,
             belief=jnp.array(obs["edge_beliefs"]).flatten(),
             base_travel_time=jnp.asarray(base_travel_times),
             capacity=jnp.asarray(capacities),
-            worst_obs_counter=worst_obs_counter,
+            worst_damage_state_counter=worst_damage_state_counter,
             deterioration_rate=jnp.array(obs["edge_deterioration_rates"]).flatten(),
             budget_remaining=toy_environment_2.current_budget,
             timestep=timestep,

@@ -24,6 +24,7 @@ class EnvState:
     belief: jnp.array
     base_travel_time: jnp.array
     capacity: jnp.array
+    worst_damage_state_counter: jnp.array
     worst_obs_counter: jnp.array
     deterioration_rate: jnp.array
     # Environment properties
@@ -116,8 +117,8 @@ class JaxRoadEnvironment(environment.Environment):
             "enforce_forced_repair_constraint"
         ]
         if self.enforce_forced_repair_constraint:
-            self.forced_replace_worst_observation_count = imp_conf[
-                "forced_replace_worst_observation_count"
+            self.forced_replace_worst_damage_state_count = imp_conf[
+                "forced_replace_worst_damage_state_count"
             ]
 
         # 3.2) Action space
@@ -739,12 +740,13 @@ class JaxRoadEnvironment(environment.Environment):
     ):
         """Apply all action constraints in sequence."""
         # 1. Forced repair constraint
-        # Update worst observation counter
         if self.enforce_forced_repair_constraint:
             (
                 constrained_actions,
                 forced_repair_flag,
-            ) = self._apply_forced_repair_constraint(actions, state.worst_obs_counter)
+            ) = self._apply_forced_repair_constraint(
+                actions, state.worst_damage_state_counter
+            )
         else:
             constrained_actions = actions
             forced_repair_flag = jnp.full_like(actions, False)
@@ -777,13 +779,13 @@ class JaxRoadEnvironment(environment.Environment):
     @partial(jax.jit, static_argnums=0)
     @partial(vmap, in_axes=(None, 0, 0))
     def _apply_forced_repair_constraint(
-        self, action: int, worst_obs_counter: int
+        self, action: int, worst_damage_state_count: int
     ) -> Tuple[int, bool]:
-        # if worst_obs_counter > forced_replace_worst_observation_count
+        # if worst_damage_state_count > forced_replace_worst_damage_state_count
         # then action = replace
 
         action, flag = jax.lax.cond(
-            worst_obs_counter > self.forced_replace_worst_observation_count,
+            worst_damage_state_count > self.forced_replace_worst_damage_state_count,
             lambda a: (self.action_map["replace"], True),
             lambda a: (a, False),
             action,
@@ -881,7 +883,15 @@ class JaxRoadEnvironment(environment.Environment):
             state.worst_obs_counter + 1,
             jnp.zeros_like(state.worst_obs_counter),
         )
-        state = state.replace(worst_obs_counter=worst_obs_counter)
+        worst_damage_state_counter = jax.lax.select(
+            state.damage_state == self.num_damage_states - 1,
+            state.worst_damage_state_counter + 1,
+            jnp.zeros_like(state.worst_damage_state_counter),
+        )
+        state = state.replace(
+            worst_obs_counter=worst_obs_counter,
+            worst_damage_state_counter=worst_damage_state_counter,
+        )
 
         ## Action constraints
         key, key_constraints = jax.random.split(key)
@@ -1004,6 +1014,7 @@ class JaxRoadEnvironment(environment.Environment):
             belief=belief,
             base_travel_time=base_travel_time,
             capacity=capacity,
+            worst_damage_state_counter=state.worst_damage_state_counter,
             worst_obs_counter=state.worst_obs_counter,
             deterioration_rate=deterioration_rate,
             timestep=timestep,
@@ -1050,11 +1061,14 @@ class JaxRoadEnvironment(environment.Environment):
         _actions = jnp.zeros(self.total_num_segments, dtype=jnp.int32)
         obs = self._get_next(subkeys, damage_state, _actions, self.observation_table)
 
+        # worst observation counter
+        worst_obs_counter = jnp.zeros(self.total_num_segments, dtype=jnp.int32)
+
         # initial belief
         belief = jnp.array([self.initial_damage_prob] * self.total_num_segments)
 
-        # worst observation counter (for forced repair)
-        worst_observation_counter = jnp.zeros(self.total_num_segments, dtype=jnp.int32)
+        # worst damage state counter (for forced repair)
+        worst_damage_state_counter = jnp.zeros(self.total_num_segments, dtype=jnp.int32)
 
         # deterioration rate
         deterioration_rate = jnp.zeros(self.total_num_segments, dtype=jnp.int32)
@@ -1065,7 +1079,8 @@ class JaxRoadEnvironment(environment.Environment):
             belief=belief,
             base_travel_time=self.initial_btts,
             capacity=self.initial_capacities,
-            worst_obs_counter=worst_observation_counter,
+            worst_damage_state_counter=worst_damage_state_counter,
+            worst_obs_counter=worst_obs_counter,
             deterioration_rate=deterioration_rate,
             timestep=0,
             budget_remaining=self.budget_amount,
@@ -1125,6 +1140,12 @@ class JaxRoadEnvironment(environment.Environment):
                 "observation": spaces.Box(
                     0,
                     self.num_observations - 1,
+                    (self.total_num_segments,),
+                    dtype=jnp.int32,
+                ),
+                "worst_damage_state_counter": spaces.Box(
+                    0,
+                    self.max_timesteps,
                     (self.total_num_segments,),
                     dtype=jnp.int32,
                 ),

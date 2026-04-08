@@ -71,7 +71,8 @@ class RoadSegment:
 
     def reset(self):
         self.forced_repair = False
-        self.worst_observation_counter = 0
+        self.worst_obs_counter = 0
+        self.worst_damage_state_counter = 0
         self.action_duration = 0
         self.deterioration_rate = 0
         self.belief = np.array(self.initial_damage_prob)
@@ -105,7 +106,8 @@ class RoadSegment:
         if self.forced_repair:
             reward = self.state_action_reward[-1][-1]
             self.forced_repair = False
-            self.worst_observation_counter = 0
+            self.worst_obs_counter = 0
+            self.worst_damage_state_counter = 0
         else:
             reward = self.get_action_reward(action=action)
         reward *= self.segment_length * MILES_PER_KILOMETER
@@ -359,8 +361,8 @@ class RoadEnvironment:
             "enforce_forced_repair_constraint"
         ]
         if self.enforce_forced_repair_constraint:
-            self.forced_replace_worst_observation_count = config["maintenance"][
-                "forced_replace_worst_observation_count"
+            self.forced_replace_worst_damage_state_count = config["maintenance"][
+                "forced_replace_worst_damage_state_count"
             ]
 
         # 3.2) Action space
@@ -775,21 +777,26 @@ class RoadEnvironment:
         return actions
 
     def _apply_forced_repair_constraint(self, actions):
-        # Corrective replace action if the worst condition is observed
+        # Corrective replace action if the worst hidden damage state persists
         self.forced_replace_constraint_applied = 0
         for i, edge in enumerate(self.graph.es):
             for j, segment in enumerate(edge["road_edge"].segments):
                 if segment.observation == segment.number_of_states - 1:
-                    segment.worst_observation_counter += 1
+                    segment.worst_obs_counter += 1
+                else:
+                    segment.worst_obs_counter = 0
+
+                if segment.state == segment.number_of_states - 1:
+                    segment.worst_damage_state_counter += 1
                     if (
-                        segment.worst_observation_counter
-                        > self.forced_replace_worst_observation_count
+                        segment.worst_damage_state_counter
+                        > self.forced_replace_worst_damage_state_count
                     ):
                         self.forced_replace_constraint_applied += 1
                         segment.forced_repair = True
                         actions[i][j] = 4
                 else:
-                    segment.worst_observation_counter = 0
+                    segment.worst_damage_state_counter = 0
         return actions
 
     def _apply_budget_constraint(self, actions):
