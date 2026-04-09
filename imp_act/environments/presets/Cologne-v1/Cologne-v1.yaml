@@ -4,9 +4,10 @@ maintenance:
   include:
       path: "../common/maintenance_defaults.yaml"
       override: False
-      
+  enforce_budget_constraint: true
+
 traffic:
-  travel_time_reward_factor: -236.36
+  travel_time_reward_factor: -234.36
   trips:
     path: ./traffic.csv
     type: file

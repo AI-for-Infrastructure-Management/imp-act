@@ -3,4 +3,5 @@ include:
   override: False
 
 maintenance:
+  enforce_budget_constraint: True
   budget_amount: 300_000_000
