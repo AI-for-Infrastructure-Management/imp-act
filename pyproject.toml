@@ -36,7 +36,7 @@ gymnax="~0.0.6"
 optional = true
 [tool.poetry.group.jax_profiling.dependencies]
 tensorflow="~2.18.0"
-tensorboard_plugin_profile="~2.15"
+tensorboard_plugin_profile="~2.20"
 tabulate="~0.9"
 
 [tool.poetry.group.dev]
