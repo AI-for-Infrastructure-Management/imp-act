@@ -3,13 +3,11 @@
 ### Installing the dependencies
 
 Profiling the JAX code requires `tensorboard` and `tensorboard_plugin_profile`.
-The dependencies for can be found under `jax_profiling` in the pyproject.toml file. You can install them via Poetry:
+These dependencies are given in the `jax-profiling` extra in `pyproject.toml`, and can be installed with uv:
 
 ```bash
-poetry install --with dev,vis,jax,jax_profiling
+uv sync --extra jax --extra vis --extra jax-profiling
 ```
-
-The lock file is also provided for reproducibility.
 
 ### Speedups
 

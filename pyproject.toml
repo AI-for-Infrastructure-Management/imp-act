@@ -1,57 +1,40 @@
-[tool.poetry]
+[project]
 name = "imp-act"
 version = "0.1.0"
 description = "Environments for the imp-act challenge"
-authors = ["Pascal Leroy <pjr.leroy@gmail.com>"]
+authors = [
+    { name = "Daniel Hettegger", email = "daniel.hettegger@tum.de" },
+    { name = "Prateek Bhustali", email = "p.bhustali@tudelft.nl" },
+    { name = "Pablo G. Morato", email = "pgmd@build.aau.dk" },
+]
 license = "Apache-2.0"
 readme = "README.md"
-packages = [
-    {include = "imp_act"},
-    {include = "imp_act/environments"},
+requires-python = ">=3.9"
+dependencies = [
+    "igraph~=0.11.3",
+    "numpy~=1.26.2",
+    "pandas~=2.1.4",
+    "pyyaml~=6.0.1",
+    "tqdm~=4.66.1",
 ]
 
-[tool.poetry.dependencies]
-python=">=3.9"
-igraph="~0.11.3"
-numpy="~1.26.2"
-pandas="~2.1.4"
-pyyaml="~6.0.1"
-tqdm="~4.66.1"
+[project.optional-dependencies]
+# JAX environments on the CPU
+jax = ["jax[cpu]~=0.4.30", "flax~=0.8.5", "gymnax~=0.0.6"]
+# JAX environments on an NVIDIA GPU (Linux only)
+jax-gpu = ["jax[cuda12]~=0.4.30 ; sys_platform == 'linux'", "flax~=0.8.5", "gymnax~=0.0.6"]
+# Profiling of the JAX environments (profiling/)
+jax-profiling = ["tensorflow~=2.18.0", "tensorboard_plugin_profile~=2.20", "tabulate~=0.9"]
+# Visualization of the road networks and rollouts
+vis = ["matplotlib~=3.8.2", "networkx~=3.2.1", "Pillow~=10.3.0"]
 
-[tool.poetry.group.jax]
-optional = true
-[tool.poetry.group.jax.dependencies]
-jax=[{extras = ["cpu"], version="~0.4.30"}]
-flax="~0.8.5"
-gymnax="~0.0.6"
-
-[tool.poetry.group.jax_gpu]
-optional = true
-[tool.poetry.group.jax_gpu.dependencies]
-jax=[{extras = ["cuda12"], version="~0.4.30"}]
-flax="~0.8.5"
-gymnax="~0.0.6"
-
-[tool.poetry.group.jax_profiling]
-optional = true
-[tool.poetry.group.jax_profiling.dependencies]
-tensorflow="~2.18.0"
-tensorboard_plugin_profile="~2.20"
-tabulate="~0.9"
-
-[tool.poetry.group.dev]
-optional = true
-[tool.poetry.group.dev.dependencies]
-pytest="8.0.1"
-pre-commit = "3.6.2"
-
-[tool.poetry.group.vis]
-optional = true
-[tool.poetry.group.vis.dependencies]
-matplotlib="~3.8.2"
-networkx="~3.2.1"
-Pillow="~10.3.0"
+[dependency-groups]
+# Installed by default with uv sync
+dev = ["pytest==8.0.1", "pre-commit==3.6.2"]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["imp_act"]

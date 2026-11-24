@@ -36,46 +36,50 @@ Both environments have been tested for equivalence via unit tests (see `tests/te
 
 ## Installation 🛠️
 
-To set up the environment and install requirements:
-
 ### 1. Prerequisites 📋
-* 🐍 Python: >=3.7, <3.11 (Note: For using PyMARL or EPyMARL with the NumPy Python < 3.10 is required).
-* 📜 Poetry: 1.7.1+ (if using Poetry for environment management).
-* ⚙️ Ensure JAX is installed correctly for your specific hardware (CPU/GPU/TPU). Refer to the [official JAX installation guide](https://github.com/google/jax#installation).
-* 🔖 We recommend using `jax==0.4.30` as it was used for the experiments in the paper.
+* 🐍 Python: >=3.9, and we recommend Python 3.10, which was used for the experiments in the paper (Note: For using PyMARL or EPyMARL with the NumPy environments, Python < 3.10 is required).
+* ⚙️ JAX: the JAX environments use `jax==0.4.30`, which was used for the experiments in the paper. For hardware other than CPUs and NVIDIA GPUs, refer to the [official JAX installation guide](https://github.com/google/jax#installation).
 
-### 2. Create a virtual environment 🌐
-#### Option A : Create a conda environment using the environment YAML file,
+### 2. Install the dependencies 📦
+The dependencies are pinned in `uv.lock` for [uv](https://docs.astral.sh/uv/) and in [requirements/](requirements/) for pip. We recommend uv, which also installs Python 3.10 and is considerably faster than pip.
+
+#### Option A: uv (recommended)
+<details>
+<summary>Installing uv</summary>
+
+If uv is not installed, the easiest ways to install it are listed below, and further options are given in the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/),
 ```bash
-conda env create -f conda_environment.yaml
-conda activate impact-env
+curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS and Linux
+brew install uv                                  # macOS with Homebrew
+pip install uv                                   # any system with Python and pip
+```
+On Windows, uv can be installed in PowerShell with `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
+</details>
+
+After [installing uv](https://docs.astral.sh/uv/getting-started/installation/), the following command creates the virtual environment `.venv` and installs IMP-act with the JAX environments (`jax`), the visualization tools (`vis`) and the development tools,
+```bash
+uv sync --extra jax --extra vis
+source .venv/bin/activate
 ```
 
-#### Option B: Create a virtual environment impact-env using venv/poetry etc.
+For the GPU version (Linux with an NVIDIA GPU and CUDA 12), the `jax-gpu` extra installs the CUDA build of JAX instead,
 ```bash
-# create `impact-env` with python=3.10
-pip install poetry==1.7.1 lockfile==0.12.2
+uv sync --extra jax-gpu --extra vis
+source .venv/bin/activate
 ```
 
-### 3. Install dependencies 📦
+Similarly, the `jax-profiling` extra installs the dependencies for profiling the JAX environments (see [profiling/](profiling/README.md)).
 
-#### Option 1: Using Poetry (Recommended)
-
-The flags `--with dev,vis,jax,jax_gpu` are optional and can be used to install additional 
-dependencies for development, visualization, JAX support, and JAX GPU support.
-See the `pyproject.toml` file to see which dependencies are included in each group.
+#### Option B: pip
+If uv is not available, the pinned versions can be installed with pip into a virtual environment created with Python 3.10,
 ```bash
-poetry install --with dev,vis,jax
+python3.10 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements/cpu.txt  # or requirements/gpu.txt for the GPU version
+pip install --no-deps -e .
 ```
 
-#### Option 2: Using pip
-If you prefer to use pip, you can install the required packages as follows:
-```bash
-pip install -r requirements/requirements.txt
-pip install -e .
-``` 
-
-### 4. Verify Installation (Optional) ✅
+### 3. Verify Installation (Optional) ✅
 To verify that the installation was successful, you can run the following command:
 ```bash
 # ensure you are in the root directory of the repository, and pytest is installed
