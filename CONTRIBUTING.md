@@ -28,9 +28,9 @@ Linting configuration, see [.pre-commit-config.yaml](.pre-commit-config.yaml) :
 
 ## Adding a new dependency:
 
-To add a new dependency with poetry run the following commands in the root of the project:
+To add a new dependency with uv, run the following commands in the root of the project, which update `pyproject.toml` and `uv.lock`, and then export the new versions for pip with the commands in the headers of `requirements/cpu.txt` and `requirements/gpu.txt`:
 
 ```bash
-poetry add <package-name>
-poetry lock
+uv add <package-name>  # or uv add --optional <extra> <package-name>
+uv lock
 ```

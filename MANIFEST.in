@@ -1,2 +1,0 @@
-recursive-include imp_act *.yaml
-prune tests
